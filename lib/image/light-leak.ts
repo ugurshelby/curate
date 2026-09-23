@@ -97,7 +97,8 @@ export function drawLightLeak(
 }
 
 /**
- * Draws vintage lens optical vignette onto a canvas context
+ * Soft-falloff vintage lens vignette.
+ * Default amount 15% uses a gentle radial multiply so edges darken gradually.
  */
 export function drawVignette(
   ctx: CanvasRenderingContext2D,
@@ -115,17 +116,19 @@ export function drawVignette(
   ctx.save();
   ctx.globalCompositeOperation = "multiply";
 
+  // Soft falloff: keep center clean longer, ease into edges
   const grad = ctx.createRadialGradient(
     centerX,
     centerY,
-    radius * 0.35,
+    radius * 0.28,
     centerX,
     centerY,
     radius
   );
   grad.addColorStop(0, "rgba(255, 255, 255, 1)");
-  grad.addColorStop(0.55, "rgba(240, 240, 240, 1)");
-  grad.addColorStop(0.85, `rgba(80, 80, 80, ${1 - alpha * 0.5})`);
+  grad.addColorStop(0.45, "rgba(250, 250, 250, 1)");
+  grad.addColorStop(0.72, `rgba(140, 140, 140, ${1 - alpha * 0.35})`);
+  grad.addColorStop(0.9, `rgba(40, 40, 40, ${1 - alpha * 0.7})`);
   grad.addColorStop(1, `rgba(0, 0, 0, ${1 - alpha})`);
 
   ctx.fillStyle = grad;

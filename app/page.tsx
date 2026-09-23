@@ -12,25 +12,46 @@ import {
   BorderState,
   TimestampState,
   PanoramaSlice,
+  FocusCategory,
+  AestheticPreset,
 } from "@/lib/types";
 import { Header } from "@/components/Header";
 import { ViewportCanvas } from "@/components/ViewportCanvas";
+import { SplitViewPreview } from "@/components/SplitViewPreview";
 import { DumpFilmstrip } from "@/components/DumpFilmstrip";
 import { DumpGalleryView } from "@/components/DumpGalleryView";
 import { ControlToolbar } from "@/components/ControlToolbar";
+import { EditStagePills } from "@/components/EditStagePills";
 import { ProcessingModal } from "@/components/ProcessingModal";
 import { ExportModal } from "@/components/ExportModal";
 import { PanoramaSplitterModal } from "@/components/PanoramaSplitterModal";
 import { StoryCollageModal } from "@/components/StoryCollageModal";
 import { SAMPLE_IMAGES, generateOfflineSample } from "@/lib/sample-images";
-import { getDefaultBorderState } from "@/lib/image/border";
-import { getDefaultTimestampState, getFormattedTodayDate } from "@/lib/image/timestamp";
+import {
+  createDefaultFilters,
+  createDefaultCrop,
+  createDefaultBorder,
+  createDefaultTimestamp,
+} from "@/lib/image/defaults";
 import {
   exportSingleImage,
   exportDumpZip,
   downloadBlob,
   EXPORT_PRESETS,
 } from "@/lib/export/zip-exporter";
+import {
+  createTrackedObjectURL,
+  revokeObjectURL,
+  revokeAllTrackedURLs,
+} from "@/lib/url-lifecycle";
+import { EditHistory } from "@/lib/history";
+import {
+  loadAestheticPresets,
+  createAestheticPreset,
+  upsertAestheticPreset,
+  deleteAestheticPreset,
+  applyAestheticToSeries,
+} from "@/lib/aesthetic-presets";
 import { Upload, Sparkles } from "lucide-react";
 
 export default function CurateStudioPage() {
@@ -54,11 +75,49 @@ export default function CurateStudioPage() {
     phase: "",
   });
 
+  // Progressive disclosure: Stage 2 pills / Stage 3 focus
+  const [focusCategory, setFocusCategory] = useState<FocusCategory>(null);
+  const [splitView, setSplitView] = useState(false);
+  const [splitPeerId, setSplitPeerId] = useState<string | null>(null);
+  const [syncSuccess, setSyncSuccess] = useState(false);
+  const [aestheticPresets, setAestheticPresets] = useState<AestheticPreset[]>([]);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const historyRef = useRef(new EditHistory());
+  const isApplyingHistoryRef = useRef(false);
+  const filterHistoryArmedRef = useRef(false);
+  const cropGesturePreRef = useRef<{
+    images: CurateImage[];
+    activeImageId: string | null;
+    referenceImageId: string | null;
+  } | null>(null);
+  const cropGestureCommittedRef = useRef(false);
+  const imagesRef = useRef(images);
+  imagesRef.current = images;
 
   // Active image object
   const activeImage = images.find((img) => img.id === activeImageId) || null;
   const referenceImage = images.find((img) => img.id === referenceImageId) || null;
+
+  useEffect(() => {
+    setAestheticPresets(loadAestheticPresets());
+    return () => {
+      revokeAllTrackedURLs();
+    };
+  }, []);
+
+  const pushHistory = useCallback(() => {
+    if (isApplyingHistoryRef.current) return;
+    historyRef.current.push({
+      images: imagesRef.current,
+      activeImageId,
+      referenceImageId,
+    });
+    setCanUndo(historyRef.current.canUndo());
+    setCanRedo(historyRef.current.canRedo());
+  }, [activeImageId, referenceImageId]);
 
   // Helper to construct a CurateImage from file/URL
   const createCurateImage = (
@@ -66,76 +125,57 @@ export default function CurateStudioPage() {
     name: string,
     dataUrl: string,
     width: number,
-    height: number
+    height: number,
+    ownsObjectURL = false
   ): CurateImage => ({
     id,
     name,
     dataUrl,
+    ownsObjectURL,
     originalWidth: width,
     originalHeight: height,
     aspectRatio: width / height,
-    crop: {
-      aspectRatio: "4:5",
-      zoom: 1.0,
-      panX: 0,
-      panY: 0,
-    },
-    filters: {
-      activePresetId: null,
-      presetAmount: 100,
-      vignetteEnabled: false,
-      vignetteAmount: 40,
-      lightLeakEnabled: false,
-      lightLeakType: "warm-side",
-      lightLeakAmount: 50,
-      reinhardEnabled: false,
-      reinhardStrength: 65,
-      referenceImageId: null,
-      grainEnabled: false,
-      grainAmount: 25,
-      grainSize: 1,
-      halationEnabled: false,
-      halationRadius: 10,
-      halationTemp: 60,
-      halationThreshold: 0.82,
-    },
-    border: getDefaultBorderState(),
-    timestamp: getDefaultTimestampState(),
+    crop: createDefaultCrop(),
+    filters: createDefaultFilters(),
+    border: createDefaultBorder(),
+    timestamp: createDefaultTimestamp(),
     upscaleFactor: 1,
   });
 
-  // Handle file uploads
+  // Handle file uploads — blob: URLs (revoked on delete) to avoid multi-4K dataURL leaks
   const handleUploadFiles = useCallback((files: FileList | File[]) => {
     const fileArray = Array.from(files);
     const validImageFiles = fileArray.filter((f) => f.type.startsWith("image/"));
 
-    validImageFiles.forEach((file, index) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
-        const img = new Image();
-        img.onload = () => {
-          const newImg = createCurateImage(
-            `img_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 7)}`,
-            file.name,
-            dataUrl,
-            img.naturalWidth,
-            img.naturalHeight
-          );
+    pushHistory();
 
-          setImages((prev) => {
-            const next = [...prev, newImg];
-            if (prev.length === 0) {
-              setActiveImageId(newImg.id);
-            }
-            return next;
-          });
-        };
-        img.src = dataUrl;
+    validImageFiles.forEach((file, index) => {
+      const objectUrl = createTrackedObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const newImg = createCurateImage(
+          `img_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 7)}`,
+          file.name,
+          objectUrl,
+          img.naturalWidth,
+          img.naturalHeight,
+          true
+        );
+
+        setImages((prev) => {
+          const next = [...prev, newImg];
+          if (prev.length === 0) {
+            setActiveImageId(newImg.id);
+          }
+          return next;
+        });
       };
-      reader.readAsDataURL(file);
+      img.onerror = () => {
+        revokeObjectURL(objectUrl);
+      };
+      img.src = objectUrl;
     });
-  }, []);
+  }, [pushHistory]);
 
   // Load high quality sample photo collection with offline-safe fallback
   const handleLoadSamples = useCallback(async () => {
@@ -223,15 +263,24 @@ export default function CurateStudioPage() {
     });
   };
 
-  // Delete image
+  // Delete image — revoke blob URL to prevent leaks
   const handleDeleteImage = (id: string) => {
+    pushHistory();
     setImages((prev) => {
+      const doomed = prev.find((img) => img.id === id);
+      if (doomed?.ownsObjectURL) {
+        revokeObjectURL(doomed.dataUrl);
+      }
       const next = prev.filter((img) => img.id !== id);
       if (activeImageId === id) {
         setActiveImageId(next.length > 0 ? next[0].id : null);
+        setFocusCategory(null);
       }
       if (referenceImageId === id) {
         setReferenceImageId(null);
+      }
+      if (splitPeerId === id) {
+        setSplitPeerId(null);
       }
       return next;
     });
@@ -261,7 +310,8 @@ export default function CurateStudioPage() {
     });
   };
 
-  // Update crop for active image
+  // Update crop for active image (re-runs full non-destructive chain on next render)
+  // History is NOT pushed here — only on gesture end (pointer-up / pan-end).
   const handleUpdateCrop = (panX: number, panY: number, zoom: number) => {
     if (!activeImageId) return;
     setImages((prev) =>
@@ -281,9 +331,38 @@ export default function CurateStudioPage() {
     );
   };
 
+  /** Capture pre-gesture studio state once per pan/zoom gesture. */
+  const handleCropGestureStart = useCallback(() => {
+    cropGestureCommittedRef.current = false;
+    cropGesturePreRef.current = {
+      images: imagesRef.current.map((img) => ({
+        ...img,
+        crop: { ...img.crop },
+        filters: { ...img.filters },
+        border: img.border ? { ...img.border } : undefined,
+        timestamp: img.timestamp ? { ...img.timestamp } : undefined,
+      })),
+      activeImageId,
+      referenceImageId,
+    };
+  }, [activeImageId, referenceImageId]);
+
+  /** Push ONE undo checkpoint on release if the gesture mutated crop. */
+  const handleCropGestureEnd = useCallback(() => {
+    if (cropGestureCommittedRef.current) return;
+    const pre = cropGesturePreRef.current;
+    if (!pre) return;
+    cropGestureCommittedRef.current = true;
+    historyRef.current.push(pre);
+    setCanUndo(historyRef.current.canUndo());
+    setCanRedo(historyRef.current.canRedo());
+    cropGesturePreRef.current = null;
+  }, []);
+
   // Update aspect ratio for active image
   const handleUpdateCropRatio = (aspectRatio: AspectRatio) => {
     if (!activeImageId) return;
+    pushHistory();
     setImages((prev) =>
       prev.map((img) =>
         img.id === activeImageId
@@ -299,9 +378,16 @@ export default function CurateStudioPage() {
     );
   };
 
-  // Update filters for active image
+  // Update filters for active image (history coalesced ~800ms per gesture)
   const handleUpdateFilters = (newFilters: Partial<CurateImage["filters"]>) => {
     if (!activeImageId) return;
+    if (!filterHistoryArmedRef.current) {
+      pushHistory();
+      filterHistoryArmedRef.current = true;
+      window.setTimeout(() => {
+        filterHistoryArmedRef.current = false;
+      }, 800);
+    }
     setImages((prev) =>
       prev.map((img) =>
         img.id === activeImageId
@@ -324,30 +410,13 @@ export default function CurateStudioPage() {
   // Reset filters for active image
   const handleResetFilters = () => {
     if (!activeImageId) return;
+    pushHistory();
     setImages((prev) =>
       prev.map((img) =>
         img.id === activeImageId
           ? {
               ...img,
-              filters: {
-                activePresetId: null,
-                presetAmount: 100,
-                vignetteEnabled: false,
-                vignetteAmount: 40,
-                lightLeakEnabled: false,
-                lightLeakType: "warm-side",
-                lightLeakAmount: 50,
-                reinhardEnabled: false,
-                reinhardStrength: 65,
-                referenceImageId: null,
-                grainEnabled: false,
-                grainAmount: 25,
-                grainSize: 1,
-                halationEnabled: false,
-                halationRadius: 10,
-                halationTemp: 60,
-                halationThreshold: 0.82,
-              },
+              filters: createDefaultFilters(),
             }
           : img
       )
@@ -372,13 +441,20 @@ export default function CurateStudioPage() {
   // Update border for active image
   const handleUpdateBorder = (newBorder: Partial<BorderState>) => {
     if (!activeImageId) return;
+    if (!filterHistoryArmedRef.current) {
+      pushHistory();
+      filterHistoryArmedRef.current = true;
+      window.setTimeout(() => {
+        filterHistoryArmedRef.current = false;
+      }, 800);
+    }
     setImages((prev) =>
       prev.map((img) =>
         img.id === activeImageId
           ? {
               ...img,
               border: {
-                ...(img.border || getDefaultBorderState()),
+                ...(img.border || createDefaultBorder()),
                 ...newBorder,
               },
             }
@@ -390,13 +466,20 @@ export default function CurateStudioPage() {
   // Update timestamp for active image
   const handleUpdateTimestamp = (newTimestamp: Partial<TimestampState>) => {
     if (!activeImageId) return;
+    if (!filterHistoryArmedRef.current) {
+      pushHistory();
+      filterHistoryArmedRef.current = true;
+      window.setTimeout(() => {
+        filterHistoryArmedRef.current = false;
+      }, 800);
+    }
     setImages((prev) =>
       prev.map((img) =>
         img.id === activeImageId
           ? {
               ...img,
               timestamp: {
-                ...(img.timestamp || getDefaultTimestampState()),
+                ...(img.timestamp || createDefaultTimestamp()),
                 ...newTimestamp,
               },
             }
@@ -405,10 +488,11 @@ export default function CurateStudioPage() {
     );
   };
 
-  // Batch sync active image settings across entire series (EXCLUDING crop ratio, zoom, and pan)
+  // Batch sync: effects only — NEVER crop/ratio/zoom/pan
   const handleBatchSync = useCallback(() => {
     if (!activeImage) return;
     const { filters, border, timestamp, upscaleFactor } = activeImage;
+    pushHistory();
 
     setImages((prev) =>
       prev.map((img) => ({
@@ -420,7 +504,93 @@ export default function CurateStudioPage() {
         upscaleFactor,
       }))
     );
-  }, [activeImage]);
+    setSyncSuccess(true);
+    window.setTimeout(() => setSyncSuccess(false), 2000);
+  }, [activeImage, pushHistory]);
+
+  const handleUndo = useCallback(() => {
+    const snap = historyRef.current.undo({
+      images,
+      activeImageId,
+      referenceImageId,
+    });
+    if (!snap) return;
+    isApplyingHistoryRef.current = true;
+    setImages(snap.images);
+    setActiveImageId(snap.activeImageId);
+    setReferenceImageId(snap.referenceImageId);
+    setCanUndo(historyRef.current.canUndo());
+    setCanRedo(historyRef.current.canRedo());
+    queueMicrotask(() => {
+      isApplyingHistoryRef.current = false;
+    });
+  }, [images, activeImageId, referenceImageId]);
+
+  const handleRedo = useCallback(() => {
+    const snap = historyRef.current.redo({
+      images,
+      activeImageId,
+      referenceImageId,
+    });
+    if (!snap) return;
+    isApplyingHistoryRef.current = true;
+    setImages(snap.images);
+    setActiveImageId(snap.activeImageId);
+    setReferenceImageId(snap.referenceImageId);
+    setCanUndo(historyRef.current.canUndo());
+    setCanRedo(historyRef.current.canRedo());
+    queueMicrotask(() => {
+      isApplyingHistoryRef.current = false;
+    });
+  }, [images, activeImageId, referenceImageId]);
+
+  const handleSaveAesthetic = (name: string) => {
+    if (!activeImage) return;
+    const preset = createAestheticPreset(
+      name,
+      activeImage.filters,
+      activeImage.border,
+      activeImage.timestamp
+    );
+    setAestheticPresets(upsertAestheticPreset(preset));
+  };
+
+  const handleApplyAesthetic = (preset: AestheticPreset) => {
+    pushHistory();
+    setImages((prev) => applyAestheticToSeries(prev, preset));
+    setSyncSuccess(true);
+    window.setTimeout(() => setSyncSuccess(false), 2000);
+  };
+
+  const handleDeleteAesthetic = (id: string) => {
+    setAestheticPresets(deleteAestheticPreset(id));
+  };
+
+  const handleUpdateCropBoth = (panX: number, panY: number, zoom: number) => {
+    // Locked sync zoom/pan for Split View (preserves each image's aspect ratio)
+    setImages((prev) =>
+      prev.map((img) => {
+        if (img.id === activeImageId || img.id === splitPeerId) {
+          return { ...img, crop: { ...img.crop, panX, panY, zoom } };
+        }
+        return img;
+      })
+    );
+  };
+
+  const handleToggleSplitView = () => {
+    setSplitView((v) => {
+      const next = !v;
+      if (next && activeImageId) {
+        const peer =
+          images.find((img) => img.id !== activeImageId)?.id || null;
+        setSplitPeerId(peer);
+      } else {
+        setSplitPeerId(null);
+      }
+      return next;
+    });
+  };
 
   // Add slices from Panorama Splitter to the studio series
   const handleAddPanoramaSlices = (slices: PanoramaSlice[]) => {
@@ -514,11 +684,19 @@ export default function CurateStudioPage() {
       } else if (e.code === "Space" && activeImageId) {
         e.preventDefault();
         setShowOriginal(true);
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        if (e.shiftKey) handleRedo();
+        else handleUndo();
       } else if (e.key === "Escape") {
         if (isExportModalOpen) {
           setIsExportModalOpen(false);
+        } else if (focusCategory) {
+          setFocusCategory(null); // Stage 3 → Stage 2 pills
         } else if (activeImageId) {
-          setActiveImageId(null); // Exit edit mode back to gallery!
+          setActiveImageId(null); // Stage 2 → Stage 1 dump
+          setFocusCategory(null);
+          setSplitView(false);
         }
       }
     };
@@ -535,11 +713,11 @@ export default function CurateStudioPage() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [images, activeImageId, isExportModalOpen]);
+  }, [images, activeImageId, isExportModalOpen, focusCategory, handleUndo, handleRedo]);
 
   return (
     <main
-      className="h-screen w-screen flex flex-col bg-black text-neutral-100 overflow-hidden relative"
+      className="h-dvh w-screen flex flex-col bg-black text-neutral-100 overflow-hidden relative"
       onDrop={handleWindowDrop}
       onDragOver={handleDragOver}
     >
@@ -553,7 +731,11 @@ export default function CurateStudioPage() {
         onOpenExportModal={() => setIsExportModalOpen(true)}
         onOpenPanoramaModal={() => setIsPanoramaModalOpen(true)}
         onOpenCollageModal={() => setIsCollageModalOpen(true)}
-        onExitEdit={() => setActiveImageId(null)}
+        onExitEdit={() => {
+          setActiveImageId(null);
+          setFocusCategory(null);
+          setSplitView(false);
+        }}
       />
 
       {/* Main Viewport / Gallery Area */}
@@ -596,50 +778,220 @@ export default function CurateStudioPage() {
           <DumpGalleryView
             images={images}
             referenceImageId={referenceImageId}
-            onSelectImage={setActiveImageId}
+            onSelectImage={(id) => {
+              setActiveImageId(id);
+              setFocusCategory(null);
+            }}
             onSetReference={handleSetReference}
             onDeleteImage={handleDeleteImage}
             onUploadClick={() => fileInputRef.current?.click()}
             onOpenExportModal={() => setIsExportModalOpen(true)}
+            onBatchSync={handleBatchSync}
+            syncSuccess={syncSuccess}
+            hasActiveEffects={Boolean(
+              images[0] &&
+                (images[0].filters.activePresetId ||
+                  images[0].filters.grainEnabled ||
+                  images[0].filters.halationEnabled ||
+                  images[0].filters.vignetteEnabled)
+            )}
           />
         ) : (
-          /* State 3: Active Photo Edit Studio */
+          /* Stage 2/3: Active Photo Edit Studio — mobile sheet / desktop floating */
           <>
-            <ViewportCanvas
-              image={activeImage}
-              referenceImage={referenceImage}
-              guide={guide}
-              overlay={overlay}
-              showOriginal={showOriginal}
-              onUpdateCrop={handleUpdateCrop}
-            />
+            {/* Canvas stage: flex-1, shrinks when bottom sheet expands */}
+            <div className="flex-1 min-h-0 relative flex flex-col">
+              {splitView && activeImage && splitPeerId ? (
+                <SplitViewPreview
+                  left={activeImage}
+                  right={
+                    images.find((i) => i.id === splitPeerId) || activeImage
+                  }
+                  referenceImage={referenceImage}
+                  guide={guide}
+                  overlay={overlay}
+                  showOriginal={showOriginal}
+                  onUpdateCropBoth={handleUpdateCropBoth}
+                  onSetShowOriginal={setShowOriginal}
+                  onCropGestureStart={handleCropGestureStart}
+                  onCropGestureEnd={handleCropGestureEnd}
+                />
+              ) : (
+                <ViewportCanvas
+                  image={activeImage}
+                  referenceImage={referenceImage}
+                  guide={guide}
+                  overlay={overlay}
+                  showOriginal={showOriginal}
+                  onUpdateCrop={handleUpdateCrop}
+                  onSetShowOriginal={setShowOriginal}
+                  onCropGestureStart={handleCropGestureStart}
+                  onCropGestureEnd={handleCropGestureEnd}
+                />
+              )}
 
-            {/* Draggable & Collapsible Control Toolbar */}
-            <ControlToolbar
-              image={activeImage}
-              images={images}
-              referenceImageId={referenceImageId}
-              activeGuide={guide}
-              activeOverlay={overlay}
-              showOriginal={showOriginal}
-              onUpdateCropRatio={handleUpdateCropRatio}
-              onUpdateZoom={(z) =>
-                activeImage &&
-                handleUpdateCrop(activeImage.crop.panX, activeImage.crop.panY, z)
-              }
-              onUpdateGuide={setGuide}
-              onUpdateOverlay={setOverlay}
-              onUpdateFilters={handleUpdateFilters}
-              onUpdateBorder={handleUpdateBorder}
-              onUpdateTimestamp={handleUpdateTimestamp}
-              onBatchSync={handleBatchSync}
-              onResetFilters={handleResetFilters}
-              onSetShowOriginal={setShowOriginal}
-              onUpdateUpscale={handleUpdateUpscale}
-              onExportSingle={handleExportSingle}
-              onExportDump={() => setIsExportModalOpen(true)}
-              onExitEdit={() => setActiveImageId(null)}
-            />
+              {/* Desktop floating pills + focus panel */}
+              <EditStagePills
+                layout="floating"
+                activeCategory={focusCategory}
+                onSelect={setFocusCategory}
+                splitView={splitView}
+                onToggleSplitView={handleToggleSplitView}
+                canUndo={canUndo}
+                canRedo={canRedo}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+                onBatchSync={handleBatchSync}
+                syncSuccess={syncSuccess}
+              />
+              <ControlToolbar
+                layout="floating"
+                image={activeImage}
+                images={images}
+                referenceImageId={referenceImageId}
+                activeGuide={guide}
+                activeOverlay={overlay}
+                showOriginal={showOriginal}
+                onUpdateCropRatio={handleUpdateCropRatio}
+                onUpdateZoom={(z) => {
+                  if (!activeImage) return;
+                  handleCropGestureStart();
+                  handleUpdateCrop(activeImage.crop.panX, activeImage.crop.panY, z);
+                  handleCropGestureEnd();
+                }}
+                onUpdateGuide={setGuide}
+                onUpdateOverlay={setOverlay}
+                onUpdateFilters={handleUpdateFilters}
+                onUpdateBorder={handleUpdateBorder}
+                onUpdateTimestamp={handleUpdateTimestamp}
+                onBatchSync={handleBatchSync}
+                onResetFilters={handleResetFilters}
+                onSetShowOriginal={setShowOriginal}
+                onUpdateUpscale={handleUpdateUpscale}
+                onExportSingle={handleExportSingle}
+                onExportDump={() => setIsExportModalOpen(true)}
+                onExitEdit={() => {
+                  setActiveImageId(null);
+                  setFocusCategory(null);
+                  setSplitView(false);
+                }}
+                focusCategory={focusCategory}
+                onCloseFocus={() => setFocusCategory(null)}
+                aestheticPresets={aestheticPresets}
+                onSaveAesthetic={handleSaveAesthetic}
+                onApplyAesthetic={handleApplyAesthetic}
+                onDeleteAesthetic={handleDeleteAesthetic}
+              />
+            </div>
+
+            {/* Mobile bottom studio sheet — photo stays above, never covered */}
+            <div
+              className={`sm:hidden shrink-0 w-full bg-neutral-900/95 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl flex flex-col transition-[max-height] duration-300 ease-out ${
+                focusCategory ? "max-h-[35vh]" : "max-h-[140px]"
+              }`}
+            >
+              <div className="flex items-center justify-center pt-2 pb-1 shrink-0">
+                <div className="w-10 h-1 rounded-full bg-white/25" />
+              </div>
+              {focusCategory ? (
+                <div className="flex items-center justify-between px-3 pb-1 shrink-0">
+                  <span className="text-[11px] font-semibold text-white/80 uppercase tracking-wide">
+                    Duzenle
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setFocusCategory(null)}
+                    className="pressable min-h-[44px] min-w-[44px] rounded-full text-white/70 hover:text-white hover:bg-white/10 flex items-center justify-center text-lg leading-none"
+                    title="Kapat"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : null}
+
+              {!focusCategory && (
+                <EditStagePills
+                  layout="sheet"
+                  activeCategory={focusCategory}
+                  onSelect={setFocusCategory}
+                  splitView={splitView}
+                  onToggleSplitView={handleToggleSplitView}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  onUndo={handleUndo}
+                  onRedo={handleRedo}
+                  onBatchSync={handleBatchSync}
+                  syncSuccess={syncSuccess}
+                />
+              )}
+
+              {focusCategory && (
+                <ControlToolbar
+                  layout="sheet"
+                  image={activeImage}
+                  images={images}
+                  referenceImageId={referenceImageId}
+                  activeGuide={guide}
+                  activeOverlay={overlay}
+                  showOriginal={showOriginal}
+                  onUpdateCropRatio={handleUpdateCropRatio}
+                  onUpdateZoom={(z) => {
+                    if (!activeImage) return;
+                    handleCropGestureStart();
+                    handleUpdateCrop(activeImage.crop.panX, activeImage.crop.panY, z);
+                    handleCropGestureEnd();
+                  }}
+                  onUpdateGuide={setGuide}
+                  onUpdateOverlay={setOverlay}
+                  onUpdateFilters={handleUpdateFilters}
+                  onUpdateBorder={handleUpdateBorder}
+                  onUpdateTimestamp={handleUpdateTimestamp}
+                  onBatchSync={handleBatchSync}
+                  onResetFilters={handleResetFilters}
+                  onSetShowOriginal={setShowOriginal}
+                  onUpdateUpscale={handleUpdateUpscale}
+                  onExportSingle={handleExportSingle}
+                  onExportDump={() => setIsExportModalOpen(true)}
+                  onExitEdit={() => {
+                    setActiveImageId(null);
+                    setFocusCategory(null);
+                    setSplitView(false);
+                  }}
+                  focusCategory={focusCategory}
+                  onCloseFocus={() => setFocusCategory(null)}
+                  aestheticPresets={aestheticPresets}
+                  onSaveAesthetic={handleSaveAesthetic}
+                  onApplyAesthetic={handleApplyAesthetic}
+                  onDeleteAesthetic={handleDeleteAesthetic}
+                />
+              )}
+
+              <DumpFilmstrip
+                compact
+                images={images}
+                activeImageId={activeImageId}
+                referenceImageId={referenceImageId}
+                onSelectImage={setActiveImageId}
+                onSetReference={handleSetReference}
+                onDeleteImage={handleDeleteImage}
+                onReorder={handleReorder}
+                onUploadClick={() => fileInputRef.current?.click()}
+              />
+            </div>
+
+            {/* Desktop filmstrip */}
+            <div className="hidden sm:block shrink-0">
+              <DumpFilmstrip
+                images={images}
+                activeImageId={activeImageId}
+                referenceImageId={referenceImageId}
+                onSelectImage={setActiveImageId}
+                onSetReference={handleSetReference}
+                onDeleteImage={handleDeleteImage}
+                onReorder={handleReorder}
+                onUploadClick={() => fileInputRef.current?.click()}
+              />
+            </div>
           </>
         )}
       </div>
@@ -659,19 +1011,6 @@ export default function CurateStudioPage() {
         }}
       />
 
-      {/* Bottom Horizontal Filmstrip (Only visible during active editing) */}
-      {images.length > 0 && activeImageId !== null && (
-        <DumpFilmstrip
-          images={images}
-          activeImageId={activeImageId}
-          referenceImageId={referenceImageId}
-          onSelectImage={setActiveImageId}
-          onSetReference={handleSetReference}
-          onDeleteImage={handleDeleteImage}
-          onReorder={handleReorder}
-          onUploadClick={() => fileInputRef.current?.click()}
-        />
-      )}
 
       {/* Standalone Panorama Splitter Modal */}
       <PanoramaSplitterModal

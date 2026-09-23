@@ -13,6 +13,7 @@ interface DumpFilmstripProps {
   onDeleteImage: (id: string) => void;
   onReorder: (sourceIndex: number, destIndex: number) => void;
   onUploadClick: () => void;
+  compact?: boolean;
 }
 
 export const DumpFilmstrip: React.FC<DumpFilmstripProps> = ({
@@ -24,6 +25,7 @@ export const DumpFilmstrip: React.FC<DumpFilmstripProps> = ({
   onDeleteImage,
   onReorder,
   onUploadClick,
+  compact = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -54,7 +56,7 @@ export const DumpFilmstrip: React.FC<DumpFilmstripProps> = ({
   };
 
   return (
-    <div className="relative border-t border-white/10 bg-neutral-950/85 backdrop-blur-xl px-4 py-3 select-none z-20">
+    <div className={`relative select-none z-20 ${compact ? "border-t-0 bg-transparent px-2 py-2 pb-safe" : "border-t border-white/10 bg-neutral-950/85 backdrop-blur-xl px-4 py-3 pb-safe"}`}>
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
         {/* Scroll Left Button */}
         {images.length > 4 && (

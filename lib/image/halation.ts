@@ -4,20 +4,24 @@
  * 1. Extract highlights (Y > threshold).
  * 2. Color highlights with warm red/amber tint depending on temperature.
  * 3. Box/Gaussian blur diffusion scaled proportionally to image resolution.
- * 4. Screen blend back onto base image.
+ * 4. Screen blend back onto base image, scaled by amount (0-100).
+ *
+ * Radius scales with width / 800 so proxy (~1080p) and full-res export match visually.
  */
 
 export function applyHalation(
   imageData: ImageData,
   radius: number = 10,
   temperature: number = 50, // 0 = warm amber, 100 = deep red
-  threshold: number = 0.82
+  threshold: number = 0.82,
+  amount: number = 12 // 0 - 100 intensity
 ): ImageData {
-  if (radius <= 0) return imageData;
+  if (radius <= 0 || amount <= 0) return imageData;
 
   const width = imageData.width;
   const height = imageData.height;
   const src = imageData.data;
+  const amountScale = Math.max(0, Math.min(100, amount)) / 100;
 
   // 1. Create highlight map buffer (R, G, B channels of warm glow)
   const glow = new Float32Array(width * height * 3);
@@ -39,7 +43,7 @@ export function applyHalation(
 
     if (Y > threshold) {
       // Soft ramp above threshold
-      const factor = (Y - threshold) / (1 - threshold);
+      const factor = ((Y - threshold) / (1 - threshold)) * amountScale;
       glow[p] = r * tintR * factor;
       glow[p + 1] = g * tintG * factor;
       glow[p + 2] = b * tintB * factor;

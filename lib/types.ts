@@ -6,6 +6,17 @@ export type SocialOverlay = "none" | "instagram-story" | "tiktok-story" | "insta
 
 export type UpscaleMultiplier = 1 | 2 | 4;
 
+/** Progressive disclosure stages for the studio UI */
+export type StudioStage = "dump" | "edit" | "focus";
+
+/** Stage-2 / Stage-3 category focus */
+export type FocusCategory =
+  | "preset-color"
+  | "analog"
+  | "frame"
+  | "size-crop"
+  | null;
+
 export interface CropState {
   aspectRatio: AspectRatio;
   zoom: number; // 1.0 - 3.0
@@ -58,7 +69,9 @@ export interface FilterState {
 
   // Halation
   halationEnabled: boolean;
-  halationRadius: number; // 2 - 30 px
+  /** Intensity of the glow (0-100). Default on toggle: 12 */
+  halationAmount: number;
+  halationRadius: number; // 2 - 30 px (baseline @ ~800px width)
   halationTemp: number; // 0 (warm amber) - 100 (deep cinematic red)
   halationThreshold: number; // 0.70 - 0.95 luminance threshold
 }
@@ -86,12 +99,24 @@ export interface CurateImage {
   originalWidth: number;
   originalHeight: number;
   aspectRatio: number; // originalWidth / originalHeight
-  dataUrl: string; // for rendering
+  dataUrl: string; // blob: URL or data URL for rendering
+  /** True when dataUrl is a blob: object URL that must be revoked on delete */
+  ownsObjectURL?: boolean;
   crop: CropState;
   filters: FilterState;
   border?: BorderState;
   timestamp?: TimestampState;
   upscaleFactor: UpscaleMultiplier; // 1x, 2x, 4x
+}
+
+/** User-saved "My Aesthetic" preset (effects only — no crop) */
+export interface AestheticPreset {
+  id: string;
+  name: string;
+  createdAt: number;
+  filters: FilterState;
+  border?: BorderState;
+  timestamp?: TimestampState;
 }
 
 export interface ExportPreset {

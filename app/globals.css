@@ -145,3 +145,14 @@ input[type="range"]::-moz-range-thumb {
 .pressable:active {
   transform: scale(0.96);
 }
+
+
+/* iOS safe-area helpers for bottom sheet / filmstrip */
+.pb-safe {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+}
+
+.h-dvh {
+  height: 100vh;
+  height: 100dvh;
+}

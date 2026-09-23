@@ -94,11 +94,20 @@ export function downloadBlob(blob: Blob, filename: string) {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  // Always revoke — critical when exporting multi-4K dump zips
+  window.setTimeout(() => {
+    try {
+      URL.revokeObjectURL(url);
+    } catch {
+      /* already revoked */
+    }
+  }, 1500);
 }
 
 /**
- * Renders and exports a single CurateImage to Blob with optional Lanczos-3 Resampling
+ * Full-res export: applies the complete param matrix to the original,
+ * then Lanczos-3 resamples when the preset requests a different pixel size.
+ * Live preview uses a ~1080p proxy; this path never uses the proxy bitmap.
  */
 export async function exportSingleImage(
   item: CurateImage,

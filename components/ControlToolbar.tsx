@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   CurateImage,
   AspectRatio,
@@ -50,7 +50,14 @@ import {
   getFormattedTodayWithTime,
 } from "@/lib/image/timestamp";
 import { FILM_PRESETS, getFavoritePresetIds, toggleFavoritePreset } from "@/lib/image/film-presets";
-import { LightLeakType } from "@/lib/types";
+import { LightLeakType, FocusCategory, AestheticPreset } from "@/lib/types";
+import { ResettableSlider } from "./ResettableSlider";
+import {
+  SLIDER_DEFAULTS,
+  TOGGLE_DEFAULTS,
+  applyToggleDefaults,
+} from "@/lib/image/defaults";
+/* Aesthetic presets are managed by page.tsx; toolbar receives them via props */
 
 interface ControlToolbarProps {
   image: CurateImage | null;
@@ -73,9 +80,25 @@ interface ControlToolbarProps {
   onExportSingle: (preset: ExportPreset) => void;
   onExportDump: () => void;
   onExitEdit: () => void;
+  focusCategory: FocusCategory;
+  onCloseFocus: () => void;
+  aestheticPresets: AestheticPreset[];
+  onSaveAesthetic: (name: string) => void;
+  onApplyAesthetic: (preset: AestheticPreset) => void;
+  onDeleteAesthetic: (id: string) => void;
+  /** floating = desktop overlay; sheet = mobile bottom sheet */
+  layout?: "floating" | "sheet";
 }
 
 type TabType = "presets" | "color" | "crop" | "frame" | "overlay" | "upscale" | "export";
+
+function focusToTab(cat: FocusCategory): TabType {
+  if (cat === "preset-color") return "presets";
+  if (cat === "analog") return "color";
+  if (cat === "frame") return "frame";
+  if (cat === "size-crop") return "crop";
+  return "presets";
+}
 
 export const ControlToolbar: React.FC<ControlToolbarProps> = ({
   image,
@@ -98,10 +121,35 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
   onExportSingle,
   onExportDump,
   onExitEdit,
+  focusCategory,
+  onCloseFocus,
+  aestheticPresets,
+  onSaveAesthetic,
+  onApplyAesthetic,
+  onDeleteAesthetic,
+  layout = "floating",
 }) => {
-  const [activeTab, setActiveTab] = useState<TabType>("presets");
+  const [activeTab, setActiveTab] = useState<TabType>(() => focusToTab(focusCategory));
+  const [aesName, setAesName] = useState("");
+
+  // Sync tab when focus category changes (Stage 3)
+  useEffect(() => {
+    if (focusCategory) {
+      setActiveTab(focusToTab(focusCategory));
+    }
+  }, [focusCategory]);
+
+  // Reinhard lives only under Preset/Color; Analog focus is texture-only
+  const showPresets = focusCategory === "preset-color" && activeTab === "presets";
+  const showReinhard = focusCategory === "preset-color" && activeTab === "color";
+  const showAnalog = focusCategory === "analog";
+  const showCrop = focusCategory === "size-crop" && activeTab === "crop";
+  const showFrame = focusCategory === "frame";
+  const showOverlay = focusCategory === "size-crop" && activeTab === "overlay";
+  const showUpscale = focusCategory === "size-crop" && activeTab === "upscale";
+  const showExport = focusCategory === "size-crop" && activeTab === "export";
   const [selectedPresetId, setSelectedPresetId] = useState<string>("ig-retina");
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false); // unused in Stage 3 focus
   const [syncSuccess, setSyncSuccess] = useState<boolean>(false);
 
   // Preset favorites and filter state
@@ -115,6 +163,9 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
   const dragStartOffsetRef = useRef({ x: 0, y: 0 });
 
   if (!image) return null;
+
+  // Stage 2: floating pills only — no slider panel
+  if (!focusCategory) return null;
 
   const { crop, filters } = image;
   const currentUpscale = image.upscaleFactor || 1;
@@ -171,15 +222,25 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
     } catch {}
   };
 
+  const isSheet = layout === "sheet";
+
   return (
     <div
-      style={{
-        transform: `translate3d(calc(-50% + ${offset.x}px), ${offset.y}px, 0)`,
-      }}
-      className="absolute bottom-20 left-1/2 w-full max-w-xl px-4 z-30 pointer-events-none select-none transition-transform duration-75"
+      style={
+        isSheet
+          ? undefined
+          : {
+              transform: `translate3d(calc(-50% + ${offset.x}px), ${offset.y}px, 0)`,
+            }
+      }
+      className={
+        isSheet
+          ? "relative w-full px-3 z-30 pointer-events-auto select-none"
+          : "absolute bottom-20 left-1/2 w-full max-w-xl px-4 z-30 pointer-events-none select-none transition-transform duration-75 hidden sm:block"
+      }
     >
-      {/* 1. COLLAPSED COMPACT PILL MODE */}
-      {isCollapsed ? (
+      {/* Collapsed mode disabled — Stage 2 pills + Stage 3 focus */}
+      {false && isCollapsed ? (
         <div
           onPointerDown={handleDragPointerDown}
           onPointerMove={handleDragPointerMove}
@@ -223,7 +284,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
         </div>
       ) : (
         /* 2. FULL EXPANDED TOOLBAR */
-        <div className="glass-toolbar rounded-2xl p-3 pointer-events-auto space-y-2.5 shadow-glass border border-white/15">
+        <div className={`pointer-events-auto space-y-2.5 ${isSheet ? "p-2 max-h-[28vh] overflow-y-auto" : "glass-toolbar rounded-2xl p-3 shadow-glass border border-white/15"}`}>
           {/* Drag Handle & Top Controls Row */}
           <div
             onPointerDown={handleDragPointerDown}
@@ -240,7 +301,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                     ? "bg-emerald-500 text-black font-semibold"
                     : "bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-400 hover:text-black"
                 }`}
-                title="Analog filtreleri, çerçeve ve tarih damgasını serideki tüm fotoğraflara senkronize eder (En-boy oranları korunur)"
+                title="Analog filtreleri, cerceve ve tarih damgasini serideki tum fotografara senkronize eder (En-boy oranlari korunur)"
               >
                 {syncSuccess ? (
                   <>
@@ -260,121 +321,50 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
 
             <div className="flex items-center gap-1">
               <button
-                onClick={() => setIsCollapsed(true)}
+                onClick={onCloseFocus}
                 className="p-1 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-                title="Paneli Küçült (Görseli Gör)"
+                title="Pillere Dön (Esc)"
               >
                 <ChevronDown className="w-3.5 h-3.5" />
               </button>
 
               <button
-                onClick={onExitEdit}
+                onClick={onCloseFocus}
                 className="p-1 rounded-md text-white/60 hover:text-rose-400 hover:bg-rose-500/20 transition-colors"
-                title="Düzenlemeyi Kapat (Esc)"
+                title="Odaktan Çık"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
 
-          {/* Navigation Tabs */}
+          {/* Focus Category Header (Stage 3) */}
           <div className="flex items-center justify-between border-b border-white/10 pb-2">
             <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">
-              {/* Dedicated PRESETS Tab */}
-              <button
-                onClick={() => setActiveTab("presets")}
-                className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
-                  activeTab === "presets"
-                    ? "bg-white text-black shadow-sm font-semibold"
-                    : "text-neutral-400 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <Film className="w-3.5 h-3.5" />
-                <span>Presetler</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab("color")}
-                className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
-                  activeTab === "color"
-                    ? "bg-white text-black shadow-sm font-semibold"
-                    : "text-neutral-400 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <Sliders className="w-3.5 h-3.5" />
-                <span>Analog</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab("crop")}
-                className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
-                  activeTab === "crop"
-                    ? "bg-white text-black shadow-sm font-semibold"
-                    : "text-neutral-400 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <Crop className="w-3.5 h-3.5" />
-                <span>Kırpma</span>
-              </button>
-
-              {/* Dedicated FRAME & TIMESTAMP Tab */}
-              <button
-                onClick={() => setActiveTab("frame")}
-                className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
-                  activeTab === "frame"
-                    ? "bg-white text-black shadow-sm font-semibold"
-                    : "text-neutral-400 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <Frame className="w-3.5 h-3.5" />
-                <span>Çerçeve & Tarih</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab("overlay")}
-                className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
-                  activeTab === "overlay"
-                    ? "bg-white text-black shadow-sm font-semibold"
-                    : "text-neutral-400 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <Smartphone className="w-3.5 h-3.5" />
-                <span>Simülatör</span>
-              </button>
-
-              {/* Dedicated UPSCALE Tab */}
-              <button
-                onClick={() => setActiveTab("upscale")}
-                className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
-                  activeTab === "upscale"
-                    ? "bg-amber-400 text-black shadow-sm font-semibold"
-                    : "text-amber-400/90 hover:text-amber-300 hover:bg-amber-400/10"
-                }`}
-              >
-                <Zap className="w-3.5 h-3.5" />
-                <span>Upscale</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab("export")}
-                className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
-                  activeTab === "export"
-                    ? "bg-white text-black shadow-sm font-semibold"
-                    : "text-neutral-400 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Dışa Aktar</span>
-              </button>
+              {focusCategory === "preset-color" && (
+                <>
+                  <button onClick={() => setActiveTab("presets")} className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium ${activeTab === "presets" ? "bg-white text-black font-semibold" : "text-neutral-400 hover:text-white"}`}>Film LUT</button>
+                  <button onClick={() => setActiveTab("color")} className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium ${activeTab === "color" ? "bg-white text-black font-semibold" : "text-neutral-400 hover:text-white"}`}>Renk Eşle</button>
+                </>
+              )}
+              {focusCategory === "analog" && <span className="text-xs font-semibold text-white px-1">Analog Doku</span>}
+              {focusCategory === "frame" && <span className="text-xs font-semibold text-white px-1">Cerceve & Damga</span>}
+              {focusCategory === "size-crop" && (
+                <>
+                  <button onClick={() => setActiveTab("crop")} className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium ${activeTab === "crop" ? "bg-white text-black font-semibold" : "text-neutral-400"}`}>Kırpma</button>
+                  <button onClick={() => setActiveTab("upscale")} className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium ${activeTab === "upscale" ? "bg-amber-400 text-black font-semibold" : "text-amber-400/90"}`}>Upscale</button>
+                  <button onClick={() => setActiveTab("export")} className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium ${activeTab === "export" ? "bg-white text-black font-semibold" : "text-neutral-400"}`}>Export</button>
+                  <button onClick={() => setActiveTab("overlay")} className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium ${activeTab === "overlay" ? "bg-white text-black font-semibold" : "text-neutral-400"}`}>Simülatör</button>
+                </>
+              )}
             </div>
-
             <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest hidden md:inline">
               {image.name.slice(0, 10)}
             </span>
           </div>
 
           {/* TAB 1: 35mm ANALOG FILM PRESETS */}
-          {activeTab === "presets" && (
+          {showPresets && (
             <div className="space-y-2.5 pt-1">
               {/* Header & Filter Controls */}
               <div className="flex items-center justify-between px-1">
@@ -409,6 +399,62 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                   >
                     Preset Sıfırla
                   </button>
+                )}
+              </div>
+
+
+              {/* My Aesthetic Presets (localStorage) */}
+              <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-white">My Aesthetic</span>
+                  <span className="text-[9px] text-neutral-500 font-mono">localStorage</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={aesName}
+                    onChange={(e) => setAesName(e.target.value)}
+                    placeholder="Preset adı..."
+                    className="flex-1 bg-black/50 border border-white/15 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-amber-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!aesName.trim()) return;
+                      onSaveAesthetic(aesName.trim());
+                      setAesName("");
+                    }}
+                    className="pressable px-2.5 py-1 rounded-lg bg-amber-400 text-black text-[10px] font-semibold"
+                  >
+                    Kaydet
+                  </button>
+                </div>
+                {aestheticPresets.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                    {aestheticPresets.map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-white/10"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => onApplyAesthetic(p)}
+                          className="text-[10px] text-amber-300 hover:text-amber-200 font-medium"
+                          title="Tüm seriye uygula (kırpma hariç)"
+                        >
+                          {p.name}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDeleteAesthetic(p.id)}
+                          className="text-neutral-500 hover:text-rose-400 text-[10px]"
+                          title="Sil"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
 
@@ -535,7 +581,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
           )}
 
           {/* TAB 2: CROP & COMPOSITION */}
-          {activeTab === "crop" && (
+          {showCrop && (
             <div className="space-y-3 pt-1">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-medium text-neutral-400">En-Boy Oranı</span>
@@ -620,7 +666,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
           )}
 
           {/* TAB 2: ANALOG & REINHARD COLOR TRANSFER */}
-          {activeTab === "color" && (
+          {(showReinhard || showAnalog) && (
             <div className="space-y-2.5 pt-1">
               <div className="flex items-center justify-between px-1">
                 <span className="text-[11px] font-medium text-neutral-400">Renk & Doku Katmanları</span>
@@ -652,7 +698,8 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                 </div>
               </div>
 
-              {/* Reinhard Color Transfer */}
+              {/* Reinhard Color Transfer — Preset/Color focus only */}
+              {showReinhard && (
               <div className="space-y-1.5 p-2 rounded-xl bg-white/[0.02] border border-white/5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
@@ -700,7 +747,11 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                   </div>
                 )}
               </div>
+              )}
 
+              {/* Analog textures — Analog focus only */}
+              {showAnalog && (
+              <>
               {/* Luminance-Aware Organic Grain */}
               <div className="space-y-1.5 p-2 rounded-xl bg-white/[0.02] border border-white/5">
                 <div className="flex items-center justify-between">
@@ -711,47 +762,36 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                   <input
                     type="checkbox"
                     checked={filters.grainEnabled}
-                    onChange={(e) => onUpdateFilters({ grainEnabled: e.target.checked })}
+                    onChange={(e) =>
+                      onUpdateFilters(
+                        e.target.checked
+                          ? applyToggleDefaults(filters, "grainEnabled")
+                          : { grainEnabled: false }
+                      )
+                    }
                     className="w-3.5 h-3.5 rounded accent-white cursor-pointer"
                   />
                 </div>
 
                 {filters.grainEnabled && (
                   <div className="grid grid-cols-2 gap-2 pt-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] text-neutral-400 w-10">Miktar</span>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={filters.grainAmount}
-                        onChange={(e) =>
-                          onUpdateFilters({ grainAmount: parseInt(e.target.value, 10) })
-                        }
-                        className="flex-1"
-                      />
-                      <span className="font-mono text-[10px] text-neutral-300 w-6">
-                        {filters.grainAmount}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] text-neutral-400 w-10">Boyut</span>
-                      <input
-                        type="range"
-                        min="1"
-                        max="3"
-                        step="1"
-                        value={filters.grainSize}
-                        onChange={(e) =>
-                          onUpdateFilters({ grainSize: parseInt(e.target.value, 10) })
-                        }
-                        className="flex-1"
-                      />
-                      <span className="font-mono text-[10px] text-neutral-300 w-4">
-                        {filters.grainSize}
-                      </span>
-                    </div>
+                    <ResettableSlider
+                      label="Miktar"
+                      value={filters.grainAmount}
+                      min={0}
+                      max={100}
+                      defaultValue={SLIDER_DEFAULTS.grainAmount}
+                      onChange={(v) => onUpdateFilters({ grainAmount: v })}
+                    />
+                    <ResettableSlider
+                      label="Boyut"
+                      value={filters.grainSize}
+                      min={1}
+                      max={3}
+                      step={1}
+                      defaultValue={SLIDER_DEFAULTS.grainSize}
+                      onChange={(v) => onUpdateFilters({ grainSize: v })}
+                    />
                   </div>
                 )}
               </div>
@@ -766,45 +806,46 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                   <input
                     type="checkbox"
                     checked={filters.halationEnabled}
-                    onChange={(e) => onUpdateFilters({ halationEnabled: e.target.checked })}
+                    onChange={(e) =>
+                      onUpdateFilters(
+                        e.target.checked
+                          ? applyToggleDefaults(filters, "halationEnabled")
+                          : { halationEnabled: false }
+                      )
+                    }
                     className="w-3.5 h-3.5 rounded accent-rose-500 cursor-pointer"
                   />
                 </div>
 
                 {filters.halationEnabled && (
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] text-neutral-400 w-10">Yayılma</span>
-                      <input
-                        type="range"
-                        min="2"
-                        max="30"
+                  <div className="space-y-1.5 pt-1">
+                    <ResettableSlider
+                      label="Miktar"
+                      value={filters.halationAmount ?? TOGGLE_DEFAULTS.halationAmount}
+                      min={0}
+                      max={100}
+                      defaultValue={SLIDER_DEFAULTS.halationAmount}
+                      onChange={(v) => onUpdateFilters({ halationAmount: v })}
+                      suffix="%"
+                      accentClassName="accent-rose-400"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <ResettableSlider
+                        label="Yayılma"
                         value={filters.halationRadius}
-                        onChange={(e) =>
-                          onUpdateFilters({ halationRadius: parseInt(e.target.value, 10) })
-                        }
-                        className="flex-1"
+                        min={2}
+                        max={30}
+                        defaultValue={SLIDER_DEFAULTS.halationRadius}
+                        onChange={(v) => onUpdateFilters({ halationRadius: v })}
                       />
-                      <span className="font-mono text-[10px] text-neutral-300 w-6">
-                        {filters.halationRadius}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] text-neutral-400 w-12">Sıcaklık</span>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
+                      <ResettableSlider
+                        label="Sıcaklık"
                         value={filters.halationTemp}
-                        onChange={(e) =>
-                          onUpdateFilters({ halationTemp: parseInt(e.target.value, 10) })
-                        }
-                        className="flex-1"
+                        min={0}
+                        max={100}
+                        defaultValue={SLIDER_DEFAULTS.halationTemp}
+                        onChange={(v) => onUpdateFilters({ halationTemp: v })}
                       />
-                      <span className="font-mono text-[10px] text-neutral-300 w-6">
-                        {filters.halationTemp}
-                      </span>
                     </div>
                   </div>
                 )}
@@ -820,27 +861,28 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                   <input
                     type="checkbox"
                     checked={filters.vignetteEnabled}
-                    onChange={(e) => onUpdateFilters({ vignetteEnabled: e.target.checked })}
+                    onChange={(e) =>
+                      onUpdateFilters(
+                        e.target.checked
+                          ? applyToggleDefaults(filters, "vignetteEnabled")
+                          : { vignetteEnabled: false }
+                      )
+                    }
                     className="w-3.5 h-3.5 rounded accent-white cursor-pointer"
                   />
                 </div>
 
                 {filters.vignetteEnabled && (
-                  <div className="flex items-center gap-2 pt-1">
-                    <span className="text-[10px] text-neutral-400 w-16">Karartma</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
+                  <div className="pt-1">
+                    <ResettableSlider
+                      label="Karartma"
                       value={filters.vignetteAmount}
-                      onChange={(e) =>
-                        onUpdateFilters({ vignetteAmount: parseInt(e.target.value, 10) })
-                      }
-                      className="flex-1"
+                      min={0}
+                      max={100}
+                      defaultValue={SLIDER_DEFAULTS.vignetteAmount}
+                      onChange={(v) => onUpdateFilters({ vignetteAmount: v })}
+                      suffix="%"
                     />
-                    <span className="font-mono text-[10px] text-neutral-300 w-8 text-right">
-                      %{filters.vignetteAmount}
-                    </span>
                   </div>
                 )}
               </div>
@@ -855,7 +897,13 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                   <input
                     type="checkbox"
                     checked={filters.lightLeakEnabled}
-                    onChange={(e) => onUpdateFilters({ lightLeakEnabled: e.target.checked })}
+                    onChange={(e) =>
+                      onUpdateFilters(
+                        e.target.checked
+                          ? applyToggleDefaults(filters, "lightLeakEnabled")
+                          : { lightLeakEnabled: false }
+                      )
+                    }
                     className="w-3.5 h-3.5 rounded accent-amber-400 cursor-pointer"
                   />
                 </div>
@@ -885,30 +933,26 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                       ))}
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-neutral-400 w-16">Miktar</span>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={filters.lightLeakAmount}
-                        onChange={(e) =>
-                          onUpdateFilters({ lightLeakAmount: parseInt(e.target.value, 10) })
-                        }
-                        className="flex-1 accent-amber-400"
-                      />
-                      <span className="font-mono text-[10px] text-neutral-300 w-8 text-right">
-                        %{filters.lightLeakAmount}
-                      </span>
-                    </div>
+                    <ResettableSlider
+                      label="Miktar"
+                      value={filters.lightLeakAmount}
+                      min={0}
+                      max={100}
+                      defaultValue={SLIDER_DEFAULTS.lightLeakAmount}
+                      onChange={(v) => onUpdateFilters({ lightLeakAmount: v })}
+                      suffix="%"
+                      accentClassName="accent-amber-400"
+                    />
                   </div>
                 )}
               </div>
+              </>
+              )}
             </div>
           )}
 
           {/* TAB 4: FRAME & TIMESTAMP */}
-          {activeTab === "frame" && (
+          {showFrame && (
             <div className="space-y-2.5 pt-1">
               {/* 1. Minimalist Frame, Polaroid & Smart Ambient Gradient */}
               <div className="space-y-2 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
@@ -1179,7 +1223,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
           )}
 
           {/* TAB 4: SOCIAL MEDIA SIMULATOR */}
-          {activeTab === "overlay" && (
+          {showOverlay && (
             <div className="space-y-2 pt-1">
               <span className="text-[11px] font-medium text-neutral-400">Canlı Arayüz Şablonu</span>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1244,7 +1288,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
           )}
 
           {/* TAB 4: UPSCALE ENGINE (LANCZOS-3) */}
-          {activeTab === "upscale" && (
+          {showUpscale && (
             <div className="space-y-3 pt-1">
               {/* Header Info */}
               <div className="flex items-center justify-between">
@@ -1346,7 +1390,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
           )}
 
           {/* TAB 5: EXPORT & ARCHIVE */}
-          {activeTab === "export" && (
+          {showExport && (
             <div className="space-y-3 pt-1">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-medium text-neutral-400">Çözünürlük & Format</span>

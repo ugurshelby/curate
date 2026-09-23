@@ -7,6 +7,14 @@ import { drawDateTimestamp } from "./timestamp";
 import { FILM_PRESETS, applyFilmPreset } from "./film-presets";
 import { drawVignette, drawLightLeak } from "./light-leak";
 
+/**
+ * Non-destructive layered render chain (always from original pixels):
+ *   Original raw → Crop/Zoom/Pan → LUT/Color transfer → Analog (grain/halation/vignette/leak) → Frame/stamp
+ *
+ * Changing crop after frame/stamp re-runs the FULL chain from the original —
+ * effects are never baked into an intermediate bitmap that survives crop edits.
+ */
+
 // Cache for reference image Lab statistics
 const statsCache = new Map<string, ReturnType<typeof computeLabStats>>();
 
@@ -71,8 +79,11 @@ export function getCropDimensions(
 }
 
 /**
- * Renders an image with all transformations:
- * Pan/Zoom -> 35mm Film LUT Preset -> Reinhard Color Transfer -> Halation -> Luminance Grain -> Vignette -> Light Leak -> Border -> Timestamp
+ * Renders an image with all transformations from the original:
+ * Crop/Zoom/Pan → 35mm Film LUT → Reinhard → Halation → Grain → Vignette → Light Leak → Border → Timestamp
+ *
+ * @param targetWidth/Height — proxy (~1080p) for live preview, or full crop / export size for Download.
+ * Grain + halation scale by resolution so proxy and full-res stay visually consistent.
  */
 export async function renderProcessedImage(
   imageObj: HTMLImageElement,
@@ -113,7 +124,7 @@ export async function renderProcessedImage(
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) throw new Error("Canvas context failed");
 
-  // Draw cropped and scaled image onto canvas
+  // Draw cropped and scaled image onto canvas (from ORIGINAL pixels every time)
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(
@@ -161,11 +172,14 @@ export async function renderProcessedImage(
 
   // 3. Halation (apply before grain for organic diffusion)
   if (filters.halationEnabled) {
+    const amount =
+      filters.halationAmount !== undefined ? filters.halationAmount : 12;
     currentData = applyHalation(
       currentData,
       filters.halationRadius,
       filters.halationTemp,
-      filters.halationThreshold
+      filters.halationThreshold,
+      amount
     );
   }
 
@@ -181,7 +195,7 @@ export async function renderProcessedImage(
   // Put filtered image back onto canvas for optical 2D passes
   ctx.putImageData(currentData, 0, 0);
 
-  // 5. Vintage Lens Vignette
+  // 5. Vintage Lens Vignette (soft falloff)
   if (filters.vignetteEnabled && filters.vignetteAmount > 0) {
     drawVignette(ctx, outW, outH, filters.vignetteAmount);
   }

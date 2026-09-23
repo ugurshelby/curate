@@ -11,6 +11,8 @@ import {
   FolderArchive,
   ArrowRight,
   Sparkles,
+  CopyCheck,
+  Check,
 } from "lucide-react";
 
 interface DumpGalleryViewProps {
@@ -21,6 +23,9 @@ interface DumpGalleryViewProps {
   onDeleteImage: (id: string) => void;
   onUploadClick: () => void;
   onOpenExportModal: () => void;
+  onBatchSync?: () => void;
+  syncSuccess?: boolean;
+  hasActiveEffects?: boolean;
 }
 
 export const DumpGalleryView: React.FC<DumpGalleryViewProps> = ({
@@ -31,6 +36,9 @@ export const DumpGalleryView: React.FC<DumpGalleryViewProps> = ({
   onDeleteImage,
   onUploadClick,
   onOpenExportModal,
+  onBatchSync,
+  syncSuccess,
+  hasActiveEffects,
 }) => {
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-8 select-none">
@@ -47,11 +55,11 @@ export const DumpGalleryView: React.FC<DumpGalleryViewProps> = ({
               </span>
             </div>
             <p className="text-xs text-neutral-400">
-              Kırpmak, filtrelemek ve sosyal medya simülasyonunu görmek için bir fotoğrafa tıklayın.
+              Stage 1 Dump — film şeridi kartları, Batch Sync ve Export. Düzenlemek için bir kareye tıklayın.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={onUploadClick}
               className="pressable text-xs px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white flex items-center gap-1.5 transition-colors"
@@ -60,12 +68,27 @@ export const DumpGalleryView: React.FC<DumpGalleryViewProps> = ({
               <span>Fotoğraf Ekle</span>
             </button>
 
+            {onBatchSync && (
+              <button
+                onClick={onBatchSync}
+                className={`pressable text-xs px-3.5 py-2 rounded-xl border flex items-center gap-1.5 transition-all ${
+                  syncSuccess
+                    ? "bg-emerald-500 text-black border-emerald-500 font-semibold"
+                    : "bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-400 hover:text-black"
+                }`}
+                title="Efektleri serinin tamamına kopyala (kırpma/oran hariç)"
+              >
+                {syncSuccess ? <Check className="w-3.5 h-3.5" /> : <CopyCheck className="w-3.5 h-3.5" />}
+                <span>{syncSuccess ? "Eşitlendi" : "Batch Sync"}</span>
+              </button>
+            )}
+
             <button
               onClick={onOpenExportModal}
               className="pressable text-xs px-4 py-2 rounded-xl bg-white text-black hover:bg-neutral-200 font-semibold flex items-center gap-1.5 transition-all shadow-glass-sm"
             >
               <FolderArchive className="w-3.5 h-3.5" />
-              <span>Tümünü İndir (.zip)</span>
+              <span>Export</span>
             </button>
           </div>
         </div>
