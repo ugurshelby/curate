@@ -22,6 +22,7 @@ import { DumpFilmstrip } from "@/components/DumpFilmstrip";
 import { DumpGalleryView } from "@/components/DumpGalleryView";
 import { ControlToolbar } from "@/components/ControlToolbar";
 import { EditStagePills } from "@/components/EditStagePills";
+import { MobileStudioSheet } from "@/components/MobileStudioSheet";
 import { ProcessingModal } from "@/components/ProcessingModal";
 import { ExportModal } from "@/components/ExportModal";
 import { PanoramaSplitterModal } from "@/components/PanoramaSplitterModal";
@@ -884,100 +885,57 @@ export default function CurateStudioPage() {
               />
             </div>
 
-            {/* Mobile bottom studio sheet — photo stays above, never covered */}
-            <div
-              className={`sm:hidden shrink-0 w-full bg-neutral-900/95 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl flex flex-col transition-[max-height] duration-300 ease-out ${
-                focusCategory ? "max-h-[35vh]" : "max-h-[140px]"
-              }`}
-            >
-              <div className="flex items-center justify-center pt-2 pb-1 shrink-0">
-                <div className="w-10 h-1 rounded-full bg-white/25" />
-              </div>
-              {focusCategory ? (
-                <div className="flex items-center justify-between px-3 pb-1 shrink-0">
-                  <span className="text-[11px] font-semibold text-white/80 uppercase tracking-wide">
-                    Duzenle
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setFocusCategory(null)}
-                    className="pressable min-h-[44px] min-w-[44px] rounded-full text-white/70 hover:text-white hover:bg-white/10 flex items-center justify-center text-lg leading-none"
-                    title="Kapat"
-                  >
-                    ×
-                  </button>
-                </div>
-              ) : null}
-
-              {!focusCategory && (
-                <EditStagePills
-                  layout="sheet"
-                  activeCategory={focusCategory}
-                  onSelect={setFocusCategory}
-                  splitView={splitView}
-                  onToggleSplitView={handleToggleSplitView}
-                  canUndo={canUndo}
-                  canRedo={canRedo}
-                  onUndo={handleUndo}
-                  onRedo={handleRedo}
-                  onBatchSync={handleBatchSync}
-                  syncSuccess={syncSuccess}
-                />
-              )}
-
-              {focusCategory && (
-                <ControlToolbar
-                  layout="sheet"
-                  image={activeImage}
-                  images={images}
-                  referenceImageId={referenceImageId}
-                  activeGuide={guide}
-                  activeOverlay={overlay}
-                  showOriginal={showOriginal}
-                  onUpdateCropRatio={handleUpdateCropRatio}
-                  onUpdateZoom={(z) => {
-                    if (!activeImage) return;
-                    handleCropGestureStart();
-                    handleUpdateCrop(activeImage.crop.panX, activeImage.crop.panY, z);
-                    handleCropGestureEnd();
-                  }}
-                  onUpdateGuide={setGuide}
-                  onUpdateOverlay={setOverlay}
-                  onUpdateFilters={handleUpdateFilters}
-                  onUpdateBorder={handleUpdateBorder}
-                  onUpdateTimestamp={handleUpdateTimestamp}
-                  onBatchSync={handleBatchSync}
-                  onResetFilters={handleResetFilters}
-                  onSetShowOriginal={setShowOriginal}
-                  onUpdateUpscale={handleUpdateUpscale}
-                  onExportSingle={handleExportSingle}
-                  onExportDump={() => setIsExportModalOpen(true)}
-                  onExitEdit={() => {
-                    setActiveImageId(null);
-                    setFocusCategory(null);
-                    setSplitView(false);
-                  }}
-                  focusCategory={focusCategory}
-                  onCloseFocus={() => setFocusCategory(null)}
-                  aestheticPresets={aestheticPresets}
-                  onSaveAesthetic={handleSaveAesthetic}
-                  onApplyAesthetic={handleApplyAesthetic}
-                  onDeleteAesthetic={handleDeleteAesthetic}
-                />
-              )}
-
-              <DumpFilmstrip
-                compact
-                images={images}
-                activeImageId={activeImageId}
-                referenceImageId={referenceImageId}
-                onSelectImage={setActiveImageId}
-                onSetReference={handleSetReference}
-                onDeleteImage={handleDeleteImage}
-                onReorder={handleReorder}
-                onUploadClick={() => fileInputRef.current?.click()}
-              />
-            </div>
+            {/* Mobile iOS-style bottom sheet (transform-only) */}
+            <MobileStudioSheet
+              images={images}
+              activeImage={activeImage}
+              activeImageId={activeImageId}
+              referenceImageId={referenceImageId}
+              focusCategory={focusCategory}
+              onFocusCategory={setFocusCategory}
+              guide={guide}
+              overlay={overlay}
+              showOriginal={showOriginal}
+              splitView={splitView}
+              onToggleSplitView={handleToggleSplitView}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              onBatchSync={handleBatchSync}
+              syncSuccess={syncSuccess}
+              onUpdateCropRatio={handleUpdateCropRatio}
+              onUpdateZoom={(z) => {
+                if (!activeImage) return;
+                handleCropGestureStart();
+                handleUpdateCrop(activeImage.crop.panX, activeImage.crop.panY, z);
+                handleCropGestureEnd();
+              }}
+              onUpdateGuide={setGuide}
+              onUpdateOverlay={setOverlay}
+              onUpdateFilters={handleUpdateFilters}
+              onUpdateBorder={handleUpdateBorder}
+              onUpdateTimestamp={handleUpdateTimestamp}
+              onResetFilters={handleResetFilters}
+              onSetShowOriginal={setShowOriginal}
+              onUpdateUpscale={handleUpdateUpscale}
+              onExportSingle={handleExportSingle}
+              onExportDump={() => setIsExportModalOpen(true)}
+              onExitEdit={() => {
+                setActiveImageId(null);
+                setFocusCategory(null);
+                setSplitView(false);
+              }}
+              aestheticPresets={aestheticPresets}
+              onSaveAesthetic={handleSaveAesthetic}
+              onApplyAesthetic={handleApplyAesthetic}
+              onDeleteAesthetic={handleDeleteAesthetic}
+              onSelectImage={setActiveImageId}
+              onSetReference={handleSetReference}
+              onDeleteImage={handleDeleteImage}
+              onReorder={handleReorder}
+              onUploadClick={() => fileInputRef.current?.click()}
+            />
 
             {/* Desktop filmstrip */}
             <div className="hidden sm:block shrink-0">

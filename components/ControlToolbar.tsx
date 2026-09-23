@@ -284,13 +284,13 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
         </div>
       ) : (
         /* 2. FULL EXPANDED TOOLBAR */
-        <div className={`pointer-events-auto space-y-2.5 ${isSheet ? "p-2 max-h-[28vh] overflow-y-auto" : "glass-toolbar rounded-2xl p-3 shadow-glass border border-white/15"}`}>
-          {/* Drag Handle & Top Controls Row */}
+        <div className={`pointer-events-auto space-y-2.5 ${isSheet ? "p-2" : "glass-toolbar rounded-2xl p-3 shadow-glass border border-white/15"}`} onPointerDown={(e) => { if (isSheet) e.stopPropagation(); }}>
+          {/* Drag Handle & Top Controls Row — desktop floating only */}
           <div
             onPointerDown={handleDragPointerDown}
             onPointerMove={handleDragPointerMove}
             onPointerUp={handleDragPointerUp}
-            className="flex items-center justify-between cursor-grab active:cursor-grabbing py-0.5 border-b border-white/10 group select-none"
+            className={`flex items-center justify-between cursor-grab active:cursor-grabbing py-0.5 border-b border-white/10 group select-none ${isSheet ? "hidden" : ""}`}
           >
             <div className="flex items-center gap-2">
               <GripHorizontal className="w-3.5 h-3.5 text-white/40 group-hover:text-white/70 transition-colors" />
@@ -338,8 +338,8 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
             </div>
           </div>
 
-          {/* Focus Category Header (Stage 3) */}
-          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+          {/* Focus Category Header (Stage 3) — hidden on mobile sheet (tabs are persistent outside) */}
+          <div className={`flex items-center justify-between border-b border-white/10 pb-2 ${isSheet ? "hidden" : ""}`}>
             <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">
               {focusCategory === "preset-color" && (
                 <>

@@ -73,6 +73,7 @@ export const DumpFilmstrip: React.FC<DumpFilmstripProps> = ({
         <div
           ref={containerRef}
           className="flex-1 flex items-center gap-3 overflow-x-auto py-1 scrollbar-none"
+          style={{ touchAction: "pan-x" }}
         >
           {images.map((item, index) => {
             const isActive = item.id === activeImageId;
