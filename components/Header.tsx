@@ -4,10 +4,11 @@ import React, { useRef } from "react";
 import {
   Sparkles,
   Upload,
-  Download,
   FolderArchive,
   Layers,
   Image as ImageIcon,
+  ArrowLeft,
+  Grid,
 } from "lucide-react";
 import { CurateImage } from "@/lib/types";
 
@@ -18,6 +19,7 @@ interface HeaderProps {
   onUpload: (files: FileList) => void;
   onLoadSamples: () => void;
   onOpenExportModal: () => void;
+  onExitEdit?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -27,6 +29,7 @@ export const Header: React.FC<HeaderProps> = ({
   onUpload,
   onLoadSamples,
   onOpenExportModal,
+  onExitEdit,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,11 +53,23 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="h-4 w-[1px] bg-white/10 mx-1 hidden sm:block" />
 
-        {/* Counter Badge */}
-        <div className="text-xs text-neutral-400 font-mono hidden sm:flex items-center gap-1.5">
-          <ImageIcon className="w-3.5 h-3.5 text-neutral-400" />
-          <span>{images.length} fotoğraf</span>
-        </div>
+        {/* Exit Edit Mode / Return to Gallery Button */}
+        {activeImageId && onExitEdit ? (
+          <button
+            onClick={onExitEdit}
+            className="pressable text-xs px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 border border-white/15 text-white flex items-center gap-1.5 transition-colors shadow-glass-sm"
+            title="Seri Galerisine Dön (Esc)"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Seriye Dön</span>
+          </button>
+        ) : (
+          /* Counter Badge */
+          <div className="text-xs text-neutral-400 font-mono hidden sm:flex items-center gap-1.5">
+            <Grid className="w-3.5 h-3.5 text-neutral-400" />
+            <span>{images.length} fotoğraf</span>
+          </div>
+        )}
 
         {/* Reference Image Badge */}
         {refImage && (

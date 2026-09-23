@@ -12,6 +12,7 @@ import {
 import { Header } from "@/components/Header";
 import { ViewportCanvas } from "@/components/ViewportCanvas";
 import { DumpFilmstrip } from "@/components/DumpFilmstrip";
+import { DumpGalleryView } from "@/components/DumpGalleryView";
 import { ControlToolbar } from "@/components/ControlToolbar";
 import { ProcessingModal } from "@/components/ProcessingModal";
 import { ExportModal } from "@/components/ExportModal";
@@ -155,7 +156,6 @@ export default function CurateStudioPage() {
         // Fallback to offline procedural generator
       }
 
-      // If network fetch failed or timed out, generate instant photographic sample
       if (!loadedSuccessfully) {
         const offlineSample = generateOfflineSample(i);
         const item = createCurateImage(
@@ -372,7 +372,6 @@ export default function CurateStudioPage() {
   // Apple keyboard navigation shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if focus is in an input or select
       if (
         document.activeElement?.tagName === "INPUT" ||
         document.activeElement?.tagName === "SELECT" ||
@@ -381,21 +380,25 @@ export default function CurateStudioPage() {
         return;
       }
 
-      if (e.key === "ArrowRight" && images.length > 0) {
+      if (e.key === "ArrowRight" && images.length > 0 && activeImageId) {
         const curIdx = images.findIndex((img) => img.id === activeImageId);
         if (curIdx < images.length - 1) {
           setActiveImageId(images[curIdx + 1].id);
         }
-      } else if (e.key === "ArrowLeft" && images.length > 0) {
+      } else if (e.key === "ArrowLeft" && images.length > 0 && activeImageId) {
         const curIdx = images.findIndex((img) => img.id === activeImageId);
         if (curIdx > 0) {
           setActiveImageId(images[curIdx - 1].id);
         }
-      } else if (e.code === "Space") {
+      } else if (e.code === "Space" && activeImageId) {
         e.preventDefault();
         setShowOriginal(true);
       } else if (e.key === "Escape") {
-        setIsExportModalOpen(false);
+        if (isExportModalOpen) {
+          setIsExportModalOpen(false);
+        } else if (activeImageId) {
+          setActiveImageId(null); // Exit edit mode back to gallery!
+        }
       }
     };
 
@@ -411,7 +414,7 @@ export default function CurateStudioPage() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [images, activeImageId]);
+  }, [images, activeImageId, isExportModalOpen]);
 
   return (
     <main
@@ -427,12 +430,13 @@ export default function CurateStudioPage() {
         onUpload={handleUploadFiles}
         onLoadSamples={handleLoadSamples}
         onOpenExportModal={() => setIsExportModalOpen(true)}
+        onExitEdit={() => setActiveImageId(null)}
       />
 
-      {/* Main Viewport Workspace */}
+      {/* Main Viewport / Gallery Area */}
       <div className="flex-1 relative flex flex-col min-h-0 overflow-hidden">
         {images.length === 0 ? (
-          /* Empty State */
+          /* State 1: Empty Welcome Screen */
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center select-none">
             <div className="w-20 h-20 rounded-3xl bg-neutral-900/60 border border-white/10 flex items-center justify-center shadow-glass mb-6">
               <Upload className="w-9 h-9 text-neutral-300 stroke-[1.5]" />
@@ -464,8 +468,19 @@ export default function CurateStudioPage() {
               </button>
             </div>
           </div>
+        ) : activeImageId === null ? (
+          /* State 2: Dump Overview Gallery View (When not editing a specific photo) */
+          <DumpGalleryView
+            images={images}
+            referenceImageId={referenceImageId}
+            onSelectImage={setActiveImageId}
+            onSetReference={handleSetReference}
+            onDeleteImage={handleDeleteImage}
+            onUploadClick={() => fileInputRef.current?.click()}
+            onOpenExportModal={() => setIsExportModalOpen(true)}
+          />
         ) : (
-          /* Active Viewport */
+          /* State 3: Active Photo Edit Studio */
           <>
             <ViewportCanvas
               image={activeImage}
@@ -476,7 +491,7 @@ export default function CurateStudioPage() {
               onUpdateCrop={handleUpdateCrop}
             />
 
-            {/* Floating Apple-Style Control Toolbar */}
+            {/* Draggable & Collapsible Control Toolbar */}
             <ControlToolbar
               image={activeImage}
               images={images}
@@ -496,6 +511,7 @@ export default function CurateStudioPage() {
               onSetShowOriginal={setShowOriginal}
               onExportSingle={handleExportSingle}
               onExportDump={() => setIsExportModalOpen(true)}
+              onExitEdit={() => setActiveImageId(null)}
             />
           </>
         )}
@@ -516,8 +532,8 @@ export default function CurateStudioPage() {
         }}
       />
 
-      {/* Bottom Horizontal Filmstrip / Dump Deck */}
-      {images.length > 0 && (
+      {/* Bottom Horizontal Filmstrip (Only visible during active editing) */}
+      {images.length > 0 && activeImageId !== null && (
         <DumpFilmstrip
           images={images}
           activeImageId={activeImageId}
