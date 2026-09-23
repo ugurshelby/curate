@@ -439,7 +439,7 @@ export default function CurateStudioPage() {
             </div>
 
             <h1 className="text-xl font-semibold tracking-tight text-white mb-2">
-              Curate Studio'ya Hoş Geldiniz
+              Curate Studio&apos;ya Hoş Geldiniz
             </h1>
             <p className="text-xs text-neutral-400 max-w-sm mb-6 leading-relaxed">
               Fotoğraflarınızı buraya sürükleyip bırakın veya örnek fotoğraf serisi ile hemen

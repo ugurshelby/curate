@@ -53,7 +53,7 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
     img.crossOrigin = "anonymous";
     img.onload = () => setImageObj(img);
     img.src = image.dataUrl;
-  }, [image?.id, image?.dataUrl]);
+  }, [image]);
 
   // Load reference image element if selected
   useEffect(() => {
@@ -65,7 +65,7 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
     img.crossOrigin = "anonymous";
     img.onload = () => setRefImageObj(img);
     img.src = referenceImage.dataUrl;
-  }, [referenceImage?.id, referenceImage?.dataUrl]);
+  }, [referenceImage]);
 
   // Render canvas frame
   const renderFrame = useCallback(async () => {
