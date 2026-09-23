@@ -9,6 +9,8 @@ import {
   Image as ImageIcon,
   ArrowLeft,
   Grid,
+  Scissors,
+  LayoutGrid,
 } from "lucide-react";
 import { CurateImage } from "@/lib/types";
 
@@ -19,6 +21,8 @@ interface HeaderProps {
   onUpload: (files: FileList) => void;
   onLoadSamples: () => void;
   onOpenExportModal: () => void;
+  onOpenPanoramaModal: () => void;
+  onOpenCollageModal: () => void;
   onExitEdit?: () => void;
 }
 
@@ -29,6 +33,8 @@ export const Header: React.FC<HeaderProps> = ({
   onUpload,
   onLoadSamples,
   onOpenExportModal,
+  onOpenPanoramaModal,
+  onOpenCollageModal,
   onExitEdit,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -105,6 +111,26 @@ export const Header: React.FC<HeaderProps> = ({
             <span>Örnek Fotoğraflar</span>
           </button>
         )}
+
+        {/* Standalone Panorama Splitter Button */}
+        <button
+          onClick={onOpenPanoramaModal}
+          className="pressable text-xs px-2.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 flex items-center gap-1.5 transition-colors"
+          title="Kesintisiz Panorama Bölücü (4:5 Karusel Slaytları)"
+        >
+          <Scissors className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Panorama</span>
+        </button>
+
+        {/* Standalone Story Dump Collage Studio Button */}
+        <button
+          onClick={onOpenCollageModal}
+          className="pressable text-xs px-2.5 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 flex items-center gap-1.5 transition-colors"
+          title="9:16 Dikey Instagram Story Kolaj Stüdyosu"
+        >
+          <LayoutGrid className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Story Kolajı</span>
+        </button>
 
         <button
           onClick={() => fileInputRef.current?.click()}

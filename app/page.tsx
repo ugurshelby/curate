@@ -9,6 +9,9 @@ import {
   ExportPreset,
   ExportProgress,
   UpscaleMultiplier,
+  BorderState,
+  TimestampState,
+  PanoramaSlice,
 } from "@/lib/types";
 import { Header } from "@/components/Header";
 import { ViewportCanvas } from "@/components/ViewportCanvas";
@@ -17,7 +20,11 @@ import { DumpGalleryView } from "@/components/DumpGalleryView";
 import { ControlToolbar } from "@/components/ControlToolbar";
 import { ProcessingModal } from "@/components/ProcessingModal";
 import { ExportModal } from "@/components/ExportModal";
+import { PanoramaSplitterModal } from "@/components/PanoramaSplitterModal";
+import { StoryCollageModal } from "@/components/StoryCollageModal";
 import { SAMPLE_IMAGES, generateOfflineSample } from "@/lib/sample-images";
+import { getDefaultBorderState } from "@/lib/image/border";
+import { getDefaultTimestampState, getFormattedTodayDate } from "@/lib/image/timestamp";
 import {
   exportSingleImage,
   exportDumpZip,
@@ -38,6 +45,8 @@ export default function CurateStudioPage() {
 
   // Export & Progress state
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isPanoramaModalOpen, setIsPanoramaModalOpen] = useState(false);
+  const [isCollageModalOpen, setIsCollageModalOpen] = useState(false);
   const [exportProgress, setExportProgress] = useState<ExportProgress>({
     isExporting: false,
     current: 0,
@@ -83,6 +92,8 @@ export default function CurateStudioPage() {
       halationTemp: 60,
       halationThreshold: 0.82,
     },
+    border: getDefaultBorderState(),
+    timestamp: getDefaultTimestampState(),
     upscaleFactor: 1,
   });
 
@@ -344,6 +355,85 @@ export default function CurateStudioPage() {
     );
   };
 
+  // Update border for active image
+  const handleUpdateBorder = (newBorder: Partial<BorderState>) => {
+    if (!activeImageId) return;
+    setImages((prev) =>
+      prev.map((img) =>
+        img.id === activeImageId
+          ? {
+              ...img,
+              border: {
+                ...(img.border || getDefaultBorderState()),
+                ...newBorder,
+              },
+            }
+          : img
+      )
+    );
+  };
+
+  // Update timestamp for active image
+  const handleUpdateTimestamp = (newTimestamp: Partial<TimestampState>) => {
+    if (!activeImageId) return;
+    setImages((prev) =>
+      prev.map((img) =>
+        img.id === activeImageId
+          ? {
+              ...img,
+              timestamp: {
+                ...(img.timestamp || getDefaultTimestampState()),
+                ...newTimestamp,
+              },
+            }
+          : img
+      )
+    );
+  };
+
+  // Batch sync active image settings across entire series (EXCLUDING crop ratio, zoom, and pan)
+  const handleBatchSync = useCallback(() => {
+    if (!activeImage) return;
+    const { filters, border, timestamp, upscaleFactor } = activeImage;
+
+    setImages((prev) =>
+      prev.map((img) => ({
+        ...img,
+        // Individual crop (aspectRatio, zoom, panX, panY) is strictly preserved!
+        filters: { ...filters },
+        border: border ? { ...border } : undefined,
+        timestamp: timestamp ? { ...timestamp } : undefined,
+        upscaleFactor,
+      }))
+    );
+  }, [activeImage]);
+
+  // Add slices from Panorama Splitter to the studio series
+  const handleAddPanoramaSlices = (slices: PanoramaSlice[]) => {
+    const newItems: CurateImage[] = slices.map((slice, idx) =>
+      createCurateImage(
+        `pano_${Date.now()}_${idx}`,
+        slice.filename,
+        slice.dataUrl,
+        slice.width,
+        slice.height
+      )
+    );
+    setImages((prev) => [...prev, ...newItems]);
+  };
+
+  // Add generated Story Collage to the studio series
+  const handleAddCollage = (blob: Blob, dataUrl: string) => {
+    const newCollage = createCurateImage(
+      `collage_${Date.now()}`,
+      `story_dump_kolaj_${Date.now()}.jpg`,
+      dataUrl,
+      1080,
+      1920
+    );
+    setImages((prev) => [...prev, newCollage]);
+  };
+
   // Export single image
   const handleExportSingle = async (preset: ExportPreset) => {
     if (!activeImage) return;
@@ -447,6 +537,8 @@ export default function CurateStudioPage() {
         onUpload={handleUploadFiles}
         onLoadSamples={handleLoadSamples}
         onOpenExportModal={() => setIsExportModalOpen(true)}
+        onOpenPanoramaModal={() => setIsPanoramaModalOpen(true)}
+        onOpenCollageModal={() => setIsCollageModalOpen(true)}
         onExitEdit={() => setActiveImageId(null)}
       />
 
@@ -524,6 +616,9 @@ export default function CurateStudioPage() {
               onUpdateGuide={setGuide}
               onUpdateOverlay={setOverlay}
               onUpdateFilters={handleUpdateFilters}
+              onUpdateBorder={handleUpdateBorder}
+              onUpdateTimestamp={handleUpdateTimestamp}
+              onBatchSync={handleBatchSync}
               onResetFilters={handleResetFilters}
               onSetShowOriginal={setShowOriginal}
               onUpdateUpscale={handleUpdateUpscale}
@@ -563,6 +658,22 @@ export default function CurateStudioPage() {
           onUploadClick={() => fileInputRef.current?.click()}
         />
       )}
+
+      {/* Standalone Panorama Splitter Modal */}
+      <PanoramaSplitterModal
+        isOpen={isPanoramaModalOpen}
+        images={images}
+        onClose={() => setIsPanoramaModalOpen(false)}
+        onAddSlicesToStudio={handleAddPanoramaSlices}
+      />
+
+      {/* Standalone 9:16 Instagram Story Dump Collage Modal */}
+      <StoryCollageModal
+        isOpen={isCollageModalOpen}
+        images={images}
+        onClose={() => setIsCollageModalOpen(false)}
+        onAddCollageToStudio={handleAddCollage}
+      />
 
       {/* Export Selection Modal */}
       <ExportModal

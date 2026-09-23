@@ -106,8 +106,8 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
         targetH
       );
 
-      canvas.width = targetW;
-      canvas.height = targetH;
+      canvas.width = processedData.width;
+      canvas.height = processedData.height;
       const ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.putImageData(processedData, 0, 0);

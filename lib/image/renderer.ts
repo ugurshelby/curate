@@ -2,6 +2,8 @@ import { CurateImage } from "../types";
 import { computeLabStats, applyReinhardTransfer } from "./reinhard-transfer";
 import { applyProceduralGrain } from "./grain";
 import { applyHalation } from "./halation";
+import { applyBorderToCanvas } from "./border";
+import { drawDateTimestamp } from "./timestamp";
 
 // Cache for reference image Lab statistics
 const statsCache = new Map<string, ReturnType<typeof computeLabStats>>();
@@ -162,5 +164,21 @@ export async function renderProcessedImage(
     );
   }
 
-  return currentData;
+  // Put filtered image back onto canvas
+  ctx.putImageData(currentData, 0, 0);
+
+  // 4. Matte & Polaroid Border
+  let finalCanvas = canvas;
+  if (item.border && item.border.enabled) {
+    finalCanvas = applyBorderToCanvas(canvas, item.border);
+  }
+
+  // 5. 90s Film Timestamp (drawn after border or onto canvas)
+  const finalCtx = finalCanvas.getContext("2d", { willReadFrequently: true });
+  if (finalCtx && item.timestamp && item.timestamp.enabled) {
+    drawDateTimestamp(finalCtx, finalCanvas.width, finalCanvas.height, item.timestamp);
+  }
+
+  if (!finalCtx) return currentData;
+  return finalCtx.getImageData(0, 0, finalCanvas.width, finalCanvas.height);
 }

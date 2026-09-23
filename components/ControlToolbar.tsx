@@ -8,6 +8,8 @@ import {
   SocialOverlay as SocialOverlayType,
   ExportPreset,
   UpscaleMultiplier,
+  BorderState,
+  TimestampState,
 } from "@/lib/types";
 import {
   Crop,
@@ -29,9 +31,16 @@ import {
   Zap,
   ArrowUpRight,
   ShieldCheck,
+  Frame,
+  Calendar,
+  CopyCheck,
+  Check,
+  Palette,
 } from "lucide-react";
 import { EXPORT_PRESETS } from "@/lib/export/zip-exporter";
 import { getCropDimensions } from "@/lib/image/renderer";
+import { getDefaultBorderState } from "@/lib/image/border";
+import { getDefaultTimestampState, getFormattedTodayDate } from "@/lib/image/timestamp";
 
 interface ControlToolbarProps {
   image: CurateImage | null;
@@ -45,6 +54,9 @@ interface ControlToolbarProps {
   onUpdateGuide: (guide: CompositionGuide) => void;
   onUpdateOverlay: (overlay: SocialOverlayType) => void;
   onUpdateFilters: (filters: Partial<CurateImage["filters"]>) => void;
+  onUpdateBorder: (border: Partial<BorderState>) => void;
+  onUpdateTimestamp: (timestamp: Partial<TimestampState>) => void;
+  onBatchSync: () => void;
   onResetFilters: () => void;
   onSetShowOriginal: (show: boolean) => void;
   onUpdateUpscale: (multiplier: UpscaleMultiplier) => void;
@@ -53,7 +65,7 @@ interface ControlToolbarProps {
   onExitEdit: () => void;
 }
 
-type TabType = "crop" | "color" | "overlay" | "upscale" | "export";
+type TabType = "crop" | "color" | "frame" | "overlay" | "upscale" | "export";
 
 export const ControlToolbar: React.FC<ControlToolbarProps> = ({
   image,
@@ -67,6 +79,9 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
   onUpdateGuide,
   onUpdateOverlay,
   onUpdateFilters,
+  onUpdateBorder,
+  onUpdateTimestamp,
+  onBatchSync,
   onResetFilters,
   onSetShowOriginal,
   onUpdateUpscale,
@@ -77,6 +92,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
   const [activeTab, setActiveTab] = useState<TabType>("crop");
   const [selectedPresetId, setSelectedPresetId] = useState<string>("ig-retina");
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+  const [syncSuccess, setSyncSuccess] = useState<boolean>(false);
 
   // Dragging state
   const [offset, setOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -99,6 +115,15 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
 
   const targetW = curW * currentUpscale;
   const targetH = curH * currentUpscale;
+
+  const handleTriggerBatchSync = () => {
+    onBatchSync();
+    setSyncSuccess(true);
+    setTimeout(() => setSyncSuccess(false), 2000);
+  };
+
+  const border = image.border || getDefaultBorderState();
+  const timestamp = image.timestamp || getDefaultTimestampState();
 
   const handleDragPointerDown = (e: React.PointerEvent) => {
     if (
@@ -161,6 +186,19 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
           <div className="h-3 w-[1px] bg-white/20" />
 
           <button
+            onClick={handleTriggerBatchSync}
+            className={`pressable text-xs flex items-center gap-1.5 transition-colors ${
+              syncSuccess ? "text-emerald-400" : "text-amber-400 hover:text-amber-300"
+            }`}
+            title="Tüm Seriye Eşitle (Ratio Hariç)"
+          >
+            {syncSuccess ? <Check className="w-3.5 h-3.5" /> : <CopyCheck className="w-3.5 h-3.5" />}
+            <span className="hidden sm:inline">{syncSuccess ? "Eşitlendi!" : "Seriye Eşitle"}</span>
+          </button>
+
+          <div className="h-3 w-[1px] bg-white/20" />
+
+          <button
             onClick={onExitEdit}
             className="pressable text-xs text-white/60 hover:text-rose-400 flex items-center gap-1 transition-colors"
             title="Düzenlemeyi Kapat (Esc)"
@@ -179,12 +217,32 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
             onPointerUp={handleDragPointerUp}
             className="flex items-center justify-between cursor-grab active:cursor-grabbing py-0.5 border-b border-white/10 group select-none"
           >
-            <div className="flex items-center gap-1 text-[10px] font-mono text-neutral-400">
+            <div className="flex items-center gap-2">
               <GripHorizontal className="w-3.5 h-3.5 text-white/40 group-hover:text-white/70 transition-colors" />
-              <span className="hidden sm:inline">Taşımak için sürükleyin</span>
+              <button
+                onClick={handleTriggerBatchSync}
+                className={`pressable px-2 py-0.5 rounded-md text-[10px] font-mono flex items-center gap-1 transition-all ${
+                  syncSuccess
+                    ? "bg-emerald-500 text-black font-semibold"
+                    : "bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-400 hover:text-black"
+                }`}
+                title="Analog filtreleri, çerçeve ve tarih damgasını serideki tüm fotoğraflara senkronize eder (En-boy oranları korunur)"
+              >
+                {syncSuccess ? (
+                  <>
+                    <Check className="w-3 h-3 text-current" />
+                    <span>Seriye Eşitlendi!</span>
+                  </>
+                ) : (
+                  <>
+                    <CopyCheck className="w-3 h-3 text-current" />
+                    <span>Tüm Seriye Eşitle (Ratio Hariç)</span>
+                  </>
+                )}
+              </button>
             </div>
 
-            <div className="w-10 h-1 bg-white/20 group-hover:bg-white/40 rounded-full transition-colors" />
+            <div className="w-8 h-1 bg-white/20 group-hover:bg-white/40 rounded-full transition-colors hidden sm:block" />
 
             <div className="flex items-center gap-1">
               <button
@@ -205,7 +263,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
             </div>
           </div>
 
-          {/* Navigation Tabs with dedicated UPSCALE tab */}
+          {/* Navigation Tabs */}
           <div className="flex items-center justify-between border-b border-white/10 pb-2">
             <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">
               <button
@@ -229,7 +287,20 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                 }`}
               >
                 <Sliders className="w-3.5 h-3.5" />
-                <span>Analog & Renk</span>
+                <span>Analog</span>
+              </button>
+
+              {/* Dedicated FRAME & TIMESTAMP Tab */}
+              <button
+                onClick={() => setActiveTab("frame")}
+                className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
+                  activeTab === "frame"
+                    ? "bg-white text-black shadow-sm font-semibold"
+                    : "text-neutral-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <Frame className="w-3.5 h-3.5" />
+                <span>Çerçeve & Tarih</span>
               </button>
 
               <button
@@ -271,7 +342,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
             </div>
 
             <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest hidden md:inline">
-              {image.name.slice(0, 12)}
+              {image.name.slice(0, 10)}
             </span>
           </div>
 
@@ -553,7 +624,250 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
             </div>
           )}
 
-          {/* TAB 3: SOCIAL MEDIA SIMULATOR */}
+          {/* TAB 3: FRAME & TIMESTAMP */}
+          {activeTab === "frame" && (
+            <div className="space-y-2.5 pt-1">
+              {/* 1. Minimalist Frame & Polaroid */}
+              <div className="space-y-2 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Frame className="w-3.5 h-3.5 text-white" />
+                    <span className="text-xs font-semibold text-white">Çerçeve & Kenarlık</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={border.enabled}
+                    onChange={(e) => onUpdateBorder({ enabled: e.target.checked })}
+                    className="w-3.5 h-3.5 rounded accent-white cursor-pointer"
+                  />
+                </div>
+
+                {border.enabled && (
+                  <div className="space-y-2 pt-1 border-t border-white/5">
+                    {/* Frame Type */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => onUpdateBorder({ type: "matte" })}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-medium border text-center transition-all ${
+                          border.type === "matte"
+                            ? "bg-white text-black border-white font-semibold"
+                            : "bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10"
+                        }`}
+                      >
+                        Matte (Eşit Kenar)
+                      </button>
+
+                      <button
+                        onClick={() => onUpdateBorder({ type: "polaroid" })}
+                        className={`py-1.5 px-2 rounded-lg text-xs font-medium border text-center transition-all ${
+                          border.type === "polaroid"
+                            ? "bg-white text-black border-white font-semibold"
+                            : "bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10"
+                        }`}
+                      >
+                        Polaroid (Fiziksel Baskı)
+                      </button>
+                    </div>
+
+                    {/* Frame Color */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-neutral-400">Çerçeve Rengi</span>
+                      <div className="flex items-center gap-2">
+                        {[
+                          { label: "Beyaz", hex: "#ffffff" },
+                          { label: "Arşiv Kağıdı", hex: "#f7f5f0" },
+                          { label: "Mat Siyah", hex: "#0d0d0d" },
+                          { label: "Grafit", hex: "#1c1c1e" },
+                        ].map((c) => (
+                          <button
+                            key={c.hex}
+                            onClick={() => onUpdateBorder({ color: c.hex })}
+                            style={{ backgroundColor: c.hex }}
+                            className={`w-5 h-5 rounded-full border transition-all ${
+                              border.color === c.hex
+                                ? "border-amber-400 scale-110 shadow-sm ring-2 ring-amber-400/20"
+                                : "border-white/20"
+                            }`}
+                            title={c.label}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Width & Radius Sliders */}
+                    <div className="grid grid-cols-2 gap-2.5 pt-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-neutral-400 w-12">Genişlik</span>
+                        <input
+                          type="range"
+                          min="2"
+                          max="20"
+                          value={border.widthPercent}
+                          onChange={(e) =>
+                            onUpdateBorder({ widthPercent: parseInt(e.target.value, 10) })
+                          }
+                          className="flex-1 accent-white"
+                        />
+                        <span className="font-mono text-[10px] text-neutral-300 w-6">
+                          %{border.widthPercent}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-neutral-400 w-12">Yumuşaklık</span>
+                        <input
+                          type="range"
+                          min="0"
+                          max="30"
+                          value={border.radius}
+                          onChange={(e) =>
+                            onUpdateBorder({ radius: parseInt(e.target.value, 10) })
+                          }
+                          className="flex-1 accent-white"
+                        />
+                        <span className="font-mono text-[10px] text-neutral-300 w-6">
+                          {border.radius}px
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Nostalgic 90s Film Timestamp */}
+              <div className="space-y-2 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-xs font-semibold text-white">90s Analog Tarih Damgası</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={timestamp.enabled}
+                    onChange={(e) => onUpdateTimestamp({ enabled: e.target.checked })}
+                    className="w-3.5 h-3.5 rounded accent-amber-400 cursor-pointer"
+                  />
+                </div>
+
+                {timestamp.enabled && (
+                  <div className="space-y-2 pt-1 border-t border-white/5">
+                    {/* Date Text Input & Presets */}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={timestamp.dateText}
+                          onChange={(e) => onUpdateTimestamp({ dateText: e.target.value })}
+                          className="flex-1 bg-black/60 border border-white/20 rounded-lg px-2.5 py-1 text-xs font-mono text-amber-400 focus:outline-none focus:border-amber-400"
+                          placeholder="'26 09 23"
+                        />
+                        <button
+                          onClick={() =>
+                            onUpdateTimestamp({
+                              dateText: getFormattedTodayDate(timestamp.format),
+                            })
+                          }
+                          className="px-2 py-1 rounded bg-white/10 hover:bg-white/15 text-[10px] text-neutral-300 hover:text-white transition-colors"
+                          title="Bugünün tarihine sıfırla"
+                        >
+                          Bugün
+                        </button>
+                      </div>
+
+                      {/* Format quick picks */}
+                      <div className="flex items-center gap-1 pt-0.5">
+                        <span className="text-[10px] text-neutral-500 mr-1">Biçim:</span>
+                        {(["YY MM DD", "DD MM YY", "YYYY.MM.DD"] as const).map((fmt) => (
+                          <button
+                            key={fmt}
+                            onClick={() =>
+                              onUpdateTimestamp({
+                                format: fmt,
+                                dateText: getFormattedTodayDate(fmt),
+                              })
+                            }
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition-colors ${
+                              timestamp.format === fmt
+                                ? "bg-amber-400/20 text-amber-300 border border-amber-400/30"
+                                : "text-neutral-400 hover:text-white"
+                            }`}
+                          >
+                            {fmt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* LED Color & Position */}
+                    <div className="grid grid-cols-2 gap-3 pt-1 border-t border-white/5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-neutral-400">LED Rengi</span>
+                        <div className="flex items-center gap-1.5">
+                          {[
+                            { hex: "#ff8c00", label: "Amber" },
+                            { hex: "#ff3b30", label: "Kırmızı" },
+                            { hex: "#34c759", label: "Yeşil" },
+                          ].map((col) => (
+                            <button
+                              key={col.hex}
+                              onClick={() => onUpdateTimestamp({ color: col.hex })}
+                              style={{ backgroundColor: col.hex }}
+                              className={`w-4 h-4 rounded-full border transition-all ${
+                                timestamp.color === col.hex
+                                  ? "border-white scale-125 shadow-sm"
+                                  : "border-white/20 opacity-70 hover:opacity-100"
+                              }`}
+                              title={col.label}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-neutral-400">Konum</span>
+                        <select
+                          value={timestamp.position}
+                          onChange={(e) =>
+                            onUpdateTimestamp({
+                              position: e.target.value as TimestampState["position"],
+                            })
+                          }
+                          className="bg-black/60 border border-white/20 rounded px-1.5 py-0.5 text-[10px] text-neutral-300 focus:outline-none"
+                        >
+                          <option value="bottom-right">Sağ Alt</option>
+                          <option value="bottom-left">Sol Alt</option>
+                          <option value="top-right">Sağ Üst</option>
+                          <option value="top-left">Sol Üst</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 3. Batch Sync Card */}
+              <div className="p-2.5 rounded-xl bg-amber-500/[0.08] border border-amber-500/20 flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <div className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
+                    <CopyCheck className="w-3.5 h-3.5" />
+                    <span>Tüm Seriye Eşitle (Ratio Hariç)</span>
+                  </div>
+                  <p className="text-[10px] text-neutral-400">
+                    Filtreleri, çerçeveyi ve tarihi tüm seriye kopyalar. Fotoğrafların orijinal en-boy oranı (kırpması) bozulmaz.
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleTriggerBatchSync}
+                  className="pressable flex-shrink-0 px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-black text-xs font-semibold transition-all shadow-sm"
+                >
+                  {syncSuccess ? "Eşitlendi!" : "Uygula"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: SOCIAL MEDIA SIMULATOR */}
           {activeTab === "overlay" && (
             <div className="space-y-2 pt-1">
               <span className="text-[11px] font-medium text-neutral-400">Canlı Arayüz Şablonu</span>
