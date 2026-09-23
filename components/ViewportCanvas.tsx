@@ -91,6 +91,9 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
             ...image,
             filters: {
               ...image.filters,
+              activePresetId: null,
+              vignetteEnabled: false,
+              lightLeakEnabled: false,
               reinhardEnabled: false,
               grainEnabled: false,
               halationEnabled: false,

@@ -36,11 +36,17 @@ import {
   CopyCheck,
   Check,
   Palette,
+  Star,
+  Film,
+  SunMedium,
+  Sparkle,
 } from "lucide-react";
 import { EXPORT_PRESETS } from "@/lib/export/zip-exporter";
 import { getCropDimensions } from "@/lib/image/renderer";
 import { getDefaultBorderState } from "@/lib/image/border";
 import { getDefaultTimestampState, getFormattedTodayDate } from "@/lib/image/timestamp";
+import { FILM_PRESETS, getFavoritePresetIds, toggleFavoritePreset } from "@/lib/image/film-presets";
+import { LightLeakType } from "@/lib/types";
 
 interface ControlToolbarProps {
   image: CurateImage | null;
@@ -65,7 +71,7 @@ interface ControlToolbarProps {
   onExitEdit: () => void;
 }
 
-type TabType = "crop" | "color" | "frame" | "overlay" | "upscale" | "export";
+type TabType = "presets" | "color" | "crop" | "frame" | "overlay" | "upscale" | "export";
 
 export const ControlToolbar: React.FC<ControlToolbarProps> = ({
   image,
@@ -89,10 +95,14 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
   onExportDump,
   onExitEdit,
 }) => {
-  const [activeTab, setActiveTab] = useState<TabType>("crop");
+  const [activeTab, setActiveTab] = useState<TabType>("presets");
   const [selectedPresetId, setSelectedPresetId] = useState<string>("ig-retina");
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [syncSuccess, setSyncSuccess] = useState<boolean>(false);
+
+  // Preset favorites and filter state
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => getFavoritePresetIds());
+  const [onlyFavorites, setOnlyFavorites] = useState<boolean>(false);
 
   // Dragging state
   const [offset, setOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -266,16 +276,17 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
           {/* Navigation Tabs */}
           <div className="flex items-center justify-between border-b border-white/10 pb-2">
             <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">
+              {/* Dedicated PRESETS Tab */}
               <button
-                onClick={() => setActiveTab("crop")}
+                onClick={() => setActiveTab("presets")}
                 className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
-                  activeTab === "crop"
+                  activeTab === "presets"
                     ? "bg-white text-black shadow-sm font-semibold"
                     : "text-neutral-400 hover:text-white hover:bg-white/5"
                 }`}
               >
-                <Crop className="w-3.5 h-3.5" />
-                <span>Kırpma</span>
+                <Film className="w-3.5 h-3.5" />
+                <span>Presetler</span>
               </button>
 
               <button
@@ -288,6 +299,18 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
               >
                 <Sliders className="w-3.5 h-3.5" />
                 <span>Analog</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab("crop")}
+                className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
+                  activeTab === "crop"
+                    ? "bg-white text-black shadow-sm font-semibold"
+                    : "text-neutral-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <Crop className="w-3.5 h-3.5" />
+                <span>Kırpma</span>
               </button>
 
               {/* Dedicated FRAME & TIMESTAMP Tab */}
@@ -346,7 +369,168 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
             </span>
           </div>
 
-          {/* TAB 1: CROP & COMPOSITION */}
+          {/* TAB 1: 35mm ANALOG FILM PRESETS */}
+          {activeTab === "presets" && (
+            <div className="space-y-2.5 pt-1">
+              {/* Header & Filter Controls */}
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setOnlyFavorites(false)}
+                    className={`pressable px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                      !onlyFavorites
+                        ? "bg-white text-black font-semibold shadow-sm"
+                        : "text-neutral-400 hover:text-white bg-white/5"
+                    }`}
+                  >
+                    Tüm Filmler ({FILM_PRESETS.length})
+                  </button>
+                  <button
+                    onClick={() => setOnlyFavorites(true)}
+                    className={`pressable px-2.5 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-all ${
+                      onlyFavorites
+                        ? "bg-amber-400 text-black font-semibold shadow-sm"
+                        : "text-amber-400/80 hover:text-amber-300 bg-amber-400/10"
+                    }`}
+                  >
+                    <Star className="w-3 h-3 fill-current" />
+                    <span>Favoriler ({favoriteIds.length})</span>
+                  </button>
+                </div>
+
+                {filters.activePresetId && (
+                  <button
+                    onClick={() => onUpdateFilters({ activePresetId: null })}
+                    className="pressable px-2 py-0.5 rounded text-[10px] text-neutral-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                  >
+                    Preset Sıfırla
+                  </button>
+                )}
+              </div>
+
+              {/* Active Preset Intensity (Amount) Slider */}
+              {filters.activePresetId && (
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-amber-300 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-amber-400" />
+                      <span>{FILM_PRESETS.find((p) => p.id === filters.activePresetId)?.name} Yoğunluğu</span>
+                    </span>
+                    <span className="font-mono text-xs text-amber-300">
+                      %{filters.presetAmount ?? 100}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={filters.presetAmount ?? 100}
+                    onChange={(e) =>
+                      onUpdateFilters({ presetAmount: parseInt(e.target.value, 10) })
+                    }
+                    className="w-full accent-amber-400 cursor-pointer"
+                  />
+                </div>
+              )}
+
+              {/* Presets Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-y-auto pr-1 scrollbar-thin">
+                {[...FILM_PRESETS]
+                  .sort((a, b) => {
+                    const aFav = favoriteIds.includes(a.id) ? 1 : 0;
+                    const bFav = favoriteIds.includes(b.id) ? 1 : 0;
+                    return bFav - aFav;
+                  })
+                  .filter((p) => !onlyFavorites || favoriteIds.includes(p.id))
+                  .map((preset) => {
+                    const isActive = filters.activePresetId === preset.id;
+                    const isFav = favoriteIds.includes(preset.id);
+
+                    // Tone swatches for thumbnail preview
+                    const toneGradients: Record<string, string> = {
+                      "kodak-portra-400": "linear-gradient(135deg, #fcd5b5 0%, #e89a66 50%, #b8623b 100%)",
+                      "cinestill-800t": "linear-gradient(135deg, #0e2f44 0%, #1e555c 40%, #ff8c42 100%)",
+                      "fuji-pro-400h": "linear-gradient(135deg, #d8f3dc 0%, #95d5b2 50%, #52b788 100%)",
+                      "kodak-gold-200": "linear-gradient(135deg, #ffe066 0%, #f77f00 60%, #d62828 100%)",
+                      "kodak-tri-x-400": "linear-gradient(135deg, #ffffff 0%, #495057 50%, #000000 100%)",
+                      "ilford-hp5": "linear-gradient(135deg, #e9ecef 0%, #adb5bd 50%, #212529 100%)",
+                      "polaroid-600": "linear-gradient(135deg, #f4f1de 0%, #ccd5ae 50%, #e07a5f 100%)",
+                      "fuji-velvia-50": "linear-gradient(135deg, #0077b6 0%, #0096c7 40%, #e63946 100%)",
+                      "agfa-vista-200": "linear-gradient(135deg, #e63946 0%, #f4a261 50%, #2a9d8f 100%)",
+                      "leica-monochrom": "linear-gradient(135deg, #f8f9fa 0%, #6c757d 60%, #111111 100%)",
+                    };
+
+                    const gradient =
+                      toneGradients[preset.id] ||
+                      "linear-gradient(135deg, #f39c12 0%, #e74c3c 100%)";
+
+                    return (
+                      <div
+                        key={preset.id}
+                        onClick={() =>
+                          onUpdateFilters({
+                            activePresetId: preset.id,
+                            presetAmount: filters.presetAmount ?? 100,
+                          })
+                        }
+                        className={`group relative p-2 rounded-xl border text-left cursor-pointer transition-all ${
+                          isActive
+                            ? "bg-amber-500/15 border-amber-400 shadow-md ring-1 ring-amber-400/40"
+                            : "bg-white/[0.03] border-white/10 hover:border-white/30 hover:bg-white/[0.06]"
+                        }`}
+                      >
+                        {/* Film Swatch Thumbnail Preview */}
+                        <div
+                          style={{ background: gradient }}
+                          className="w-full h-11 rounded-lg mb-2 relative overflow-hidden shadow-inner flex items-end p-1.5"
+                        >
+                          {/* Grain & film perforation texture overlay */}
+                          <div className="absolute inset-0 bg-black/10 mix-blend-overlay" />
+
+                          {/* Film Type Tag Pill */}
+                          <span className="relative z-10 text-[8px] font-mono px-1 py-0.5 rounded bg-black/75 backdrop-blur-sm text-white/90">
+                            {preset.filmType === "black-white"
+                              ? "S/B"
+                              : preset.filmType === "instant"
+                              ? "Instant"
+                              : "Color"}
+                          </span>
+
+                          {/* Favorite Star Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const updated = toggleFavoritePreset(preset.id);
+                              setFavoriteIds([...updated]);
+                            }}
+                            className="absolute top-1 right-1 p-1 rounded-md bg-black/60 hover:bg-black/90 transition-colors"
+                            title={isFav ? "Favorilerden Çıkar" : "Favorilere Ekle"}
+                          >
+                            <Star
+                              className={`w-3 h-3 ${
+                                isFav
+                                  ? "text-amber-400 fill-amber-400"
+                                  : "text-white/50 hover:text-amber-300"
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Title & Tag */}
+                        <div className="text-[11px] font-semibold text-white truncate">
+                          {preset.name}
+                        </div>
+                        <div className="text-[9px] text-neutral-400 truncate">
+                          {preset.tag}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: CROP & COMPOSITION */}
           {activeTab === "crop" && (
             <div className="space-y-3 pt-1">
               <div className="flex items-center justify-between">
@@ -621,13 +805,108 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Vintage Lens Vignette */}
+              <div className="space-y-1.5 p-2 rounded-xl bg-white/[0.02] border border-white/5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <SunMedium className="w-3.5 h-3.5 text-neutral-300" />
+                    <span className="text-xs font-medium text-white">Vintage Lens Vinyeti</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={filters.vignetteEnabled}
+                    onChange={(e) => onUpdateFilters({ vignetteEnabled: e.target.checked })}
+                    className="w-3.5 h-3.5 rounded accent-white cursor-pointer"
+                  />
+                </div>
+
+                {filters.vignetteEnabled && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="text-[10px] text-neutral-400 w-16">Karartma</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={filters.vignetteAmount}
+                      onChange={(e) =>
+                        onUpdateFilters({ vignetteAmount: parseInt(e.target.value, 10) })
+                      }
+                      className="flex-1"
+                    />
+                    <span className="font-mono text-[10px] text-neutral-300 w-8 text-right">
+                      %{filters.vignetteAmount}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* 35mm Light Leak */}
+              <div className="space-y-1.5 p-2 rounded-xl bg-white/[0.02] border border-white/5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkle className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-xs font-medium text-white">35mm Işık Sızıntısı (Light Leak)</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={filters.lightLeakEnabled}
+                    onChange={(e) => onUpdateFilters({ lightLeakEnabled: e.target.checked })}
+                    className="w-3.5 h-3.5 rounded accent-amber-400 cursor-pointer"
+                  />
+                </div>
+
+                {filters.lightLeakEnabled && (
+                  <div className="space-y-2 pt-1 border-t border-white/5">
+                    <div className="grid grid-cols-4 gap-1">
+                      {[
+                        { id: "warm-side", label: "Kenar" },
+                        { id: "corner-flare", label: "Köşe" },
+                        { id: "streak", label: "Şerit" },
+                        { id: "subtle", label: "Yumuşak" },
+                      ].map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() =>
+                            onUpdateFilters({ lightLeakType: t.id as LightLeakType })
+                          }
+                          className={`py-1 px-1 rounded-md text-[10px] font-mono border text-center transition-all ${
+                            (filters.lightLeakType || "warm-side") === t.id
+                              ? "bg-amber-400 text-black border-amber-400 font-semibold"
+                              : "bg-white/5 border-white/10 text-neutral-400 hover:text-white"
+                          }`}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-neutral-400 w-16">Miktar</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={filters.lightLeakAmount}
+                        onChange={(e) =>
+                          onUpdateFilters({ lightLeakAmount: parseInt(e.target.value, 10) })
+                        }
+                        className="flex-1 accent-amber-400"
+                      />
+                      <span className="font-mono text-[10px] text-neutral-300 w-8 text-right">
+                        %{filters.lightLeakAmount}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {/* TAB 3: FRAME & TIMESTAMP */}
+          {/* TAB 4: FRAME & TIMESTAMP */}
           {activeTab === "frame" && (
             <div className="space-y-2.5 pt-1">
-              {/* 1. Minimalist Frame & Polaroid */}
+              {/* 1. Minimalist Frame, Polaroid & Smart Ambient Gradient */}
               <div className="space-y-2 p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
@@ -644,55 +923,72 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
 
                 {border.enabled && (
                   <div className="space-y-2 pt-1 border-t border-white/5">
-                    {/* Frame Type */}
-                    <div className="grid grid-cols-2 gap-2">
+                    {/* Frame Type (3 options: Matte, Polaroid, Smart Ambient Gradient) */}
+                    <div className="grid grid-cols-3 gap-1.5">
                       <button
                         onClick={() => onUpdateBorder({ type: "matte" })}
-                        className={`py-1.5 px-2 rounded-lg text-xs font-medium border text-center transition-all ${
+                        className={`py-1.5 px-1.5 rounded-lg text-[11px] font-medium border text-center transition-all ${
                           border.type === "matte"
-                            ? "bg-white text-black border-white font-semibold"
+                            ? "bg-white text-black border-white font-semibold shadow-sm"
                             : "bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10"
                         }`}
                       >
-                        Matte (Eşit Kenar)
+                        Matte (Eşit)
                       </button>
 
                       <button
                         onClick={() => onUpdateBorder({ type: "polaroid" })}
-                        className={`py-1.5 px-2 rounded-lg text-xs font-medium border text-center transition-all ${
+                        className={`py-1.5 px-1.5 rounded-lg text-[11px] font-medium border text-center transition-all ${
                           border.type === "polaroid"
-                            ? "bg-white text-black border-white font-semibold"
+                            ? "bg-white text-black border-white font-semibold shadow-sm"
                             : "bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10"
                         }`}
                       >
-                        Polaroid (Fiziksel Baskı)
+                        Polaroid
+                      </button>
+
+                      <button
+                        onClick={() => onUpdateBorder({ type: "smart-gradient" })}
+                        className={`py-1.5 px-1.5 rounded-lg text-[11px] font-medium border text-center transition-all ${
+                          border.type === "smart-gradient"
+                            ? "bg-amber-400 text-black border-amber-400 font-semibold shadow-sm"
+                            : "bg-white/5 border-white/10 text-amber-400/90 hover:bg-amber-400/10"
+                        }`}
+                      >
+                        ✨ Akıllı Gradyan
                       </button>
                     </div>
 
-                    {/* Frame Color */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-neutral-400">Çerçeve Rengi</span>
-                      <div className="flex items-center gap-2">
-                        {[
-                          { label: "Beyaz", hex: "#ffffff" },
-                          { label: "Arşiv Kağıdı", hex: "#f7f5f0" },
-                          { label: "Mat Siyah", hex: "#0d0d0d" },
-                          { label: "Grafit", hex: "#1c1c1e" },
-                        ].map((c) => (
-                          <button
-                            key={c.hex}
-                            onClick={() => onUpdateBorder({ color: c.hex })}
-                            style={{ backgroundColor: c.hex }}
-                            className={`w-5 h-5 rounded-full border transition-all ${
-                              border.color === c.hex
-                                ? "border-amber-400 scale-110 shadow-sm ring-2 ring-amber-400/20"
-                                : "border-white/20"
-                            }`}
-                            title={c.label}
-                          />
-                        ))}
+                    {border.type === "smart-gradient" ? (
+                      <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-200/90 leading-tight">
+                        Fotoğrafın kenarlarındaki renk tonları taranarak geçişi kusursuzlaştıran yumuşak bir ambient gradyan uygulanır.
                       </div>
-                    </div>
+                    ) : (
+                      /* Frame Color (for solid matte / polaroid) */
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-neutral-400">Çerçeve Rengi</span>
+                        <div className="flex items-center gap-2">
+                          {[
+                            { label: "Beyaz", hex: "#ffffff" },
+                            { label: "Arşiv Kağıdı", hex: "#f7f5f0" },
+                            { label: "Mat Siyah", hex: "#0d0d0d" },
+                            { label: "Grafit", hex: "#1c1c1e" },
+                          ].map((c) => (
+                            <button
+                              key={c.hex}
+                              onClick={() => onUpdateBorder({ color: c.hex })}
+                              style={{ backgroundColor: c.hex }}
+                              className={`w-5 h-5 rounded-full border transition-all ${
+                                border.color === c.hex
+                                  ? "border-amber-400 scale-110 shadow-sm ring-2 ring-amber-400/20"
+                                  : "border-white/20"
+                              }`}
+                              title={c.label}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Width & Radius Sliders */}
                     <div className="grid grid-cols-2 gap-2.5 pt-1">

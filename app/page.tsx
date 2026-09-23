@@ -81,6 +81,13 @@ export default function CurateStudioPage() {
       panY: 0,
     },
     filters: {
+      activePresetId: null,
+      presetAmount: 100,
+      vignetteEnabled: false,
+      vignetteAmount: 40,
+      lightLeakEnabled: false,
+      lightLeakType: "warm-side",
+      lightLeakAmount: 50,
       reinhardEnabled: false,
       reinhardStrength: 65,
       referenceImageId: null,
@@ -323,6 +330,13 @@ export default function CurateStudioPage() {
           ? {
               ...img,
               filters: {
+                activePresetId: null,
+                presetAmount: 100,
+                vignetteEnabled: false,
+                vignetteAmount: 40,
+                lightLeakEnabled: false,
+                lightLeakType: "warm-side",
+                lightLeakAmount: 50,
                 reinhardEnabled: false,
                 reinhardStrength: 65,
                 referenceImageId: null,

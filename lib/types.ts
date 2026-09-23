@@ -13,7 +13,39 @@ export interface CropState {
   panY: number;
 }
 
+export interface FilmPreset {
+  id: string;
+  name: string;
+  filmType: "color-negative" | "color-reversal" | "black-white" | "instant";
+  tag: string; // e.g. 'Warm Nostalgia', 'Tungsten Teal', 'Classic Street'
+  description: string;
+  // Color calibration parameters
+  contrast: number; // -50 to +50
+  saturation: number; // -50 to +50
+  warmth: number; // -50 (cool) to +50 (warm)
+  tint: number; // -50 (green) to +50 (magenta)
+  fade: number; // 0 to 50 (lifted blacks)
+  highlightsTint?: [number, number, number]; // [r, g, b] bias
+  shadowsTint?: [number, number, number]; // [r, g, b] bias
+  grainBase?: number; // suggested base grain
+}
+
+export type LightLeakType = "warm-side" | "corner-flare" | "streak" | "subtle";
+
 export interface FilterState {
+  // 35mm Film LUT Presets
+  activePresetId: string | null;
+  presetAmount: number; // 0 - 100
+
+  // Vignette
+  vignetteEnabled: boolean;
+  vignetteAmount: number; // 0 - 100
+
+  // Light Leak
+  lightLeakEnabled: boolean;
+  lightLeakType: LightLeakType;
+  lightLeakAmount: number; // 0 - 100
+
   // Reinhard Color Match
   reinhardEnabled: boolean;
   reinhardStrength: number; // 0 - 100
@@ -41,10 +73,11 @@ export interface TimestampState {
 
 export interface BorderState {
   enabled: boolean;
-  type: "matte" | "polaroid"; // matte = equal, polaroid = wide bottom margin
+  type: "matte" | "polaroid" | "smart-gradient"; // matte = equal, polaroid = wide bottom, smart-gradient = edge-sampled ambient
   color: string; // #ffffff, #f7f5f0, #000000, etc.
   widthPercent: number; // 2 - 20 %
   radius: number; // 0 - 30 px corner softness
+  gradientColors?: [string, string]; // computed edge gradient [startColor, endColor]
 }
 
 export interface CurateImage {

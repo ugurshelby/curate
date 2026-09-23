@@ -4,6 +4,8 @@ import { applyProceduralGrain } from "./grain";
 import { applyHalation } from "./halation";
 import { applyBorderToCanvas } from "./border";
 import { drawDateTimestamp } from "./timestamp";
+import { FILM_PRESETS, applyFilmPreset } from "./film-presets";
+import { drawVignette, drawLightLeak } from "./light-leak";
 
 // Cache for reference image Lab statistics
 const statsCache = new Map<string, ReturnType<typeof computeLabStats>>();
@@ -70,7 +72,7 @@ export function getCropDimensions(
 
 /**
  * Renders an image with all transformations:
- * Pan/Zoom -> Reinhard Color Transfer -> Luminance Grain -> Halation
+ * Pan/Zoom -> 35mm Film LUT Preset -> Reinhard Color Transfer -> Halation -> Luminance Grain -> Vignette -> Light Leak -> Border -> Timestamp
  */
 export async function renderProcessedImage(
   imageObj: HTMLImageElement,
@@ -128,7 +130,19 @@ export async function renderProcessedImage(
 
   let currentData = ctx.getImageData(0, 0, outW, outH);
 
-  // 1. Reinhard Color Transfer
+  // 1. 35mm Analog Film LUT Preset
+  if (filters.activePresetId) {
+    const preset = FILM_PRESETS.find((p) => p.id === filters.activePresetId);
+    if (preset) {
+      currentData = applyFilmPreset(
+        currentData,
+        preset,
+        filters.presetAmount !== undefined ? filters.presetAmount : 100
+      );
+    }
+  }
+
+  // 2. Reinhard Color Transfer
   if (
     filters.reinhardEnabled &&
     filters.reinhardStrength > 0 &&
@@ -145,7 +159,7 @@ export async function renderProcessedImage(
     );
   }
 
-  // 2. Halation (apply before grain for organic diffusion)
+  // 3. Halation (apply before grain for organic diffusion)
   if (filters.halationEnabled) {
     currentData = applyHalation(
       currentData,
@@ -155,7 +169,7 @@ export async function renderProcessedImage(
     );
   }
 
-  // 3. Luminance-aware organic film grain
+  // 4. Luminance-aware organic film grain
   if (filters.grainEnabled && filters.grainAmount > 0) {
     currentData = applyProceduralGrain(
       currentData,
@@ -164,16 +178,26 @@ export async function renderProcessedImage(
     );
   }
 
-  // Put filtered image back onto canvas
+  // Put filtered image back onto canvas for optical 2D passes
   ctx.putImageData(currentData, 0, 0);
 
-  // 4. Matte & Polaroid Border
+  // 5. Vintage Lens Vignette
+  if (filters.vignetteEnabled && filters.vignetteAmount > 0) {
+    drawVignette(ctx, outW, outH, filters.vignetteAmount);
+  }
+
+  // 6. 35mm Light Leak
+  if (filters.lightLeakEnabled && filters.lightLeakAmount > 0) {
+    drawLightLeak(ctx, outW, outH, filters.lightLeakType || "warm-side", filters.lightLeakAmount);
+  }
+
+  // 7. Matte, Polaroid, or Smart Ambient Gradient Border
   let finalCanvas = canvas;
   if (item.border && item.border.enabled) {
     finalCanvas = applyBorderToCanvas(canvas, item.border);
   }
 
-  // 5. 90s Film Timestamp (drawn after border or onto canvas)
+  // 8. 90s Film Timestamp (drawn after border or onto canvas)
   const finalCtx = finalCanvas.getContext("2d", { willReadFrequently: true });
   if (finalCtx && item.timestamp && item.timestamp.enabled) {
     drawDateTimestamp(finalCtx, finalCanvas.width, finalCanvas.height, item.timestamp);
