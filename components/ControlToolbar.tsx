@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import {
   CurateImage,
   AspectRatio,
   CompositionGuide,
   SocialOverlay as SocialOverlayType,
   ExportPreset,
+  UpscaleMultiplier,
 } from "@/lib/types";
 import {
   Crop,
@@ -25,8 +26,12 @@ import {
   ChevronDown,
   ChevronUp,
   X,
+  Zap,
+  ArrowUpRight,
+  ShieldCheck,
 } from "lucide-react";
 import { EXPORT_PRESETS } from "@/lib/export/zip-exporter";
+import { getCropDimensions } from "@/lib/image/renderer";
 
 interface ControlToolbarProps {
   image: CurateImage | null;
@@ -42,12 +47,13 @@ interface ControlToolbarProps {
   onUpdateFilters: (filters: Partial<CurateImage["filters"]>) => void;
   onResetFilters: () => void;
   onSetShowOriginal: (show: boolean) => void;
+  onUpdateUpscale: (multiplier: UpscaleMultiplier) => void;
   onExportSingle: (preset: ExportPreset) => void;
   onExportDump: () => void;
   onExitEdit: () => void;
 }
 
-type TabType = "crop" | "color" | "overlay" | "export";
+type TabType = "crop" | "color" | "overlay" | "upscale" | "export";
 
 export const ControlToolbar: React.FC<ControlToolbarProps> = ({
   image,
@@ -63,6 +69,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
   onUpdateFilters,
   onResetFilters,
   onSetShowOriginal,
+  onUpdateUpscale,
   onExportSingle,
   onExportDump,
   onExitEdit,
@@ -80,12 +87,25 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
   if (!image) return null;
 
   const { crop, filters } = image;
+  const currentUpscale = image.upscaleFactor || 1;
+
   const selectedPreset =
     EXPORT_PRESETS.find((p) => p.id === selectedPresetId) || EXPORT_PRESETS[0];
 
+  // Calculate resolution metrics
+  const baseCrop = getCropDimensions(image.originalWidth, image.originalHeight, crop.aspectRatio);
+  const curW = Math.round(baseCrop.width);
+  const curH = Math.round(baseCrop.height);
+
+  const targetW = curW * currentUpscale;
+  const targetH = curH * currentUpscale;
+
   const handleDragPointerDown = (e: React.PointerEvent) => {
-    // Only drag from handle / header, not sliders/buttons
-    if ((e.target as HTMLElement).closest("button") || (e.target as HTMLElement).closest("input") || (e.target as HTMLElement).closest("select")) {
+    if (
+      (e.target as HTMLElement).closest("button") ||
+      (e.target as HTMLElement).closest("input") ||
+      (e.target as HTMLElement).closest("select")
+    ) {
       return;
     }
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -99,7 +119,6 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
     const dx = e.clientX - dragStartPointerRef.current.x;
     const dy = e.clientY - dragStartPointerRef.current.y;
 
-    // Viewport boundary clamping
     const newX = dragStartOffsetRef.current.x + dx;
     const newY = dragStartOffsetRef.current.y + dy;
 
@@ -165,10 +184,8 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
               <span className="hidden sm:inline">Taşımak için sürükleyin</span>
             </div>
 
-            {/* Subtle drag bar indicator */}
             <div className="w-10 h-1 bg-white/20 group-hover:bg-white/40 rounded-full transition-colors" />
 
-            {/* Minimize & Close Buttons */}
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setIsCollapsed(true)}
@@ -188,9 +205,9 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
             </div>
           </div>
 
-          {/* Navigation Tabs */}
+          {/* Navigation Tabs with dedicated UPSCALE tab */}
           <div className="flex items-center justify-between border-b border-white/10 pb-2">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">
               <button
                 onClick={() => setActiveTab("crop")}
                 className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
@@ -227,6 +244,19 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                 <span>Simülatör</span>
               </button>
 
+              {/* Dedicated UPSCALE Tab */}
+              <button
+                onClick={() => setActiveTab("upscale")}
+                className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
+                  activeTab === "upscale"
+                    ? "bg-amber-400 text-black shadow-sm font-semibold"
+                    : "text-amber-400/90 hover:text-amber-300 hover:bg-amber-400/10"
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Upscale</span>
+              </button>
+
               <button
                 onClick={() => setActiveTab("export")}
                 className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
@@ -240,8 +270,8 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
               </button>
             </div>
 
-            <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest hidden sm:inline">
-              {image.name.slice(0, 14)}
+            <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest hidden md:inline">
+              {image.name.slice(0, 12)}
             </span>
           </div>
 
@@ -363,7 +393,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                 </div>
               </div>
 
-              {/* 1. Reinhard Color Transfer */}
+              {/* Reinhard Color Transfer */}
               <div className="space-y-1.5 p-2 rounded-xl bg-white/[0.02] border border-white/5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
@@ -412,7 +442,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                 )}
               </div>
 
-              {/* 2. Luminance-Aware Organic Grain */}
+              {/* Luminance-Aware Organic Grain */}
               <div className="space-y-1.5 p-2 rounded-xl bg-white/[0.02] border border-white/5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
@@ -467,7 +497,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                 )}
               </div>
 
-              {/* 3. Halation (Işık Haresi) */}
+              {/* Halation */}
               <div className="space-y-1.5 p-2 rounded-xl bg-white/[0.02] border border-white/5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
@@ -588,7 +618,109 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
             </div>
           )}
 
-          {/* TAB 4: EXPORT & LANCZOS PRESETS */}
+          {/* TAB 4: UPSCALE ENGINE (LANCZOS-3) */}
+          {activeTab === "upscale" && (
+            <div className="space-y-3 pt-1">
+              {/* Header Info */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-xs font-semibold text-white">
+                      Lanczos-3 Akıllı Upscale
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-neutral-400">
+                    sinc(x) konvolüsyonu ile yapay zeka halüsinasyonsuz kayıpsız kenar keskinleştirme
+                  </p>
+                </div>
+
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  {currentUpscale}x Aktif
+                </span>
+              </div>
+
+              {/* Upscale Factor Buttons */}
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => onUpdateUpscale(1)}
+                  className={`pressable p-2.5 rounded-xl border text-left transition-all ${
+                    currentUpscale === 1
+                      ? "bg-white text-black border-white shadow-sm font-semibold"
+                      : "bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10"
+                  }`}
+                >
+                  <div className="text-xs font-bold">1x Doğal</div>
+                  <div className="text-[10px] opacity-70">{curW} × {curH} px</div>
+                </button>
+
+                <button
+                  onClick={() => onUpdateUpscale(2)}
+                  className={`pressable p-2.5 rounded-xl border text-left transition-all ${
+                    currentUpscale === 2
+                      ? "bg-amber-400 text-black border-amber-400 shadow-sm font-semibold"
+                      : "bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10"
+                  }`}
+                >
+                  <div className="text-xs font-bold flex items-center gap-1">
+                    <span>2x Retina</span>
+                    <Sparkles className="w-3 h-3 text-current" />
+                  </div>
+                  <div className="text-[10px] opacity-80">{curW * 2} × {curH * 2} px</div>
+                </button>
+
+                <button
+                  onClick={() => onUpdateUpscale(4)}
+                  className={`pressable p-2.5 rounded-xl border text-left transition-all ${
+                    currentUpscale === 4
+                      ? "bg-amber-400 text-black border-amber-400 shadow-sm font-semibold"
+                      : "bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10"
+                  }`}
+                >
+                  <div className="text-xs font-bold">4x Ultra 4K</div>
+                  <div className="text-[10px] opacity-80">{curW * 4} × {curH * 4} px</div>
+                </button>
+              </div>
+
+              {/* Resolution Metrics Card */}
+              <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between text-[11px] font-mono">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] text-neutral-400 block">Kırpma Boyutu</span>
+                  <span className="text-neutral-300 font-semibold">{curW} × {curH} px</span>
+                </div>
+
+                <div className="flex items-center gap-1 text-amber-400">
+                  <ArrowUpRight className="w-4 h-4" />
+                </div>
+
+                <div className="space-y-0.5 text-right">
+                  <span className="text-[10px] text-neutral-400 block">Lanczos-3 Hedef</span>
+                  <span className="text-white font-bold">{targetW} × {targetH} px</span>
+                </div>
+              </div>
+
+              {/* Instant Upscale Action */}
+              <button
+                onClick={() => {
+                  const upscalePreset: ExportPreset = {
+                    id: `${currentUpscale}x-lanczos`,
+                    name: `${currentUpscale}x Lanczos-3 Upscale`,
+                    description: `${targetW} × ${targetH} px kayıpsız büyütme`,
+                    scaleMultiplier: currentUpscale,
+                    aspectRatio: crop.aspectRatio,
+                    useLanczos: currentUpscale > 1,
+                  };
+                  onExportSingle(upscalePreset);
+                }}
+                className="pressable w-full py-2.5 px-4 rounded-xl bg-amber-400 text-black hover:bg-amber-300 text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-glass-sm"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Lanczos-3 ile Hemen Upscale Et & İndir ({targetW} × {targetH})</span>
+              </button>
+            </div>
+          )}
+
+          {/* TAB 5: EXPORT & ARCHIVE */}
           {activeTab === "export" && (
             <div className="space-y-3 pt-1">
               <div className="flex items-center justify-between">

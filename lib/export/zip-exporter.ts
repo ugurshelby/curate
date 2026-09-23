@@ -5,6 +5,22 @@ import { resampleLanczos3 } from "../image/lanczos";
 
 export const EXPORT_PRESETS: ExportPreset[] = [
   {
+    id: "2x-lanczos",
+    name: "2x Retina Upscale (Lanczos-3)",
+    description: "Doğal çözünürlüğü 2 katına çıkarır (Lanczos-3 sinc konvolüsyonu)",
+    scaleMultiplier: 2,
+    aspectRatio: "original",
+    useLanczos: true,
+  },
+  {
+    id: "4x-lanczos",
+    name: "4x Ultra HD Upscale (Lanczos-3)",
+    description: "Doğal çözünürlüğü 4 katına çıkarır (4K baskı ve arşiv standardı)",
+    scaleMultiplier: 4,
+    aspectRatio: "original",
+    useLanczos: true,
+  },
+  {
     id: "ig-retina",
     name: "Instagram Post (Retina 4:5)",
     description: "2160 × 2700 px — Lanczos-3 keskinleştirilmiş dikey post",
@@ -33,8 +49,8 @@ export const EXPORT_PRESETS: ExportPreset[] = [
   },
   {
     id: "native-hq",
-    name: "Ultra HD Archive (Original)",
-    description: "Görselin tam çözünürlüğü (EXIF'siz, kayıpsız JPEG)",
+    name: "Doğal Çözünürlük (1x)",
+    description: "Görselin tam kırpma çözünürlüğü (EXIF'siz, kayıpsız JPEG)",
     aspectRatio: "original",
     useLanczos: false,
   },
@@ -82,7 +98,7 @@ export function downloadBlob(blob: Blob, filename: string) {
 }
 
 /**
- * Renders and exports a single CurateImage to Blob
+ * Renders and exports a single CurateImage to Blob with optional Lanczos-3 Resampling
  */
 export async function exportSingleImage(
   item: CurateImage,
@@ -92,23 +108,23 @@ export async function exportSingleImage(
   const imgObj = await loadImage(item.dataUrl);
   const refObj = refItem ? await loadImage(refItem.dataUrl) : null;
 
-  // Determine output dimensions
+  const baseCrop = getCropDimensions(imgObj.naturalWidth, imgObj.naturalHeight, item.crop.aspectRatio);
+
   let targetW = preset.targetWidth;
   let targetH = preset.targetHeight;
 
-  if (!targetW || !targetH) {
-    const baseCrop = getCropDimensions(imgObj.naturalWidth, imgObj.naturalHeight, item.crop.aspectRatio);
+  if (preset.scaleMultiplier) {
+    targetW = Math.round(baseCrop.width * preset.scaleMultiplier);
+    targetH = Math.round(baseCrop.height * preset.scaleMultiplier);
+  } else if (!targetW || !targetH) {
     targetW = Math.round(baseCrop.width);
     targetH = Math.round(baseCrop.height);
   }
 
-  // 1. Render all filters and adjustments
-  // For Lanczos upscale, we can render at native crop size first, then upscale with Lanczos
   let renderedData: ImageData;
 
-  if (preset.useLanczos && (targetW > imgObj.naturalWidth || targetH > imgObj.naturalHeight)) {
-    // Render at base crop resolution
-    const baseCrop = getCropDimensions(imgObj.naturalWidth, imgObj.naturalHeight, item.crop.aspectRatio);
+  if (preset.useLanczos && (targetW !== Math.round(baseCrop.width) || targetH !== Math.round(baseCrop.height))) {
+    // 1. Render at native crop resolution with all analog filters
     const intermediateData = await renderProcessedImage(
       imgObj,
       item,
@@ -116,7 +132,7 @@ export async function exportSingleImage(
       Math.round(baseCrop.width),
       Math.round(baseCrop.height)
     );
-    // Lanczos-3 Resample
+    // 2. Lanczos-3 Separable Convolution Resample
     renderedData = resampleLanczos3(intermediateData, targetW, targetH);
   } else {
     renderedData = await renderProcessedImage(
@@ -128,7 +144,7 @@ export async function exportSingleImage(
     );
   }
 
-  // 2. Convert to JPEG blob (automatically sanitizes EXIF/GPS)
+  // 3. Convert to JPEG blob (automatically strips EXIF/GPS metadata)
   return await imageDataToBlob(renderedData, 0.95);
 }
 
@@ -152,18 +168,16 @@ export async function exportDumpZip(
         isExporting: true,
         current: i + 1,
         total,
-        phase: `İşleniyor (${i + 1}/${total}): ${item.name}`,
+        phase: `İşleniyor & Lanczos-3 (${i + 1}/${total}): ${item.name}`,
       });
     }
 
-    // Find reference image if applicable
     const refItem = item.filters.referenceImageId
       ? items.find((x) => x.id === item.filters.referenceImageId) || null
       : null;
 
     const blob = await exportSingleImage(item, refItem, preset);
 
-    // Formatted filename: 01_imgname.jpg
     const padIndex = String(i + 1).padStart(2, "0");
     const cleanName = item.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_-]/g, "_");
     const filename = `${padIndex}_${cleanName}.jpg`;

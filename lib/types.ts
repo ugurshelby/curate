@@ -4,6 +4,8 @@ export type CompositionGuide = "none" | "thirds" | "golden" | "frame";
 
 export type SocialOverlay = "none" | "instagram-story" | "tiktok-story" | "instagram-post";
 
+export type UpscaleMultiplier = 1 | 2 | 4;
+
 export interface CropState {
   aspectRatio: AspectRatio;
   zoom: number; // 1.0 - 3.0
@@ -38,6 +40,7 @@ export interface CurateImage {
   dataUrl: string; // for rendering
   crop: CropState;
   filters: FilterState;
+  upscaleFactor: UpscaleMultiplier; // 1x, 2x, 4x
 }
 
 export interface ExportPreset {
@@ -46,6 +49,7 @@ export interface ExportPreset {
   description: string;
   targetWidth?: number;
   targetHeight?: number;
+  scaleMultiplier?: UpscaleMultiplier;
   aspectRatio: AspectRatio;
   useLanczos: boolean;
 }

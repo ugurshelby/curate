@@ -8,6 +8,7 @@ import {
   SocialOverlay as SocialOverlayType,
   ExportPreset,
   ExportProgress,
+  UpscaleMultiplier,
 } from "@/lib/types";
 import { Header } from "@/components/Header";
 import { ViewportCanvas } from "@/components/ViewportCanvas";
@@ -82,6 +83,7 @@ export default function CurateStudioPage() {
       halationTemp: 60,
       halationThreshold: 0.82,
     },
+    upscaleFactor: 1,
   });
 
   // Handle file uploads
@@ -327,6 +329,21 @@ export default function CurateStudioPage() {
     );
   };
 
+  // Update upscale multiplier for active image
+  const handleUpdateUpscale = (multiplier: UpscaleMultiplier) => {
+    if (!activeImageId) return;
+    setImages((prev) =>
+      prev.map((img) =>
+        img.id === activeImageId
+          ? {
+              ...img,
+              upscaleFactor: multiplier,
+            }
+          : img
+      )
+    );
+  };
+
   // Export single image
   const handleExportSingle = async (preset: ExportPreset) => {
     if (!activeImage) return;
@@ -509,6 +526,7 @@ export default function CurateStudioPage() {
               onUpdateFilters={handleUpdateFilters}
               onResetFilters={handleResetFilters}
               onSetShowOriginal={setShowOriginal}
+              onUpdateUpscale={handleUpdateUpscale}
               onExportSingle={handleExportSingle}
               onExportDump={() => setIsExportModalOpen(true)}
               onExitEdit={() => setActiveImageId(null)}

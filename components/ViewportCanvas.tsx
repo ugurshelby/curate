@@ -8,7 +8,7 @@ import {
 } from "@/lib/types";
 import { renderProcessedImage, getCropDimensions } from "@/lib/image/renderer";
 import { SocialOverlay } from "./SocialOverlay";
-import { Move, RefreshCw, Eye } from "lucide-react";
+import { Move, RefreshCw, Eye, Zap } from "lucide-react";
 
 interface ViewportCanvasProps {
   image: CurateImage | null;
@@ -295,6 +295,12 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
             <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
               <Eye className="w-3 h-3" />
               <span>Orijinal</span>
+            </span>
+          )}
+          {image.upscaleFactor > 1 && (
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40 flex items-center gap-1 font-semibold">
+              <Zap className="w-3 h-3 text-amber-400" />
+              <span>{image.upscaleFactor}x Lanczos-3</span>
             </span>
           )}
         </div>
