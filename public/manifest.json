@@ -1,0 +1,16 @@
+{
+  "name": "Curate — Post & Dump Studio",
+  "short_name": "Curate",
+  "description": "Minimalist client-side photo curation and analog processing studio",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#09090b",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
