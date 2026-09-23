@@ -284,7 +284,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
         </div>
       ) : (
         /* 2. FULL EXPANDED TOOLBAR */
-        <div className={`pointer-events-auto space-y-2.5 ${isSheet ? "p-2" : "glass-toolbar rounded-2xl p-3 shadow-glass border border-white/15"}`} onPointerDown={(e) => { if (isSheet) e.stopPropagation(); }}>
+        <div className={`pointer-events-auto space-y-2.5 ${isSheet ? "p-2 max-h-[48vh] overflow-y-auto pr-1" : "glass-toolbar rounded-2xl p-3 shadow-glass border border-white/15"}`} onPointerDown={(e) => { if (isSheet) e.stopPropagation(); }}>
           {/* Drag Handle & Top Controls Row — desktop floating only */}
           <div
             onPointerDown={handleDragPointerDown}
@@ -460,25 +460,16 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
 
               {/* Active Preset Intensity (Amount) Slider */}
               {filters.activePresetId && (
-                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-amber-300 flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-amber-400" />
-                      <span>{FILM_PRESETS.find((p) => p.id === filters.activePresetId)?.name} Yoğunluğu</span>
-                    </span>
-                    <span className="font-mono text-xs text-amber-300">
-                      %{filters.presetAmount ?? 100}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                  <ResettableSlider
+                    label={`${FILM_PRESETS.find((p) => p.id === filters.activePresetId)?.name || "Film LUT"} Yoğunluğu`}
                     value={filters.presetAmount ?? 100}
-                    onChange={(e) =>
-                      onUpdateFilters({ presetAmount: parseInt(e.target.value, 10) })
-                    }
-                    className="w-full accent-amber-400 cursor-pointer"
+                    min={0}
+                    max={100}
+                    defaultValue={100}
+                    onChange={(v) => onUpdateFilters({ presetAmount: v })}
+                    suffix="%"
+                    accentClassName="accent-amber-400"
                   />
                 </div>
               )}
@@ -644,21 +635,16 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-medium text-neutral-400 flex items-center gap-1">
-                    <ZoomIn className="w-3.5 h-3.5" />
-                    <span className="font-mono text-[10px] text-neutral-300 w-7">
-                      {crop.zoom.toFixed(1)}x
-                    </span>
-                  </span>
-                  <input
-                    type="range"
-                    min="1"
-                    max="3"
-                    step="0.05"
+                <div className="pt-1 w-full">
+                  <ResettableSlider
+                    label="Yakınlaştırma (Zoom)"
                     value={crop.zoom}
-                    onChange={(e) => onUpdateZoom(parseFloat(e.target.value))}
-                    className="flex-1"
+                    min={1}
+                    max={3}
+                    step={0.05}
+                    defaultValue={1}
+                    onChange={(v) => onUpdateZoom(v)}
+                    suffix="x"
                   />
                 </div>
               </div>
@@ -729,21 +715,17 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                 </div>
 
                 {filters.reinhardEnabled && (
-                  <div className="flex items-center gap-2 pt-1">
-                    <span className="text-[10px] text-neutral-400 w-16">Eşleşme</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
+                  <div className="pt-1 w-full">
+                    <ResettableSlider
+                      label="Renk Eşleşme Oranı"
                       value={filters.reinhardStrength}
-                      onChange={(e) =>
-                        onUpdateFilters({ reinhardStrength: parseInt(e.target.value, 10) })
-                      }
-                      className="flex-1"
+                      min={0}
+                      max={100}
+                      defaultValue={70}
+                      onChange={(v) => onUpdateFilters({ reinhardStrength: v })}
+                      suffix="%"
+                      accentClassName="accent-amber-400"
                     />
-                    <span className="font-mono text-[10px] text-neutral-300 w-8 text-right">
-                      %{filters.reinhardStrength}
-                    </span>
                   </div>
                 )}
               </div>
@@ -774,7 +756,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                 </div>
 
                 {filters.grainEnabled && (
-                  <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="flex flex-col gap-2.5 pt-1 w-full">
                     <ResettableSlider
                       label="Miktar"
                       value={filters.grainAmount}
@@ -782,6 +764,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                       max={100}
                       defaultValue={SLIDER_DEFAULTS.grainAmount}
                       onChange={(v) => onUpdateFilters({ grainAmount: v })}
+                      suffix="%"
                     />
                     <ResettableSlider
                       label="Boyut"
@@ -791,6 +774,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                       step={1}
                       defaultValue={SLIDER_DEFAULTS.grainSize}
                       onChange={(v) => onUpdateFilters({ grainSize: v })}
+                      suffix="px"
                     />
                   </div>
                 )}
@@ -818,7 +802,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                 </div>
 
                 {filters.halationEnabled && (
-                  <div className="space-y-1.5 pt-1">
+                  <div className="flex flex-col gap-2.5 pt-1 w-full">
                     <ResettableSlider
                       label="Miktar"
                       value={filters.halationAmount ?? TOGGLE_DEFAULTS.halationAmount}
@@ -829,24 +813,26 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                       suffix="%"
                       accentClassName="accent-rose-400"
                     />
-                    <div className="grid grid-cols-2 gap-2">
-                      <ResettableSlider
-                        label="Yayılma"
-                        value={filters.halationRadius}
-                        min={2}
-                        max={30}
-                        defaultValue={SLIDER_DEFAULTS.halationRadius}
-                        onChange={(v) => onUpdateFilters({ halationRadius: v })}
-                      />
-                      <ResettableSlider
-                        label="Sıcaklık"
-                        value={filters.halationTemp}
-                        min={0}
-                        max={100}
-                        defaultValue={SLIDER_DEFAULTS.halationTemp}
-                        onChange={(v) => onUpdateFilters({ halationTemp: v })}
-                      />
-                    </div>
+                    <ResettableSlider
+                      label="Yayılma"
+                      value={filters.halationRadius}
+                      min={2}
+                      max={30}
+                      defaultValue={SLIDER_DEFAULTS.halationRadius}
+                      onChange={(v) => onUpdateFilters({ halationRadius: v })}
+                      suffix="px"
+                      accentClassName="accent-rose-400"
+                    />
+                    <ResettableSlider
+                      label="Sıcaklık"
+                      value={filters.halationTemp}
+                      min={0}
+                      max={100}
+                      defaultValue={SLIDER_DEFAULTS.halationTemp}
+                      onChange={(v) => onUpdateFilters({ halationTemp: v })}
+                      suffix="°"
+                      accentClassName="accent-amber-400"
+                    />
                   </div>
                 )}
               </div>
@@ -1039,40 +1025,25 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                     )}
 
                     {/* Width & Radius Sliders */}
-                    <div className="grid grid-cols-2 gap-2.5 pt-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-neutral-400 w-12">Genişlik</span>
-                        <input
-                          type="range"
-                          min="2"
-                          max="20"
-                          value={border.widthPercent}
-                          onChange={(e) =>
-                            onUpdateBorder({ widthPercent: parseInt(e.target.value, 10) })
-                          }
-                          className="flex-1 accent-white"
-                        />
-                        <span className="font-mono text-[10px] text-neutral-300 w-6">
-                          %{border.widthPercent}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-neutral-400 w-12">Yumuşaklık</span>
-                        <input
-                          type="range"
-                          min="0"
-                          max="30"
-                          value={border.radius}
-                          onChange={(e) =>
-                            onUpdateBorder({ radius: parseInt(e.target.value, 10) })
-                          }
-                          className="flex-1 accent-white"
-                        />
-                        <span className="font-mono text-[10px] text-neutral-300 w-6">
-                          {border.radius}px
-                        </span>
-                      </div>
+                    <div className="flex flex-col gap-2.5 pt-1 w-full">
+                      <ResettableSlider
+                        label="Çerçeve Kalınlığı"
+                        value={border.widthPercent}
+                        min={2}
+                        max={20}
+                        defaultValue={6}
+                        onChange={(v) => onUpdateBorder({ widthPercent: v })}
+                        suffix="%"
+                      />
+                      <ResettableSlider
+                        label="Köşe Yumuşaklığı"
+                        value={border.radius}
+                        min={0}
+                        max={30}
+                        defaultValue={0}
+                        onChange={(v) => onUpdateBorder({ radius: v })}
+                        suffix="px"
+                      />
                     </div>
                   </div>
                 )}

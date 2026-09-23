@@ -800,8 +800,18 @@ export default function CurateStudioPage() {
         ) : (
           /* Stage 2/3: Active Photo Edit Studio — mobile sheet / desktop floating */
           <>
-            {/* Canvas stage: flex-1, shrinks when bottom sheet expands */}
-            <div className="flex-1 min-h-0 relative flex flex-col">
+            {/* Canvas stage: flex-1, dynamically scales and shifts up in Stage 3 */}
+            <div
+              className={`flex-1 min-h-0 relative flex flex-col origin-center will-change-transform transition-transform duration-300 ${
+                focusCategory
+                  ? "-translate-y-2 scale-[0.88] sm:transform-none"
+                  : "transform-none"
+              }`}
+              style={{
+                transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
+                transitionDuration: "300ms",
+              }}
+            >
               {splitView && activeImage && splitPeerId ? (
                 <SplitViewPreview
                   left={activeImage}

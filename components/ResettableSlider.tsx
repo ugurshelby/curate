@@ -3,7 +3,7 @@
 import React from "react";
 
 interface ResettableSliderProps {
-  label: string;
+  label?: string;
   value: number;
   min: number;
   max: number;
@@ -13,12 +13,15 @@ interface ResettableSliderProps {
   suffix?: string;
   accentClassName?: string;
   className?: string;
+  layout?: "stack" | "inline";
+  hideHeader?: boolean;
 }
 
 /**
  * Range input that resets to `defaultValue` on double-click (mouse)
  * or double-tap (touch via rapid successive pointerdowns).
  * Stops pointer propagation so parent bottom-sheet drag does not steal the gesture.
+ * Supports stacked (Apple Studio) or inline layouts.
  */
 export const ResettableSlider: React.FC<ResettableSliderProps> = ({
   label,
@@ -31,6 +34,8 @@ export const ResettableSlider: React.FC<ResettableSliderProps> = ({
   suffix = "",
   accentClassName = "",
   className = "",
+  layout = "stack",
+  hideHeader = false,
 }) => {
   const lastTapRef = React.useRef(0);
 
@@ -51,13 +56,48 @@ export const ResettableSlider: React.FC<ResettableSliderProps> = ({
     }
   };
 
+  const formattedValue = suffix === "%" ? `%${value}` : `${value}${suffix}`;
+
+  if (layout === "inline") {
+    return (
+      <div
+        className={`flex items-center gap-1.5 w-full ${className}`}
+        onPointerDown={(e) => e.stopPropagation()}
+        style={{ touchAction: "none" }}
+      >
+        {label && <span className="text-[10px] text-neutral-400 shrink-0 min-w-[2.5rem]">{label}</span>}
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(parseFloat(e.target.value))}
+          onDoubleClick={handleDoubleClick}
+          onPointerDown={handlePointerDown}
+          title={`Çift tıkla / çift dokun: varsayılan (${defaultValue}${suffix})`}
+          className={`flex-1 cursor-pointer ${accentClassName}`}
+          style={{ touchAction: "none" }}
+        />
+        <span className="font-mono text-[10px] text-neutral-300 w-8 text-right shrink-0">
+          {formattedValue}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`flex items-center gap-1.5 ${className}`}
+      className={`flex flex-col gap-2 py-1.5 w-full ${className}`}
       onPointerDown={(e) => e.stopPropagation()}
       style={{ touchAction: "none" }}
     >
-      <span className="text-[10px] text-neutral-400 shrink-0 min-w-[2.5rem]">{label}</span>
+      {!hideHeader && label && (
+        <div className="flex justify-between items-center text-xs text-neutral-400">
+          <span className="font-medium text-neutral-300">{label}</span>
+          <span className="font-mono text-neutral-200 tabular-nums">{formattedValue}</span>
+        </div>
+      )}
       <input
         type="range"
         min={min}
@@ -67,13 +107,10 @@ export const ResettableSlider: React.FC<ResettableSliderProps> = ({
         onChange={(e) => onChange(parseFloat(e.target.value))}
         onDoubleClick={handleDoubleClick}
         onPointerDown={handlePointerDown}
-        title={`Cift tikla / cift dokun: varsayilan (${defaultValue}${suffix})`}
-        className={`flex-1 cursor-pointer ${accentClassName}`}
+        title={`Çift tıkla / çift dokun: varsayılan (${defaultValue}${suffix})`}
+        className={`w-full cursor-pointer ${accentClassName}`}
         style={{ touchAction: "none" }}
       />
-      <span className="font-mono text-[10px] text-neutral-300 w-8 text-right shrink-0">
-        {suffix === "%" ? `%${value}` : `${value}${suffix}`}
-      </span>
     </div>
   );
 };

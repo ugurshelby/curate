@@ -98,9 +98,9 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Center title (edit mode, mobile) */}
       {editing && (
-        <div className="absolute left-1/2 -translate-x-1/2 max-w-[40%] sm:max-w-xs truncate text-center pointer-events-none">
-          <span className="text-xs font-medium text-white/90 truncate">
-            {activeImage?.name || "Duzenle"}
+        <div className="absolute left-1/2 -translate-x-1/2 max-w-[140px] sm:max-w-xs truncate text-center pointer-events-none z-10">
+          <span className="text-xs font-medium text-white/90 truncate block">
+            {activeImage?.name || "Düzenle"}
           </span>
         </div>
       )}

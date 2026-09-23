@@ -18,10 +18,10 @@ import { ControlToolbar } from "./ControlToolbar";
 import { DumpFilmstrip } from "./DumpFilmstrip";
 import { Palette, Sparkles, Crop, Frame } from "lucide-react";
 
-const COLLAPSED_H = 110;
-const EXPANDED_VH = 0.45;
+const COLLAPSED_H = 150;
+const EXPANDED_VH = 0.50;
 const IOS_EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
-const TRANSITION_MS = 250;
+const TRANSITION_MS = 300;
 
 const TABS: Array<{ id: NonNullable<FocusCategory>; label: string; icon: React.ReactNode }> = [
   { id: "preset-color", label: "Preset / Renk", icon: <Palette className="w-3.5 h-3.5" /> },
@@ -153,15 +153,18 @@ export const MobileStudioSheet: React.FC<MobileStudioSheetProps> = (props) => {
     if (focusCategory && focusCategory !== prevFocusRef.current) {
       setSnap("expanded");
       syncTranslate(0, true);
+    } else if (!focusCategory && prevFocusRef.current) {
+      setSnap("collapsed");
+      syncTranslate(maxTranslate, true);
     }
     prevFocusRef.current = focusCategory;
-  }, [focusCategory, syncTranslate]);
+  }, [focusCategory, syncTranslate, maxTranslate]);
 
   // Report layout spacer height (snap only — no mid-drag reflow)
   useEffect(() => {
     const h = snap === "expanded" ? expandedH : COLLAPSED_H;
-    props.onLayoutHeightChange?.(h);
-  }, [snap, expandedH, props.onLayoutHeightChange]);
+    onLayoutHeightChange?.(h);
+  }, [snap, expandedH, onLayoutHeightChange]);
 
   const snapTo = useCallback(
     (next: SheetSnap) => {
@@ -248,9 +251,14 @@ export const MobileStudioSheet: React.FC<MobileStudioSheetProps> = (props) => {
   };
 
   const handleTabSelect = (id: NonNullable<FocusCategory>) => {
-    onFocusCategory(id);
-    if (snap !== "expanded") {
-      snapTo("expanded");
+    if (focusCategory === id) {
+      onFocusCategory(null);
+      snapTo("collapsed");
+    } else {
+      onFocusCategory(id);
+      if (snap !== "expanded") {
+        snapTo("expanded");
+      }
     }
   };
 
@@ -340,7 +348,7 @@ export const MobileStudioSheet: React.FC<MobileStudioSheetProps> = (props) => {
 
         {/* Scrollable controls — independent of sheet drag */}
         <div
-          className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-1"
+          className="flex-1 min-h-0 max-h-[48vh] overflow-y-auto overscroll-contain px-1"
           style={{ touchAction: "pan-y" }}
           onPointerDown={(e) => e.stopPropagation()}
         >
@@ -385,9 +393,13 @@ export const MobileStudioSheet: React.FC<MobileStudioSheetProps> = (props) => {
           )}
         </div>
 
-        {/* Filmstrip — horizontal pan only */}
+        {/* Filmstrip — contextual hiding during editing */}
         <div
-          className="shrink-0 border-t border-white/5"
+          className={`shrink-0 transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+            focusCategory
+              ? "max-h-0 opacity-0 pointer-events-none translate-y-full overflow-hidden border-t-0"
+              : "max-h-28 opacity-100 translate-y-0 border-t border-white/5"
+          }`}
           style={{ touchAction: "pan-x" }}
           onPointerDown={(e) => e.stopPropagation()}
         >
