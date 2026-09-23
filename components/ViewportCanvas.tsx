@@ -67,9 +67,13 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
     img.src = referenceImage.dataUrl;
   }, [referenceImage]);
 
+  const renderIdRef = useRef(0);
+
   // Render canvas frame
   const renderFrame = useCallback(async () => {
     if (!image || !imageObj || !canvasRef.current) return;
+
+    const thisRenderId = ++renderIdRef.current;
 
     try {
       setIsRendering(true);
@@ -109,6 +113,9 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
         targetH
       );
 
+      // Discard stale renders
+      if (thisRenderId !== renderIdRef.current) return;
+
       canvas.width = processedData.width;
       canvas.height = processedData.height;
       const ctx = canvas.getContext("2d");
@@ -116,9 +123,13 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
         ctx.putImageData(processedData, 0, 0);
       }
     } catch (err) {
-      console.error("Render error:", err);
+      if (thisRenderId === renderIdRef.current) {
+        console.error("Render error:", err);
+      }
     } finally {
-      setIsRendering(false);
+      if (thisRenderId === renderIdRef.current) {
+        setIsRendering(false);
+      }
     }
   }, [image, imageObj, refImageObj, showOriginal]);
 

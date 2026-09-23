@@ -22,6 +22,17 @@ export function getFormattedTodayDate(format: TimestampState["format"] = "YY MM 
   }
 }
 
+/**
+ * Returns formatted date and current time string (e.g. '26 09 23  12:45)
+ */
+export function getFormattedTodayWithTime(format: TimestampState["format"] = "YY MM DD"): string {
+  const dateStr = getFormattedTodayDate(format);
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+  return `${dateStr}  ${hours}:${minutes}`;
+}
+
 export function getDefaultTimestampState(): TimestampState {
   return {
     enabled: false,

@@ -35,6 +35,7 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
 }) => {
   const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(null);
   const [sliceCount, setSliceCount] = useState<2 | 3 | 4>(3);
+  const [aspectRatio, setAspectRatio] = useState<"4:5" | "1:1">("4:5");
   const [verticalPan, setVerticalPan] = useState<number>(50);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [slices, setSlices] = useState<PanoramaSlice[]>([]);
@@ -49,7 +50,7 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
     }
   }, [isOpen, selectedImageSrc, images]);
 
-  // Compute slices whenever image, slice count, or vertical pan changes
+  // Compute slices whenever image, slice count, aspect ratio, or vertical pan changes
   const computeSlices = useCallback(async () => {
     if (!selectedImageSrc) {
       setSlices([]);
@@ -68,6 +69,7 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
 
       const options: PanoramaSplitOptions = {
         sliceCount,
+        aspectRatio,
         verticalPanPercent: verticalPan,
         targetSlideWidth: 1080,
       };
@@ -80,13 +82,13 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
     } finally {
       setIsProcessing(false);
     }
-  }, [selectedImageSrc, sliceCount, verticalPan]);
+  }, [selectedImageSrc, sliceCount, aspectRatio, verticalPan]);
 
   useEffect(() => {
     if (isOpen && selectedImageSrc) {
       computeSlices();
     }
-  }, [isOpen, selectedImageSrc, sliceCount, verticalPan, computeSlices]);
+  }, [isOpen, selectedImageSrc, sliceCount, aspectRatio, verticalPan, computeSlices]);
 
   if (!isOpen) return null;
 
@@ -193,27 +195,65 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
           </div>
 
           {/* 2. Slicing Controls */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white/[0.03] p-4 rounded-2xl border border-white/10">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white/[0.03] p-4 rounded-2xl border border-white/10">
+            {/* Carousel Ratio */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-neutral-300">
+                Karusel Formatı
+              </label>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  onClick={() => setAspectRatio("4:5")}
+                  className={`py-2 px-2 rounded-xl border text-center transition-all ${
+                    aspectRatio === "4:5"
+                      ? "bg-amber-400 text-black border-amber-400 font-bold shadow-sm"
+                      : "bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10"
+                  }`}
+                >
+                  <div className="text-xs font-semibold">4:5 Dikey</div>
+                  <div className="text-[9px] opacity-70">IG Standart</div>
+                </button>
+
+                <button
+                  onClick={() => setAspectRatio("1:1")}
+                  className={`py-2 px-2 rounded-xl border text-center transition-all ${
+                    aspectRatio === "1:1"
+                      ? "bg-amber-400 text-black border-amber-400 font-bold shadow-sm"
+                      : "bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10"
+                  }`}
+                >
+                  <div className="text-xs font-semibold">1:1 Kare</div>
+                  <div className="text-[9px] opacity-70">Klasik</div>
+                </button>
+              </div>
+            </div>
+
             {/* Slice Count */}
             <div className="space-y-2">
               <label className="text-xs font-medium text-neutral-300 flex items-center gap-1.5">
                 <Scissors className="w-3.5 h-3.5 text-amber-400" />
-                <span>Bölünecek Slayt Sayısı</span>
+                <span>Slayt Sayısı</span>
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-1.5">
                 {([2, 3, 4] as const).map((count) => (
                   <button
                     key={count}
                     onClick={() => setSliceCount(count)}
-                    className={`py-2 px-3 rounded-xl border text-center transition-all ${
+                    className={`py-2 px-1.5 rounded-xl border text-center transition-all ${
                       sliceCount === count
                         ? "bg-amber-400 text-black border-amber-400 font-bold shadow-sm"
                         : "bg-white/5 border-white/10 text-neutral-300 hover:bg-white/10"
                     }`}
                   >
-                    <div className="text-sm">{count} Slayt</div>
-                    <div className="text-[10px] opacity-70">
-                      {count === 2 ? "8:5 Oran" : count === 3 ? "12:5 Oran" : "16:5 Oran"}
+                    <div className="text-xs font-bold">{count} Slayt</div>
+                    <div className="text-[9px] opacity-70">
+                      {aspectRatio === "4:5"
+                        ? count === 2
+                          ? "8:5"
+                          : count === 3
+                          ? "12:5"
+                          : "16:5"
+                        : `${count}:1`}
                     </div>
                   </button>
                 ))}
@@ -225,7 +265,7 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
               <div className="flex items-center justify-between text-xs">
                 <label className="font-medium text-neutral-300 flex items-center gap-1.5">
                   <Sliders className="w-3.5 h-3.5 text-neutral-400" />
-                  <span>Dikey Kadraj Konumu</span>
+                  <span>Dikey Kadraj</span>
                 </label>
                 <span className="font-mono text-neutral-400 text-[11px]">%{verticalPan}</span>
               </div>
@@ -235,12 +275,12 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
                 max="100"
                 value={verticalPan}
                 onChange={(e) => setVerticalPan(parseInt(e.target.value, 10))}
-                className="w-full accent-amber-400 py-2 cursor-pointer"
+                className="w-full accent-amber-400 py-1.5 cursor-pointer"
               />
               <div className="flex justify-between text-[10px] text-neutral-500 font-mono">
-                <span>Üst Kadraj</span>
+                <span>Üst</span>
                 <span>Merkez</span>
-                <span>Alt Kadraj</span>
+                <span>Alt</span>
               </div>
             </div>
           </div>

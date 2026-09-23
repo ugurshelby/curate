@@ -170,6 +170,8 @@ export async function exportDumpZip(
         total,
         phase: `İşleniyor & Lanczos-3 (${i + 1}/${total}): ${item.name}`,
       });
+      // Yield to main thread so React updates the progress UI smoothly
+      await new Promise((r) => setTimeout(r, 20));
     }
 
     const refItem = item.filters.referenceImageId

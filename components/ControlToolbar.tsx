@@ -44,7 +44,11 @@ import {
 import { EXPORT_PRESETS } from "@/lib/export/zip-exporter";
 import { getCropDimensions } from "@/lib/image/renderer";
 import { getDefaultBorderState } from "@/lib/image/border";
-import { getDefaultTimestampState, getFormattedTodayDate } from "@/lib/image/timestamp";
+import {
+  getDefaultTimestampState,
+  getFormattedTodayDate,
+  getFormattedTodayWithTime,
+} from "@/lib/image/timestamp";
 import { FILM_PRESETS, getFavoritePresetIds, toggleFavoritePreset } from "@/lib/image/film-presets";
 import { LightLeakType } from "@/lib/types";
 
@@ -1067,6 +1071,17 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                           title="Bugünün tarihine sıfırla"
                         >
                           Bugün
+                        </button>
+                        <button
+                          onClick={() =>
+                            onUpdateTimestamp({
+                              dateText: getFormattedTodayWithTime(timestamp.format),
+                            })
+                          }
+                          className="px-2 py-1 rounded bg-white/10 hover:bg-white/15 text-[10px] text-amber-300 hover:text-amber-200 transition-colors font-mono"
+                          title="Tarihin yanına güncel saati ekle"
+                        >
+                          + Saat
                         </button>
                       </div>
 

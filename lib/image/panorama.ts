@@ -3,22 +3,23 @@ import JSZip from "jszip";
 
 export interface PanoramaSplitOptions {
   sliceCount: 2 | 3 | 4;
+  aspectRatio?: "4:5" | "1:1"; // default 4:5
   verticalPanPercent: number; // 0 (top) - 100 (bottom), default 50 (center)
   targetSlideWidth?: number; // default 1080
 }
 
 /**
- * Splits an image into N seamless 4:5 Instagram carousel vertical slides
+ * Splits an image into N seamless 4:5 or 1:1 Instagram carousel slides
  */
 export async function splitPanoramaImage(
   imageObj: HTMLImageElement,
   options: PanoramaSplitOptions
 ): Promise<PanoramaSlice[]> {
-  const { sliceCount, verticalPanPercent = 50, targetSlideWidth = 1080 } = options;
-  const slideHeight = Math.round(targetSlideWidth * 1.25); // 4:5 ratio -> 1080 x 1350
+  const { sliceCount, aspectRatio = "4:5", verticalPanPercent = 50, targetSlideWidth = 1080 } = options;
+  const slideHeight = aspectRatio === "1:1" ? targetSlideWidth : Math.round(targetSlideWidth * 1.25);
 
   const totalTargetWidth = targetSlideWidth * sliceCount;
-  const targetRatio = totalTargetWidth / slideHeight; // (4 * N) / 5
+  const targetRatio = totalTargetWidth / slideHeight;
 
   const origW = imageObj.naturalWidth;
   const origH = imageObj.naturalHeight;
@@ -102,7 +103,7 @@ export async function splitPanoramaImage(
     });
 
     const num = String(i + 1).padStart(2, "0");
-    const filename = `${num}_panorama_slayt${i + 1}.jpg`;
+    const filename = `${num}_panorama_part${i + 1}.jpg`;
 
     slices.push({
       index: i + 1,

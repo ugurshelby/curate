@@ -282,6 +282,12 @@ export const StoryCollageModal: React.FC<StoryCollageModalProps> = ({
                     onPointerDown={(e) => handleCellPointerDown(index, e)}
                     onPointerMove={(e) => handleCellPointerMove(index, e)}
                     onPointerUp={handleCellPointerUp}
+                    onWheel={(e) => {
+                      e.preventDefault();
+                      const delta = -e.deltaY * 0.002;
+                      const nextZoom = Math.min(3.0, Math.max(1.0, (slot.zoom || 1.0) + delta));
+                      handleCellZoomChange(index, nextZoom);
+                    }}
                     className={`relative overflow-hidden cursor-grab active:cursor-grabbing border-2 transition-all ${
                       isSelected
                         ? "border-amber-400 ring-2 ring-amber-400/30 z-10"
