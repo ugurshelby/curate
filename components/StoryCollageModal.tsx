@@ -283,7 +283,6 @@ export const StoryCollageModal: React.FC<StoryCollageModalProps> = ({
                     onPointerMove={(e) => handleCellPointerMove(index, e)}
                     onPointerUp={handleCellPointerUp}
                     onWheel={(e) => {
-                      e.preventDefault();
                       const delta = -e.deltaY * 0.002;
                       const nextZoom = Math.min(3.0, Math.max(1.0, (slot.zoom || 1.0) + delta));
                       handleCellZoomChange(index, nextZoom);

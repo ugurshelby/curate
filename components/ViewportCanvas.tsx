@@ -236,23 +236,52 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
     cropDirtyRef.current = false;
   };
 
-  // Wheel Zoom — one history checkpoint after the gesture settles
-  const handleWheel = (e: React.WheelEvent) => {
-    if (!image) return;
-    e.preventDefault();
-    if (wheelEndTimerRef.current === null) {
-      onCropGestureStart?.();
-    } else {
-      window.clearTimeout(wheelEndTimerRef.current);
-    }
-    const zoomDelta = e.deltaY > 0 ? -0.1 : 0.1;
-    const nextZoom = Math.max(1.0, Math.min(3.0, Number((image.crop.zoom + zoomDelta).toFixed(2))));
-    onUpdateCrop(image.crop.panX, image.crop.panY, nextZoom);
-    wheelEndTimerRef.current = window.setTimeout(() => {
-      wheelEndTimerRef.current = null;
-      onCropGestureEnd?.();
-    }, 320);
-  };
+  // Wheel Zoom — attached natively with passive: false to allow e.preventDefault()
+  const imageRef = useRef(image);
+  imageRef.current = image;
+  const onUpdateCropRef = useRef(onUpdateCrop);
+  onUpdateCropRef.current = onUpdateCrop;
+  const onCropGestureStartRef = useRef(onCropGestureStart);
+  onCropGestureStartRef.current = onCropGestureStart;
+  const onCropGestureEndRef = useRef(onCropGestureEnd);
+  onCropGestureEndRef.current = onCropGestureEnd;
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const handleNativeWheel = (e: WheelEvent) => {
+      const curImg = imageRef.current;
+      if (!curImg) return;
+      e.preventDefault();
+      if (wheelEndTimerRef.current === null) {
+        onCropGestureStartRef.current?.();
+      } else {
+        window.clearTimeout(wheelEndTimerRef.current);
+      }
+      const zoomDelta = e.deltaY > 0 ? -0.1 : 0.1;
+      const nextZoom = Math.max(1.0, Math.min(3.0, Number((curImg.crop.zoom + zoomDelta).toFixed(2))));
+      onUpdateCropRef.current(curImg.crop.panX, curImg.crop.panY, nextZoom);
+      wheelEndTimerRef.current = window.setTimeout(() => {
+        wheelEndTimerRef.current = null;
+        onCropGestureEndRef.current?.();
+      }, 320);
+    };
+
+    const handleNativeTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        // Prevent native browser page zoom while pinching canvas
+        e.preventDefault();
+      }
+    };
+
+    el.addEventListener("wheel", handleNativeWheel, { passive: false });
+    el.addEventListener("touchmove", handleNativeTouchMove, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", handleNativeWheel);
+      el.removeEventListener("touchmove", handleNativeTouchMove);
+    };
+  }, []);
 
   // Double Click / Double Tap zoom toggle
   const handleDoubleClick = () => {
@@ -338,7 +367,6 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
       className={`flex-1 relative overflow-hidden flex items-center justify-center bg-black min-h-0 w-full ${
         compact ? "p-2" : "p-3 sm:p-6"
       }`}
-      onWheel={handleWheel}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}

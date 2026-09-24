@@ -22,6 +22,7 @@ import { DumpFilmstrip } from "@/components/DumpFilmstrip";
 import { DumpGalleryView } from "@/components/DumpGalleryView";
 import { ControlToolbar } from "@/components/ControlToolbar";
 import { EditStagePills } from "@/components/EditStagePills";
+import { CanvasQuickControls } from "@/components/CanvasQuickControls";
 import { MobileStudioSheet } from "@/components/MobileStudioSheet";
 import { ProcessingModal } from "@/components/ProcessingModal";
 import { ExportModal } from "@/components/ExportModal";
@@ -84,6 +85,7 @@ export default function CurateStudioPage() {
   const [aestheticPresets, setAestheticPresets] = useState<AestheticPreset[]>([]);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const [isInspectorOpen, setIsInspectorOpen] = useState(true);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const historyRef = useRef(new EditHistory());
@@ -689,13 +691,16 @@ export default function CurateStudioPage() {
         e.preventDefault();
         if (e.shiftKey) handleRedo();
         else handleUndo();
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setIsInspectorOpen((prev) => !prev);
       } else if (e.key === "Escape") {
         if (isExportModalOpen) {
           setIsExportModalOpen(false);
-        } else if (focusCategory) {
-          setFocusCategory(null); // Stage 3 → Stage 2 pills
+        } else if (isInspectorOpen) {
+          setIsInspectorOpen(false);
         } else if (activeImageId) {
-          setActiveImageId(null); // Stage 2 → Stage 1 dump
+          setActiveImageId(null);
           setFocusCategory(null);
           setSplitView(false);
         }
@@ -714,7 +719,7 @@ export default function CurateStudioPage() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [images, activeImageId, isExportModalOpen, focusCategory, handleUndo, handleRedo]);
+  }, [images, activeImageId, isExportModalOpen, isInspectorOpen, focusCategory, handleUndo, handleRedo]);
 
   return (
     <main
@@ -782,6 +787,7 @@ export default function CurateStudioPage() {
             onSelectImage={(id) => {
               setActiveImageId(id);
               setFocusCategory(null);
+              setIsInspectorOpen(true);
             }}
             onSetReference={handleSetReference}
             onDeleteImage={handleDeleteImage}
@@ -798,101 +804,108 @@ export default function CurateStudioPage() {
             )}
           />
         ) : (
-          /* Stage 2/3: Active Photo Edit Studio — mobile sheet / desktop floating */
-          <>
-            {/* Canvas stage: flex-1, dynamically scales and shifts up in Stage 3 */}
-            <div
-              className={`flex-1 min-h-0 relative flex flex-col origin-center will-change-transform transition-transform duration-300 ${
-                focusCategory
-                  ? "-translate-y-2 scale-[0.88] sm:transform-none"
-                  : "transform-none"
-              }`}
-              style={{
-                transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
-                transitionDuration: "300ms",
-              }}
-            >
-              {splitView && activeImage && splitPeerId ? (
-                <SplitViewPreview
-                  left={activeImage}
-                  right={
-                    images.find((i) => i.id === splitPeerId) || activeImage
-                  }
-                  referenceImage={referenceImage}
-                  guide={guide}
-                  overlay={overlay}
-                  showOriginal={showOriginal}
-                  onUpdateCropBoth={handleUpdateCropBoth}
-                  onSetShowOriginal={setShowOriginal}
-                  onCropGestureStart={handleCropGestureStart}
-                  onCropGestureEnd={handleCropGestureEnd}
-                />
-              ) : (
-                <ViewportCanvas
-                  image={activeImage}
-                  referenceImage={referenceImage}
-                  guide={guide}
-                  overlay={overlay}
-                  showOriginal={showOriginal}
-                  onUpdateCrop={handleUpdateCrop}
-                  onSetShowOriginal={setShowOriginal}
-                  onCropGestureStart={handleCropGestureStart}
-                  onCropGestureEnd={handleCropGestureEnd}
-                />
-              )}
+          /* Stage 2/3: Active Photo Edit Studio — Apple Pro Workspace */
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            {/* Main Studio Area: Canvas + Docked Apple Studio Inspector */}
+            <div className="flex-1 min-h-0 flex overflow-hidden relative">
+              {/* Canvas stage: completely unobstructed, auto-centered */}
+              <div className="flex-1 min-h-0 relative flex flex-col overflow-hidden bg-black">
+                {splitView && activeImage && splitPeerId ? (
+                  <SplitViewPreview
+                    left={activeImage}
+                    right={
+                      images.find((i) => i.id === splitPeerId) || activeImage
+                    }
+                    referenceImage={referenceImage}
+                    guide={guide}
+                    overlay={overlay}
+                    showOriginal={showOriginal}
+                    onUpdateCropBoth={handleUpdateCropBoth}
+                    onSetShowOriginal={setShowOriginal}
+                    onCropGestureStart={handleCropGestureStart}
+                    onCropGestureEnd={handleCropGestureEnd}
+                  />
+                ) : (
+                  <ViewportCanvas
+                    image={activeImage}
+                    referenceImage={referenceImage}
+                    guide={guide}
+                    overlay={overlay}
+                    showOriginal={showOriginal}
+                    onUpdateCrop={handleUpdateCrop}
+                    onSetShowOriginal={setShowOriginal}
+                    onCropGestureStart={handleCropGestureStart}
+                    onCropGestureEnd={handleCropGestureEnd}
+                  />
+                )}
 
-              {/* Desktop floating pills + focus panel */}
-              <EditStagePills
-                layout="floating"
-                activeCategory={focusCategory}
-                onSelect={setFocusCategory}
-                splitView={splitView}
-                onToggleSplitView={handleToggleSplitView}
-                canUndo={canUndo}
-                canRedo={canRedo}
-                onUndo={handleUndo}
-                onRedo={handleRedo}
-                onBatchSync={handleBatchSync}
-                syncSuccess={syncSuccess}
-              />
-              <ControlToolbar
-                layout="floating"
-                image={activeImage}
-                images={images}
-                referenceImageId={referenceImageId}
-                activeGuide={guide}
-                activeOverlay={overlay}
-                showOriginal={showOriginal}
-                onUpdateCropRatio={handleUpdateCropRatio}
-                onUpdateZoom={(z) => {
-                  if (!activeImage) return;
-                  handleCropGestureStart();
-                  handleUpdateCrop(activeImage.crop.panX, activeImage.crop.panY, z);
-                  handleCropGestureEnd();
-                }}
-                onUpdateGuide={setGuide}
-                onUpdateOverlay={setOverlay}
-                onUpdateFilters={handleUpdateFilters}
-                onUpdateBorder={handleUpdateBorder}
-                onUpdateTimestamp={handleUpdateTimestamp}
-                onBatchSync={handleBatchSync}
-                onResetFilters={handleResetFilters}
-                onSetShowOriginal={setShowOriginal}
-                onUpdateUpscale={handleUpdateUpscale}
-                onExportSingle={handleExportSingle}
-                onExportDump={() => setIsExportModalOpen(true)}
-                onExitEdit={() => {
-                  setActiveImageId(null);
-                  setFocusCategory(null);
-                  setSplitView(false);
-                }}
-                focusCategory={focusCategory}
-                onCloseFocus={() => setFocusCategory(null)}
-                aestheticPresets={aestheticPresets}
-                onSaveAesthetic={handleSaveAesthetic}
-                onApplyAesthetic={handleApplyAesthetic}
-                onDeleteAesthetic={handleDeleteAesthetic}
-              />
+                {/* Desktop Apple Glass Capsule (Quick Canvas Controls) */}
+                <div className="hidden sm:block">
+                  <CanvasQuickControls
+                    canUndo={canUndo}
+                    canRedo={canRedo}
+                    onUndo={handleUndo}
+                    onRedo={handleRedo}
+                    showOriginal={showOriginal}
+                    onSetShowOriginal={setShowOriginal}
+                    splitView={splitView}
+                    onToggleSplitView={handleToggleSplitView}
+                    onBatchSync={handleBatchSync}
+                    syncSuccess={syncSuccess}
+                    isInspectorOpen={isInspectorOpen}
+                    onToggleInspector={() => setIsInspectorOpen((v) => !v)}
+                    onExitStudio={() => {
+                      setActiveImageId(null);
+                      setFocusCategory(null);
+                      setSplitView(false);
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Desktop Apple Studio Inspector (Docked Right Sidebar) */}
+              {isInspectorOpen && (
+                <div className="hidden sm:flex flex-col w-84 md:w-88 lg:w-96 border-l border-white/10 bg-neutral-950/85 backdrop-blur-2xl h-full overflow-hidden shadow-2xl z-20 shrink-0 transition-all duration-300">
+                  <ControlToolbar
+                    layout="sidebar"
+                    image={activeImage}
+                    images={images}
+                    referenceImageId={referenceImageId}
+                    activeGuide={guide}
+                    activeOverlay={overlay}
+                    showOriginal={showOriginal}
+                    onUpdateCropRatio={handleUpdateCropRatio}
+                    onUpdateZoom={(z) => {
+                      if (!activeImage) return;
+                      handleCropGestureStart();
+                      handleUpdateCrop(activeImage.crop.panX, activeImage.crop.panY, z);
+                      handleCropGestureEnd();
+                    }}
+                    onUpdateGuide={setGuide}
+                    onUpdateOverlay={setOverlay}
+                    onUpdateFilters={handleUpdateFilters}
+                    onUpdateBorder={handleUpdateBorder}
+                    onUpdateTimestamp={handleUpdateTimestamp}
+                    onBatchSync={handleBatchSync}
+                    onResetFilters={handleResetFilters}
+                    onSetShowOriginal={setShowOriginal}
+                    onUpdateUpscale={handleUpdateUpscale}
+                    onExportSingle={handleExportSingle}
+                    onExportDump={() => setIsExportModalOpen(true)}
+                    onExitEdit={() => {
+                      setActiveImageId(null);
+                      setFocusCategory(null);
+                      setSplitView(false);
+                    }}
+                    focusCategory={focusCategory}
+                    onCloseFocus={() => setIsInspectorOpen(false)}
+                    aestheticPresets={aestheticPresets}
+                    onSaveAesthetic={handleSaveAesthetic}
+                    onApplyAesthetic={handleApplyAesthetic}
+                    onDeleteAesthetic={handleDeleteAesthetic}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Mobile iOS-style bottom sheet (transform-only) */}
@@ -940,7 +953,10 @@ export default function CurateStudioPage() {
               onSaveAesthetic={handleSaveAesthetic}
               onApplyAesthetic={handleApplyAesthetic}
               onDeleteAesthetic={handleDeleteAesthetic}
-              onSelectImage={setActiveImageId}
+              onSelectImage={(id) => {
+                setActiveImageId(id);
+                setIsInspectorOpen(true);
+              }}
               onSetReference={handleSetReference}
               onDeleteImage={handleDeleteImage}
               onReorder={handleReorder}
@@ -948,19 +964,23 @@ export default function CurateStudioPage() {
             />
 
             {/* Desktop filmstrip */}
-            <div className="hidden sm:block shrink-0">
+            <div className="hidden sm:block border-t border-white/10 shrink-0">
               <DumpFilmstrip
                 images={images}
                 activeImageId={activeImageId}
                 referenceImageId={referenceImageId}
-                onSelectImage={setActiveImageId}
+                onSelectImage={(id) => {
+                  setActiveImageId(id);
+                  setFocusCategory(null);
+                  setIsInspectorOpen(true);
+                }}
                 onSetReference={handleSetReference}
                 onDeleteImage={handleDeleteImage}
                 onReorder={handleReorder}
                 onUploadClick={() => fileInputRef.current?.click()}
               />
             </div>
-          </>
+          </div>
         )}
       </div>
 

@@ -86,15 +86,25 @@ interface ControlToolbarProps {
   onSaveAesthetic: (name: string) => void;
   onApplyAesthetic: (preset: AestheticPreset) => void;
   onDeleteAesthetic: (id: string) => void;
-  /** floating = desktop overlay; sheet = mobile bottom sheet */
-  layout?: "floating" | "sheet";
+  /** floating = desktop overlay; sheet = mobile bottom sheet; sidebar = docked desktop inspector */
+  layout?: "floating" | "sheet" | "sidebar";
 }
 
-type TabType = "presets" | "color" | "crop" | "frame" | "overlay" | "upscale" | "export";
+type TabType = "presets" | "color" | "analog" | "crop" | "frame" | "overlay" | "upscale" | "export";
+
+const SIDEBAR_TABS: Array<{ id: TabType; label: string; icon: React.ReactNode }> = [
+  { id: "presets", label: "Filtreler", icon: <Palette className="w-3.5 h-3.5" /> },
+  { id: "color", label: "Renk & Işık", icon: <Sun className="w-3.5 h-3.5" /> },
+  { id: "analog", label: "Analog", icon: <Sparkles className="w-3.5 h-3.5" /> },
+  { id: "crop", label: "Kırpma", icon: <Crop className="w-3.5 h-3.5" /> },
+  { id: "frame", label: "Çerçeve", icon: <Frame className="w-3.5 h-3.5" /> },
+  { id: "upscale", label: "Lanczos", icon: <Zap className="w-3.5 h-3.5" /> },
+  { id: "export", label: "Dışa Aktar", icon: <Download className="w-3.5 h-3.5" /> },
+];
 
 function focusToTab(cat: FocusCategory): TabType {
   if (cat === "preset-color") return "presets";
-  if (cat === "analog") return "color";
+  if (cat === "analog") return "analog";
   if (cat === "frame") return "frame";
   if (cat === "size-crop") return "crop";
   return "presets";
@@ -139,15 +149,18 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
     }
   }, [focusCategory]);
 
+  const isSidebar = layout === "sidebar";
+  const isSheet = layout === "sheet";
+
   // Reinhard lives only under Preset/Color; Analog focus is texture-only
-  const showPresets = focusCategory === "preset-color" && activeTab === "presets";
-  const showReinhard = focusCategory === "preset-color" && activeTab === "color";
-  const showAnalog = focusCategory === "analog";
-  const showCrop = focusCategory === "size-crop" && activeTab === "crop";
-  const showFrame = focusCategory === "frame";
-  const showOverlay = focusCategory === "size-crop" && activeTab === "overlay";
-  const showUpscale = focusCategory === "size-crop" && activeTab === "upscale";
-  const showExport = focusCategory === "size-crop" && activeTab === "export";
+  const showPresets = isSidebar ? activeTab === "presets" : (focusCategory === "preset-color" && activeTab === "presets");
+  const showReinhard = isSidebar ? activeTab === "color" : (focusCategory === "preset-color" && activeTab === "color");
+  const showAnalog = isSidebar ? activeTab === "analog" : (focusCategory === "analog");
+  const showCrop = isSidebar ? activeTab === "crop" : (focusCategory === "size-crop" && activeTab === "crop");
+  const showFrame = isSidebar ? activeTab === "frame" : (focusCategory === "frame");
+  const showOverlay = isSidebar ? activeTab === "overlay" : (focusCategory === "size-crop" && activeTab === "overlay");
+  const showUpscale = isSidebar ? activeTab === "upscale" : (focusCategory === "size-crop" && activeTab === "upscale");
+  const showExport = isSidebar ? activeTab === "export" : (focusCategory === "size-crop" && activeTab === "export");
   const [selectedPresetId, setSelectedPresetId] = useState<string>("ig-retina");
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false); // unused in Stage 3 focus
   const [syncSuccess, setSyncSuccess] = useState<boolean>(false);
@@ -164,8 +177,8 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
 
   if (!image) return null;
 
-  // Stage 2: floating pills only — no slider panel
-  if (!focusCategory) return null;
+  // In sidebar mode, panel is always accessible. In floating mode, wait for focus.
+  if (!isSidebar && !focusCategory) return null;
 
   const { crop, filters } = image;
   const currentUpscale = image.upscaleFactor || 1;
@@ -222,148 +235,9 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
     } catch {}
   };
 
-  const isSheet = layout === "sheet";
-
-  return (
-    <div
-      style={
-        isSheet
-          ? undefined
-          : {
-              transform: `translate3d(calc(-50% + ${offset.x}px), ${offset.y}px, 0)`,
-            }
-      }
-      className={
-        isSheet
-          ? "relative w-full px-3 z-30 pointer-events-auto select-none"
-          : "absolute bottom-20 left-1/2 w-full max-w-xl px-4 z-30 pointer-events-none select-none transition-transform duration-75 hidden sm:block"
-      }
-    >
-      {/* Collapsed mode disabled — Stage 2 pills + Stage 3 focus */}
-      {false && isCollapsed ? (
-        <div
-          onPointerDown={handleDragPointerDown}
-          onPointerMove={handleDragPointerMove}
-          onPointerUp={handleDragPointerUp}
-          className="glass-toolbar rounded-full py-2 px-4 mx-auto w-fit flex items-center gap-3 pointer-events-auto cursor-grab active:cursor-grabbing shadow-glass border border-white/15"
-        >
-          <GripHorizontal className="w-4 h-4 text-white/40" />
-
-          <button
-            onClick={() => setIsCollapsed(false)}
-            className="pressable flex items-center gap-2 text-xs font-semibold text-white hover:text-amber-300 transition-colors"
-          >
-            <Sliders className="w-3.5 h-3.5 text-amber-400" />
-            <span>Paneli Aç</span>
-            <ChevronUp className="w-3.5 h-3.5 text-white/60" />
-          </button>
-
-          <div className="h-3 w-[1px] bg-white/20" />
-
-          <button
-            onClick={handleTriggerBatchSync}
-            className={`pressable text-xs flex items-center gap-1.5 transition-colors ${
-              syncSuccess ? "text-emerald-400" : "text-amber-400 hover:text-amber-300"
-            }`}
-            title="Tüm Seriye Eşitle (Ratio Hariç)"
-          >
-            {syncSuccess ? <Check className="w-3.5 h-3.5" /> : <CopyCheck className="w-3.5 h-3.5" />}
-            <span className="hidden sm:inline">{syncSuccess ? "Eşitlendi!" : "Seriye Eşitle"}</span>
-          </button>
-
-          <div className="h-3 w-[1px] bg-white/20" />
-
-          <button
-            onClick={onExitEdit}
-            className="pressable text-xs text-white/60 hover:text-rose-400 flex items-center gap-1 transition-colors"
-            title="Düzenlemeyi Kapat (Esc)"
-          >
-            <X className="w-3.5 h-3.5" />
-            <span>Kapat</span>
-          </button>
-        </div>
-      ) : (
-        /* 2. FULL EXPANDED TOOLBAR */
-        <div className={`pointer-events-auto space-y-2.5 ${isSheet ? "p-2 max-h-[48vh] overflow-y-auto pr-1" : "glass-toolbar rounded-2xl p-3 shadow-glass border border-white/15"}`} onPointerDown={(e) => { if (isSheet) e.stopPropagation(); }}>
-          {/* Drag Handle & Top Controls Row — desktop floating only */}
-          <div
-            onPointerDown={handleDragPointerDown}
-            onPointerMove={handleDragPointerMove}
-            onPointerUp={handleDragPointerUp}
-            className={`flex items-center justify-between cursor-grab active:cursor-grabbing py-0.5 border-b border-white/10 group select-none ${isSheet ? "hidden" : ""}`}
-          >
-            <div className="flex items-center gap-2">
-              <GripHorizontal className="w-3.5 h-3.5 text-white/40 group-hover:text-white/70 transition-colors" />
-              <button
-                onClick={handleTriggerBatchSync}
-                className={`pressable px-2 py-0.5 rounded-md text-[10px] font-mono flex items-center gap-1 transition-all ${
-                  syncSuccess
-                    ? "bg-emerald-500 text-black font-semibold"
-                    : "bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-400 hover:text-black"
-                }`}
-                title="Analog filtreleri, cerceve ve tarih damgasini serideki tum fotografara senkronize eder (En-boy oranlari korunur)"
-              >
-                {syncSuccess ? (
-                  <>
-                    <Check className="w-3 h-3 text-current" />
-                    <span>Seriye Eşitlendi!</span>
-                  </>
-                ) : (
-                  <>
-                    <CopyCheck className="w-3 h-3 text-current" />
-                    <span>Tüm Seriye Eşitle (Ratio Hariç)</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div className="w-8 h-1 bg-white/20 group-hover:bg-white/40 rounded-full transition-colors hidden sm:block" />
-
-            <div className="flex items-center gap-1">
-              <button
-                onClick={onCloseFocus}
-                className="p-1 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-                title="Pillere Dön (Esc)"
-              >
-                <ChevronDown className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                onClick={onCloseFocus}
-                className="p-1 rounded-md text-white/60 hover:text-rose-400 hover:bg-rose-500/20 transition-colors"
-                title="Odaktan Çık"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Focus Category Header (Stage 3) — hidden on mobile sheet (tabs are persistent outside) */}
-          <div className={`flex items-center justify-between border-b border-white/10 pb-2 ${isSheet ? "hidden" : ""}`}>
-            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">
-              {focusCategory === "preset-color" && (
-                <>
-                  <button onClick={() => setActiveTab("presets")} className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium ${activeTab === "presets" ? "bg-white text-black font-semibold" : "text-neutral-400 hover:text-white"}`}>Film LUT</button>
-                  <button onClick={() => setActiveTab("color")} className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium ${activeTab === "color" ? "bg-white text-black font-semibold" : "text-neutral-400 hover:text-white"}`}>Renk Eşle</button>
-                </>
-              )}
-              {focusCategory === "analog" && <span className="text-xs font-semibold text-white px-1">Analog Doku</span>}
-              {focusCategory === "frame" && <span className="text-xs font-semibold text-white px-1">Cerceve & Damga</span>}
-              {focusCategory === "size-crop" && (
-                <>
-                  <button onClick={() => setActiveTab("crop")} className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium ${activeTab === "crop" ? "bg-white text-black font-semibold" : "text-neutral-400"}`}>Kırpma</button>
-                  <button onClick={() => setActiveTab("upscale")} className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium ${activeTab === "upscale" ? "bg-amber-400 text-black font-semibold" : "text-amber-400/90"}`}>Upscale</button>
-                  <button onClick={() => setActiveTab("export")} className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium ${activeTab === "export" ? "bg-white text-black font-semibold" : "text-neutral-400"}`}>Export</button>
-                  <button onClick={() => setActiveTab("overlay")} className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium ${activeTab === "overlay" ? "bg-white text-black font-semibold" : "text-neutral-400"}`}>Simülatör</button>
-                </>
-              )}
-            </div>
-            <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest hidden md:inline">
-              {image.name.slice(0, 10)}
-            </span>
-          </div>
-
-          {/* TAB 1: 35mm ANALOG FILM PRESETS */}
+  const tabPanels = (
+    <>
+      {/* TAB 1: 35mm ANALOG FILM PRESETS */}
           {showPresets && (
             <div className="space-y-2.5 pt-1">
               {/* Header & Filter Controls */}
@@ -1401,8 +1275,259 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
               </div>
             </div>
           )}
+    </>
+  );
+
+  if (isSidebar) {
+    return (
+      <div className="w-full h-full flex flex-col bg-neutral-950/85 backdrop-blur-2xl text-white select-none overflow-hidden border-l border-white/10">
+        {/* Top Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0 bg-neutral-900/40">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-amber-400 shadow-sm" />
+            <span className="text-xs font-semibold tracking-tight text-white">Studio Inspector</span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-neutral-300 border border-white/10">
+              {crop.aspectRatio.toUpperCase()}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleTriggerBatchSync}
+              className={`pressable px-2.5 py-1 rounded-lg text-[10px] font-mono flex items-center gap-1 transition-all ${
+                syncSuccess
+                  ? "bg-emerald-500 text-black font-semibold"
+                  : "bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-400 hover:text-black"
+              }`}
+              title="Analog filtreleri, çerçeve ve tarih damgasını serideki tüm fotoğraflara uygula"
+            >
+              {syncSuccess ? <Check className="w-3 h-3 text-current" /> : <CopyCheck className="w-3 h-3 text-current" />}
+              <span>{syncSuccess ? "Eşitlendi" : "Seriye Eşitle"}</span>
+            </button>
+
+            <button
+              onClick={onResetFilters}
+              className="pressable p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+              title="Filtreleri Sıfırla"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              onClick={onCloseFocus}
+              className="pressable p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+              title="Paneli Gizle"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-      )}
+
+        {/* Apple Segmented Tab Selector */}
+        <div className="px-3 pt-2.5 pb-2 border-b border-white/10 shrink-0 overflow-x-auto scrollbar-none bg-neutral-900/20">
+          <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-xl border border-white/5 min-w-max">
+            {SIDEBAR_TABS.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`pressable px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
+                    isActive
+                      ? "bg-white text-black font-semibold shadow-sm"
+                      : "text-neutral-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Scrollable Inspector Body */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {tabPanels}
+        </div>
+      </div>
+    );
+  }
+
+  // Floating / Mobile Sheet fallback:
+  return (
+    <div
+      style={
+        isSheet
+          ? undefined
+          : {
+              transform: `translate3d(calc(-50% + ${offset.x}px), ${offset.y}px, 0)`,
+            }
+      }
+      className={
+        isSheet
+          ? "relative w-full px-3 z-30 pointer-events-auto select-none"
+          : "absolute bottom-20 left-1/2 w-full max-w-xl px-4 z-30 pointer-events-none select-none transition-transform duration-75 hidden sm:block"
+      }
+    >
+      <div
+        className={`pointer-events-auto space-y-2.5 ${
+          isSheet
+            ? "p-2 max-h-[48vh] overflow-y-auto pr-1"
+            : "glass-toolbar rounded-2xl p-3 shadow-glass border border-white/15"
+        }`}
+        onPointerDown={(e) => {
+          if (isSheet) e.stopPropagation();
+        }}
+      >
+        {/* Drag Handle & Top Controls Row — desktop floating only */}
+        <div
+          onPointerDown={handleDragPointerDown}
+          onPointerMove={handleDragPointerMove}
+          onPointerUp={handleDragPointerUp}
+          className={`flex items-center justify-between cursor-grab active:cursor-grabbing py-0.5 border-b border-white/10 group select-none ${
+            isSheet ? "hidden" : ""
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <GripHorizontal className="w-3.5 h-3.5 text-white/40 group-hover:text-white/70 transition-colors" />
+            <button
+              onClick={handleTriggerBatchSync}
+              className={`pressable px-2 py-0.5 rounded-md text-[10px] font-mono flex items-center gap-1 transition-all ${
+                syncSuccess
+                  ? "bg-emerald-500 text-black font-semibold"
+                  : "bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-400 hover:text-black"
+              }`}
+              title="Analog filtreleri, cerceve ve tarih damgasini serideki tum fotografara senkronize eder (En-boy oranlari korunur)"
+            >
+              {syncSuccess ? (
+                <>
+                  <Check className="w-3 h-3 text-current" />
+                  <span>Seriye Eşitlendi!</span>
+                </>
+              ) : (
+                <>
+                  <CopyCheck className="w-3 h-3 text-current" />
+                  <span>Tüm Seriye Eşitle (Ratio Hariç)</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="w-8 h-1 bg-white/20 group-hover:bg-white/40 rounded-full transition-colors hidden sm:block" />
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onCloseFocus}
+              className="p-1 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+              title="Pillere Dön (Esc)"
+            >
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              onClick={onCloseFocus}
+              className="p-1 rounded-md text-white/60 hover:text-rose-400 hover:bg-rose-500/20 transition-colors"
+              title="Odaktan Çık"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Focus Category Header (Stage 3) — hidden on mobile sheet */}
+        <div
+          className={`flex items-center justify-between border-b border-white/10 pb-2 ${
+            isSheet ? "hidden" : ""
+          }`}
+        >
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">
+            {focusCategory === "preset-color" && (
+              <>
+                <button
+                  onClick={() => setActiveTab("presets")}
+                  className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium ${
+                    activeTab === "presets"
+                      ? "bg-white text-black font-semibold"
+                      : "text-neutral-400 hover:text-white"
+                  }`}
+                >
+                  Film LUT
+                </button>
+                <button
+                  onClick={() => setActiveTab("color")}
+                  className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium ${
+                    activeTab === "color"
+                      ? "bg-white text-black font-semibold"
+                      : "text-neutral-400 hover:text-white"
+                  }`}
+                >
+                  Renk Eşle
+                </button>
+              </>
+            )}
+            {focusCategory === "analog" && (
+              <span className="text-xs font-semibold text-white px-1">
+                Analog Doku
+              </span>
+            )}
+            {focusCategory === "frame" && (
+              <span className="text-xs font-semibold text-white px-1">
+                Cerceve & Damga
+              </span>
+            )}
+            {focusCategory === "size-crop" && (
+              <>
+                <button
+                  onClick={() => setActiveTab("crop")}
+                  className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium ${
+                    activeTab === "crop"
+                      ? "bg-white text-black font-semibold"
+                      : "text-neutral-400"
+                  }`}
+                >
+                  Kırpma
+                </button>
+                <button
+                  onClick={() => setActiveTab("upscale")}
+                  className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium ${
+                    activeTab === "upscale"
+                      ? "bg-amber-400 text-black font-semibold"
+                      : "text-amber-400/90"
+                  }`}
+                >
+                  Upscale
+                </button>
+                <button
+                  onClick={() => setActiveTab("export")}
+                  className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium ${
+                    activeTab === "export"
+                      ? "bg-white text-black font-semibold"
+                      : "text-neutral-400"
+                  }`}
+                >
+                  Export
+                </button>
+                <button
+                  onClick={() => setActiveTab("overlay")}
+                  className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium ${
+                    activeTab === "overlay"
+                      ? "bg-white text-black font-semibold"
+                      : "text-neutral-400"
+                  }`}
+                >
+                  Simülatör
+                </button>
+              </>
+            )}
+          </div>
+          <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest hidden md:inline">
+            {image.name.slice(0, 10)}
+          </span>
+        </div>
+
+        {tabPanels}
+      </div>
     </div>
   );
 };
