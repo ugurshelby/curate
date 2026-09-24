@@ -1,22 +1,53 @@
 import { AestheticPreset, BorderState, FilterState, TimestampState } from "./types";
+import { SIGNATURE_PRESETS, applySignaturePresetToFilterState } from "./image/film-presets";
+import { createDefaultFilters } from "./image/defaults";
 
 const STORAGE_KEY = "curate-studio:aesthetic-presets:v1";
 
+export function getDefaultSignatureAestheticPresets(): AestheticPreset[] {
+  return SIGNATURE_PRESETS.map((sig, index) => {
+    const base = createDefaultFilters();
+    const applied = applySignaturePresetToFilterState(sig);
+    return {
+      id: `signature_${sig.id}`,
+      name: sig.name,
+      createdAt: Date.now() - (SIGNATURE_PRESETS.length - index) * 1000,
+      filters: {
+        ...base,
+        ...applied,
+      } as FilterState,
+    };
+  });
+}
+
 export function loadAestheticPresets(): AestheticPreset[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return getDefaultSignatureAestheticPresets();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
+    if (!raw) {
+      const defaults = getDefaultSignatureAestheticPresets();
+      saveAestheticPresets(defaults);
+      return defaults;
+    }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      const defaults = getDefaultSignatureAestheticPresets();
+      saveAestheticPresets(defaults);
+      return defaults;
+    }
+    return parsed;
   } catch {
-    return [];
+    return getDefaultSignatureAestheticPresets();
   }
 }
 
 export function saveAestheticPresets(presets: AestheticPreset[]): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(presets));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(presets));
+  } catch (err) {
+    console.error("Failed to save aesthetic presets to localStorage", err);
+  }
 }
 
 export function createAestheticPreset(
@@ -40,6 +71,34 @@ export function upsertAestheticPreset(preset: AestheticPreset): AestheticPreset[
   const idx = list.findIndex((p) => p.id === preset.id);
   if (idx >= 0) list[idx] = preset;
   else list.unshift(preset);
+  saveAestheticPresets(list);
+  return list;
+}
+
+export function saveOrUpdateAestheticPreset(
+  name: string,
+  filters: FilterState,
+  border?: BorderState,
+  timestamp?: TimestampState
+): AestheticPreset[] {
+  const list = loadAestheticPresets();
+  const trimmed = name.trim();
+  const existingIdx = list.findIndex(
+    (p) => p.name.trim().toLowerCase() === trimmed.toLowerCase()
+  );
+
+  if (existingIdx >= 0) {
+    list[existingIdx] = {
+      ...list[existingIdx],
+      name: trimmed,
+      filters: { ...filters },
+      border: border ? { ...border } : undefined,
+      timestamp: timestamp ? { ...timestamp } : undefined,
+      createdAt: Date.now(),
+    };
+  } else {
+    list.unshift(createAestheticPreset(trimmed, filters, border, timestamp));
+  }
   saveAestheticPresets(list);
   return list;
 }

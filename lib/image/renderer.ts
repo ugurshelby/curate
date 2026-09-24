@@ -127,17 +127,41 @@ export async function renderProcessedImage(
   // Draw cropped and scaled image onto canvas (from ORIGINAL pixels every time)
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(
-    imageObj,
-    srcX,
-    srcY,
-    zoomedCropW,
-    zoomedCropH,
-    0,
-    0,
-    outW,
-    outH
-  );
+
+  if (crop.rotation || crop.flipHorizontal) {
+    ctx.save();
+    ctx.translate(outW / 2, outH / 2);
+    if (crop.rotation) {
+      ctx.rotate((crop.rotation * Math.PI) / 180);
+    }
+    if (crop.flipHorizontal) {
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(
+      imageObj,
+      srcX,
+      srcY,
+      zoomedCropW,
+      zoomedCropH,
+      -outW / 2,
+      -outH / 2,
+      outW,
+      outH
+    );
+    ctx.restore();
+  } else {
+    ctx.drawImage(
+      imageObj,
+      srcX,
+      srcY,
+      zoomedCropW,
+      zoomedCropH,
+      0,
+      0,
+      outW,
+      outH
+    );
+  }
 
   let currentData = ctx.getImageData(0, 0, outW, outH);
 

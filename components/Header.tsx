@@ -142,11 +142,11 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
           <button
             onClick={onOpenCollageModal}
-            className="pressable text-xs px-2.5 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 flex items-center gap-1.5 transition-colors"
+            className="pressable text-xs px-2.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 flex items-center gap-1.5 transition-colors"
             title="Story Kolaj"
           >
             <LayoutGrid className="w-3.5 h-3.5" />
-            <span>Story Kolaji</span>
+            <span>Story Kolaj</span>
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
@@ -208,7 +208,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onOpenCollageModal();
                 setMenuOpen(false);
               }}
-              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs text-purple-300 hover:bg-white/10 min-h-[44px]"
+              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs text-amber-300 hover:bg-white/10 min-h-[44px]"
             >
               <LayoutGrid className="w-4 h-4" />
               <span>Story Kolaj</span>

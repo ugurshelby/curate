@@ -123,7 +123,7 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
             <div>
               <h2 className="text-sm font-semibold text-white flex items-center gap-2">
                 <span>Kesintisiz Panorama Bölücü</span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-neutral-300">
+                <span className="text-[10px] font-sans font-medium px-2 py-0.5 rounded-full bg-white/10 text-neutral-300">
                   Instagram 4:5 Swipe
                 </span>
               </h2>
@@ -277,7 +277,7 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
                 onChange={(e) => setVerticalPan(parseInt(e.target.value, 10))}
                 className="w-full accent-amber-400 py-1.5 cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] text-neutral-500 font-mono">
+              <div className="flex justify-between text-[10px] text-neutral-500 font-sans">
                 <span>Üst</span>
                 <span>Merkez</span>
                 <span>Alt</span>
@@ -287,9 +287,9 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
 
           {/* 3. Interactive Seamless Carousel Preview */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs text-neutral-400">
-              <span>Kesintisiz Karusel Önizlemesi ({sliceCount} Parça)</span>
-              <span className="text-[11px] font-mono text-amber-300">
+            <div className="flex items-center justify-between text-xs text-neutral-400 font-sans">
+              <span className="font-medium text-white/90">Kesintisiz Karusel Önizlemesi ({sliceCount} Parça)</span>
+              <span className="text-[11px] font-sans font-medium text-amber-300">
                 Instagram Karusel Akışı (Soldan Sağa)
               </span>
             </div>
@@ -315,7 +315,7 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
                         />
 
                         {/* Slide Number Badge */}
-                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md border border-white/20 text-white font-mono text-[10px] font-bold shadow-md">
+                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md border border-white/20 text-white font-sans font-semibold text-[10px] shadow-md">
                           Slayt {slice.index}
                         </div>
 
@@ -329,7 +329,7 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
                         </button>
                       </div>
 
-                      <div className="p-2 text-center text-[10px] font-mono text-neutral-400 border-t border-white/10 bg-neutral-900/80 truncate">
+                      <div className="p-2 text-center text-[10px] font-sans text-neutral-400 border-t border-white/10 bg-neutral-900/80 truncate">
                         {slice.filename}
                       </div>
                     </div>
@@ -346,8 +346,8 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
 
         {/* Footer Actions */}
         <div className="px-6 py-4 border-t border-white/10 bg-neutral-950/80 flex flex-wrap items-center justify-between gap-3">
-          <div className="text-xs text-neutral-400 font-mono">
-            {slices.length > 0 && `${slices.length} adet 1080×1350 px (4:5) slayt hazır`}
+          <div className="text-xs text-neutral-400 font-sans">
+            {slices.length > 0 && `${slices.length} adet 1080×1350 px (4:5) kusursuz karusel slaytı hazır`}
           </div>
 
           <div className="flex items-center gap-2">

@@ -15,6 +15,9 @@ import {
   Check,
 } from "lucide-react";
 
+import { SIGNATURE_PRESETS } from "@/lib/image/film-presets";
+import { FilmPreset } from "@/lib/types";
+
 interface DumpGalleryViewProps {
   images: CurateImage[];
   referenceImageId: string | null;
@@ -24,6 +27,7 @@ interface DumpGalleryViewProps {
   onUploadClick: () => void;
   onOpenExportModal: () => void;
   onBatchSync?: () => void;
+  onBatchApplyPreset?: (preset: FilmPreset) => void;
   syncSuccess?: boolean;
   hasActiveEffects?: boolean;
 }
@@ -37,9 +41,20 @@ export const DumpGalleryView: React.FC<DumpGalleryViewProps> = ({
   onUploadClick,
   onOpenExportModal,
   onBatchSync,
+  onBatchApplyPreset,
   syncSuccess,
   hasActiveEffects,
 }) => {
+  const [batchPresetSuccess, setBatchPresetSuccess] = React.useState<string | null>(null);
+
+  const handleQuickBatchApply = (preset: FilmPreset) => {
+    if (onBatchApplyPreset) {
+      onBatchApplyPreset(preset);
+      setBatchPresetSuccess(preset.name);
+      setTimeout(() => setBatchPresetSuccess(null), 2200);
+    }
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-8 select-none">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -55,7 +70,7 @@ export const DumpGalleryView: React.FC<DumpGalleryViewProps> = ({
               </span>
             </div>
             <p className="text-xs text-neutral-400">
-              Stage 1 Dump — film şeridi kartları, Batch Sync ve Export. Düzenlemek için bir kareye tıklayın.
+              Stage 1 Dump — film şeridi kartları, tek tıkla seri preset eşitleme ve export.
             </p>
           </div>
 
@@ -92,6 +107,51 @@ export const DumpGalleryView: React.FC<DumpGalleryViewProps> = ({
             </button>
           </div>
         </div>
+
+        {/* 1-Click Signature Series Curation Bar (Spec 3.4) */}
+        {onBatchApplyPreset && images.length > 0 && (
+          <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span className="text-xs font-semibold text-white tracking-tight">
+                  Tüm Seriye Tek Tıkla Preset Uygula
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                  Uğur&apos;un İmzaları
+                </span>
+              </div>
+
+              {batchPresetSuccess && (
+                <span className="text-[11px] font-medium text-emerald-400 flex items-center gap-1 animate-pulse">
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{batchPresetSuccess} tüm seriye uygulandı!</span>
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+              {SIGNATURE_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => handleQuickBatchApply(preset)}
+                  className="pressable p-2 rounded-xl bg-white/[0.04] hover:bg-amber-400/15 border border-white/10 hover:border-amber-400/40 text-left transition-all active:scale-[0.97] group flex flex-col justify-between"
+                >
+                  <div className="flex items-center justify-between w-full mb-1">
+                    <span className="text-xs font-semibold text-white group-hover:text-amber-300 transition-colors">
+                      {preset.name}
+                    </span>
+                    <CopyCheck className="w-3 h-3 text-white/40 group-hover:text-amber-400" />
+                  </div>
+                  <span className="text-[10px] text-neutral-400 group-hover:text-neutral-300 truncate">
+                    {preset.tag}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Responsive Photo Cards Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">

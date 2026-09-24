@@ -52,6 +52,8 @@ interface MobileStudioSheetProps {
   syncSuccess?: boolean;
   onUpdateCropRatio: (ratio: AspectRatio) => void;
   onUpdateZoom: (zoom: number) => void;
+  onRotate90?: () => void;
+  onToggleFlipHorizontal?: () => void;
   onUpdateGuide: (guide: CompositionGuide) => void;
   onUpdateOverlay: (overlay: SocialOverlayType) => void;
   onUpdateFilters: (filters: Partial<CurateImage["filters"]>) => void;
@@ -294,10 +296,7 @@ export const MobileStudioSheet: React.FC<MobileStudioSheetProps> = (props) => {
           style={{ touchAction: "none" }}
         >
           <div className="w-9 h-1 bg-white/20 rounded-full mx-auto my-2" />
-          <div className="w-full px-2 pb-1 flex items-center justify-between gap-1">
-            <span className="text-[10px] font-mono text-white/40 px-1">
-              {snap === "expanded" ? "Acik" : "Kapali"}
-            </span>
+          <div className="w-full px-2 pb-1 flex items-center justify-center gap-1">
             <div
               className="flex items-center gap-1"
               onPointerDown={(e) => e.stopPropagation()}
@@ -363,6 +362,8 @@ export const MobileStudioSheet: React.FC<MobileStudioSheetProps> = (props) => {
               showOriginal={props.showOriginal}
               onUpdateCropRatio={props.onUpdateCropRatio}
               onUpdateZoom={props.onUpdateZoom}
+              onRotate90={props.onRotate90}
+              onToggleFlipHorizontal={props.onToggleFlipHorizontal}
               onUpdateGuide={props.onUpdateGuide}
               onUpdateOverlay={props.onUpdateOverlay}
               onUpdateFilters={props.onUpdateFilters}

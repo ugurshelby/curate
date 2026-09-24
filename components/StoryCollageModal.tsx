@@ -223,13 +223,13 @@ export const StoryCollageModal: React.FC<StoryCollageModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-neutral-950/60">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
               <LayoutGrid className="w-4 h-4" />
             </div>
             <div>
               <h2 className="text-sm font-semibold text-white flex items-center gap-2">
                 <span>Instagram Story Kolaj Stüdyosu</span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                <span className="text-[10px] font-sans font-medium px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
                   9:16 Dikey Dump
                 </span>
               </h2>
@@ -310,13 +310,13 @@ export const StoryCollageModal: React.FC<StoryCollageModalProps> = ({
                         />
                       </div>
                     ) : (
-                      <span className="text-[10px] text-neutral-500 font-mono">
+                      <span className="text-[10px] text-neutral-500 font-sans font-medium">
                         +{index + 1}
                       </span>
                     )}
 
                     {/* Cell index tag */}
-                    <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/75 backdrop-blur-md text-white font-mono text-[9px] font-bold pointer-events-none">
+                    <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/75 backdrop-blur-md text-white font-sans text-[9px] font-semibold pointer-events-none">
                       #{index + 1}
                     </div>
                   </div>
@@ -324,7 +324,7 @@ export const StoryCollageModal: React.FC<StoryCollageModalProps> = ({
               })}
             </div>
 
-            <span className="text-[11px] text-neutral-400 mt-2 flex items-center gap-1 font-mono">
+            <span className="text-[11px] text-neutral-400 mt-2 flex items-center gap-1 font-sans">
               <Move className="w-3 h-3 text-amber-400" />
               <span>Hücre içini sürükleyerek kadrajı ayarlayın</span>
             </span>
@@ -350,7 +350,7 @@ export const StoryCollageModal: React.FC<StoryCollageModalProps> = ({
                     }}
                     className={`py-2 px-1 rounded-xl border text-center transition-all ${
                       photoCount === count
-                        ? "bg-purple-500 text-white border-purple-500 font-bold shadow-sm"
+                        ? "bg-amber-400 text-black border-amber-400 font-bold shadow-sm"
                         : "bg-white/5 border-white/10 text-neutral-400 hover:text-white hover:bg-white/10"
                     }`}
                   >
@@ -437,7 +437,7 @@ export const StoryCollageModal: React.FC<StoryCollageModalProps> = ({
                 </span>
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="text-purple-400 hover:text-purple-300 flex items-center gap-1 font-medium transition-colors"
+                  className="text-amber-400 hover:text-amber-300 flex items-center gap-1 font-medium transition-colors"
                 >
                   <Upload className="w-3.5 h-3.5" />
                   <span>Cihazdan Yükle</span>
@@ -576,7 +576,7 @@ export const StoryCollageModal: React.FC<StoryCollageModalProps> = ({
 
         {/* Footer Actions */}
         <div className="px-6 py-4 border-t border-white/10 bg-neutral-950/80 flex flex-wrap items-center justify-between gap-3">
-          <div className="text-xs text-neutral-400 font-mono">
+          <div className="text-xs text-neutral-400 font-sans">
             Çıktı Formatı: 1080 × 1920 px (Instagram Story 9:16 Dikey)
           </div>
 
@@ -606,7 +606,7 @@ export const StoryCollageModal: React.FC<StoryCollageModalProps> = ({
             <button
               onClick={() => handleExport(false)}
               disabled={isExporting}
-              className="pressable px-4 py-2 rounded-xl bg-purple-500 hover:bg-purple-400 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-glass-sm"
+              className="pressable px-4 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-semibold flex items-center gap-1.5 transition-all shadow-glass-sm"
             >
               <Download className="w-3.5 h-3.5" />
               <span>{isExporting ? "İşleniyor..." : "Kolajı İndir (9:16 HD)"}</span>

@@ -22,6 +22,19 @@ export interface CropState {
   zoom: number; // 1.0 - 3.0
   panX: number; // normalized or px offset
   panY: number;
+  rotation?: number; // 0, 90, 180, 270
+  flipHorizontal?: boolean;
+}
+
+export interface SignaturePresetAnalog {
+  grain: number;
+  halation: number;
+  vignette: number;
+  lightLeak?: {
+    enabled: boolean;
+    type: LightLeakType;
+    amount: number;
+  };
 }
 
 export interface FilmPreset {
@@ -39,6 +52,10 @@ export interface FilmPreset {
   highlightsTint?: [number, number, number]; // [r, g, b] bias
   shadowsTint?: [number, number, number]; // [r, g, b] bias
   grainBase?: number; // suggested base grain
+  isSignature?: boolean;
+  category?: "signature" | "film";
+  contextNote?: string;
+  analogDefaults?: SignaturePresetAnalog;
 }
 
 export type LightLeakType = "warm-side" | "corner-flare" | "streak" | "subtle";

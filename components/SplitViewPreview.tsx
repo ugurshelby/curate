@@ -55,9 +55,9 @@ export const SplitViewPreview: React.FC<SplitViewPreviewProps> = ({
   };
 
   return (
-    <div className="flex-1 min-h-0 grid grid-cols-2 gap-2 p-2 bg-black">
-      <div className="relative min-h-0 flex flex-col rounded-xl overflow-hidden border border-white/10">
-        <div className="absolute top-2 left-2 z-40 text-[10px] font-mono px-2 py-0.5 rounded-full bg-black/70 border border-white/15 text-white/80 pointer-events-none">
+    <div className="w-full h-[65vh] sm:h-full sm:flex-1 grid grid-cols-2 gap-1.5 p-1 sm:p-2 bg-black items-stretch">
+      <div className="relative h-full min-h-0 flex flex-col rounded-xl overflow-hidden border border-white/10 bg-neutral-950">
+        <div className="absolute top-2 left-2 z-40 text-[10px] font-sans font-semibold px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/15 text-white pointer-events-none shadow-sm">
           A
         </div>
         <ViewportCanvas
@@ -73,9 +73,10 @@ export const SplitViewPreview: React.FC<SplitViewPreviewProps> = ({
           compact
         />
       </div>
-      <div className="relative min-h-0 flex flex-col rounded-xl overflow-hidden border border-white/10">
-        <div className="absolute top-2 left-2 z-40 text-[10px] font-mono px-2 py-0.5 rounded-full bg-black/70 border border-white/15 text-white/80 pointer-events-none">
-          B · sync
+      <div className="relative h-full min-h-0 flex flex-col rounded-xl overflow-hidden border border-white/10 bg-neutral-950">
+        <div className="absolute top-2 left-2 z-40 text-[10px] font-sans font-semibold px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md border border-white/15 text-white pointer-events-none flex items-center gap-1 shadow-sm">
+          <span>B</span>
+          <span className="text-amber-400 font-normal">· sync</span>
         </div>
         <ViewportCanvas
           image={rightSynced}

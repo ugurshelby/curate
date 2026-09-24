@@ -14,6 +14,7 @@ import {
   PanoramaSlice,
   FocusCategory,
   AestheticPreset,
+  FilmPreset,
 } from "@/lib/types";
 import { Header } from "@/components/Header";
 import { ViewportCanvas } from "@/components/ViewportCanvas";
@@ -51,9 +52,11 @@ import {
   loadAestheticPresets,
   createAestheticPreset,
   upsertAestheticPreset,
+  saveOrUpdateAestheticPreset,
   deleteAestheticPreset,
   applyAestheticToSeries,
 } from "@/lib/aesthetic-presets";
+import { applySignaturePresetToFilterState } from "@/lib/image/film-presets";
 import { Upload, Sparkles } from "lucide-react";
 
 export default function CurateStudioPage() {
@@ -381,6 +384,44 @@ export default function CurateStudioPage() {
     );
   };
 
+  // 90° Clockwise rotation for active image
+  const handleRotate90 = () => {
+    if (!activeImageId) return;
+    pushHistory();
+    setImages((prev) =>
+      prev.map((img) =>
+        img.id === activeImageId
+          ? {
+              ...img,
+              crop: {
+                ...img.crop,
+                rotation: ((img.crop.rotation || 0) + 90) % 360,
+              },
+            }
+          : img
+      )
+    );
+  };
+
+  // Flip horizontal (mirror) for active image
+  const handleToggleFlipHorizontal = () => {
+    if (!activeImageId) return;
+    pushHistory();
+    setImages((prev) =>
+      prev.map((img) =>
+        img.id === activeImageId
+          ? {
+              ...img,
+              crop: {
+                ...img.crop,
+                flipHorizontal: !img.crop.flipHorizontal,
+              },
+            }
+          : img
+      )
+    );
+  };
+
   // Update filters for active image (history coalesced ~800ms per gesture)
   const handleUpdateFilters = (newFilters: Partial<CurateImage["filters"]>) => {
     if (!activeImageId) return;
@@ -549,14 +590,30 @@ export default function CurateStudioPage() {
 
   const handleSaveAesthetic = (name: string) => {
     if (!activeImage) return;
-    const preset = createAestheticPreset(
+    const list = saveOrUpdateAestheticPreset(
       name,
       activeImage.filters,
       activeImage.border,
       activeImage.timestamp
     );
-    setAestheticPresets(upsertAestheticPreset(preset));
+    setAestheticPresets(list);
   };
+
+  const handleBatchApplyPreset = useCallback((preset: FilmPreset) => {
+    pushHistory();
+    const updates = applySignaturePresetToFilterState(preset);
+    setImages((prev) =>
+      prev.map((img) => ({
+        ...img,
+        filters: {
+          ...img.filters,
+          ...updates,
+        },
+      }))
+    );
+    setSyncSuccess(true);
+    window.setTimeout(() => setSyncSuccess(false), 2000);
+  }, [pushHistory]);
 
   const handleApplyAesthetic = (preset: AestheticPreset) => {
     pushHistory();
@@ -794,6 +851,7 @@ export default function CurateStudioPage() {
             onUploadClick={() => fileInputRef.current?.click()}
             onOpenExportModal={() => setIsExportModalOpen(true)}
             onBatchSync={handleBatchSync}
+            onBatchApplyPreset={handleBatchApplyPreset}
             syncSuccess={syncSuccess}
             hasActiveEffects={Boolean(
               images[0] &&
@@ -881,6 +939,8 @@ export default function CurateStudioPage() {
                       handleUpdateCrop(activeImage.crop.panX, activeImage.crop.panY, z);
                       handleCropGestureEnd();
                     }}
+                    onRotate90={handleRotate90}
+                    onToggleFlipHorizontal={handleToggleFlipHorizontal}
                     onUpdateGuide={setGuide}
                     onUpdateOverlay={setOverlay}
                     onUpdateFilters={handleUpdateFilters}
@@ -903,6 +963,9 @@ export default function CurateStudioPage() {
                     onSaveAesthetic={handleSaveAesthetic}
                     onApplyAesthetic={handleApplyAesthetic}
                     onDeleteAesthetic={handleDeleteAesthetic}
+                    splitView={splitView}
+                    onToggleSplitView={handleToggleSplitView}
+                    onSetReference={handleSetReference}
                   />
                 </div>
               )}
@@ -934,6 +997,8 @@ export default function CurateStudioPage() {
                 handleUpdateCrop(activeImage.crop.panX, activeImage.crop.panY, z);
                 handleCropGestureEnd();
               }}
+              onRotate90={handleRotate90}
+              onToggleFlipHorizontal={handleToggleFlipHorizontal}
               onUpdateGuide={setGuide}
               onUpdateOverlay={setOverlay}
               onUpdateFilters={handleUpdateFilters}

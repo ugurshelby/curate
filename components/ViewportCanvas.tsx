@@ -365,7 +365,7 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
     <div
       ref={containerRef}
       className={`flex-1 relative overflow-hidden flex items-center justify-center bg-black min-h-0 w-full ${
-        compact ? "p-2" : "p-3 sm:p-6"
+        compact ? "p-0 h-full w-full" : "px-1.5 py-1 sm:p-4 sm:pt-2"
       }`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -375,10 +375,10 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
       <div
         className={`relative rounded-xl overflow-hidden border border-white/20 shadow-2xl bg-neutral-950 flex items-center justify-center touch-none cursor-grab active:cursor-grabbing select-none ${
           compact
-            ? "max-h-full max-w-full"
+            ? "w-full h-full"
             : "max-h-full max-w-full sm:max-h-[calc(100dvh-210px)] sm:max-w-[calc(100vw-32px)]"
         }`}
-        style={{ aspectRatio: calculatedAspectRatio }}
+        style={compact ? undefined : { aspectRatio: calculatedAspectRatio }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -388,7 +388,9 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
         {/* Render Canvas (~1080p proxy) */}
         <canvas
           ref={canvasRef}
-          className="w-full h-full object-contain pointer-events-none"
+          className={`w-full h-full pointer-events-none ${
+            compact ? "object-cover" : "object-contain"
+          }`}
         />
 
         {/* Composition Guides */}
@@ -426,35 +428,22 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
 
         <SocialOverlay type={overlay} />
 
-        {/* Status Pills */}
+        {/* Status Pills — Clean Apple Minimalist Overlay */}
         <div className="absolute top-3 left-3 z-30 pointer-events-none flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white/80">
-            {image.crop.aspectRatio}
-          </span>
-          {image.crop.zoom > 1 && (
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white/80">
-              {image.crop.zoom.toFixed(1)}x
-            </span>
-          )}
-          {proxyInfo.scale < 1 && (
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">
-              Proxy {proxyInfo.width}×{proxyInfo.height}
-            </span>
-          )}
           {showOriginal && (
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+            <span className="text-[10px] font-sans font-medium uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/25 text-amber-300 border border-amber-500/35 flex items-center gap-1 backdrop-blur-md shadow-sm">
               <Eye className="w-3 h-3" />
               <span>Orijinal</span>
             </span>
           )}
           {image.upscaleFactor > 1 && (
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40 flex items-center gap-1 font-semibold">
+            <span className="text-[10px] font-sans font-medium px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40 flex items-center gap-1 backdrop-blur-md shadow-sm">
               <Zap className="w-3 h-3 text-amber-400" />
               <span>{image.upscaleFactor}x Lanczos-3</span>
             </span>
           )}
           {isRendering && (
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-white/60">
+            <span className="text-[10px] font-sans px-2 py-0.5 rounded-full bg-white/10 text-white/60 backdrop-blur-md">
               …
             </span>
           )}
