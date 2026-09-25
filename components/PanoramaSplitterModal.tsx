@@ -13,11 +13,12 @@ import {
   Scissors,
   Download,
   Plus,
-  Sparkles,
   Upload,
   Check,
   MoveVertical,
   Hand,
+  Sliders,
+  Sparkles,
 } from "lucide-react";
 
 interface PanoramaSplitterModalProps {
@@ -41,13 +42,16 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [slices, setSlices] = useState<PanoramaSlice[]>([]);
   const [addedSuccess, setAddedSuccess] = useState<boolean>(false);
+  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
 
   // Drag-to-pan gesture state
   const isDraggingPanRef = useRef<boolean>(false);
   const dragStartYRef = useRef<number>(0);
   const startPanValueRef = useRef<number>(50);
+  const containerHeightRef = useRef<number>(280);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastGeneratedKeyRef = useRef<string>("");
 
   // Auto-select first image if available when opening
   useEffect(() => {
@@ -57,11 +61,27 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
     }
   }, [isOpen, selectedImageSrc, images]);
 
-  // Compute slices whenever image, slice count, aspect ratio, or vertical pan changes
-  const computeSlices = useCallback(async () => {
+  // Load natural dimensions of selected image for exact CSS preview geometry
+  useEffect(() => {
     if (!selectedImageSrc) {
-      setSlices([]);
+      setImageDimensions(null);
       return;
+    }
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.src = selectedImageSrc;
+  }, [selectedImageSrc]);
+
+  // Background/On-demand generator for full resolution 1080p JPEG slices
+  const generateFullSlices = useCallback(async (): Promise<PanoramaSlice[]> => {
+    if (!selectedImageSrc) return [];
+
+    const key = `${selectedImageSrc}_${sliceCount}_${aspectRatio}_${verticalPan}`;
+    if (slices.length > 0 && lastGeneratedKeyRef.current === key) {
+      return slices;
     }
 
     try {
@@ -83,67 +103,98 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
 
       const result = await splitPanoramaImage(img, options);
       setSlices(result);
-      setAddedSuccess(false);
+      lastGeneratedKeyRef.current = key;
+      return result;
     } catch (err) {
       console.error("Panorama split error:", err);
+      return [];
     } finally {
       setIsProcessing(false);
     }
-  }, [selectedImageSrc, sliceCount, aspectRatio, verticalPan]);
+  }, [selectedImageSrc, sliceCount, aspectRatio, verticalPan, slices]);
 
+  // Debounced background generation so blobs are ready when user clicks export
   useEffect(() => {
-    if (isOpen && selectedImageSrc) {
-      computeSlices();
-    }
-  }, [isOpen, selectedImageSrc, sliceCount, aspectRatio, verticalPan, computeSlices]);
+    if (!isOpen || !selectedImageSrc) return;
+    const timer = setTimeout(() => {
+      generateFullSlices();
+    }, 280);
+    return () => clearTimeout(timer);
+  }, [isOpen, selectedImageSrc, sliceCount, aspectRatio, verticalPan, generateFullSlices]);
 
   if (!isOpen) return null;
 
   const currentSourceImage =
     images.find((img) => img.id === selectedImageId || img.dataUrl === selectedImageSrc) || null;
 
-  const handleDownloadAllZip = async () => {
-    if (slices.length === 0) return;
-    const zipBlob = await createPanoramaZip(slices);
-    downloadBlob(zipBlob, `curate_panorama_${sliceCount}x_instagram.zip`);
-  };
-
-  const handleDownloadSingle = (slice: PanoramaSlice) => {
-    downloadBlob(slice.blob, slice.filename);
-  };
-
-  const handleAddSlices = () => {
-    if (slices.length === 0) return;
-    onAddSlicesToStudio(slices, currentSourceImage);
+  // Add to Studio series
+  const handleAddSlices = async () => {
+    const readySlices = await generateFullSlices();
+    if (readySlices.length === 0) return;
+    onAddSlicesToStudio(readySlices, currentSourceImage);
     setAddedSuccess(true);
     setTimeout(() => {
       onClose();
-    }, 900);
+    }, 850);
+  };
+
+  // Download all as ZIP
+  const handleDownloadAllZip = async () => {
+    const readySlices = await generateFullSlices();
+    if (readySlices.length === 0) return;
+    const zipBlob = await createPanoramaZip(readySlices);
+    downloadBlob(zipBlob, `curate_panorama_${sliceCount}x_instagram.zip`);
+  };
+
+  // Download single slice
+  const handleDownloadSingle = async (index: number) => {
+    const readySlices = await generateFullSlices();
+    const slice = readySlices.find((s) => s.index === index);
+    if (slice) {
+      downloadBlob(slice.blob, slice.filename);
+    }
   };
 
   // Direct Touch/Mouse Drag-to-Pan (Item 4)
   const handlePanPointerDown = (e: React.PointerEvent) => {
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    if (e.button !== 0 && e.pointerType === "mouse") return;
+    const target = e.currentTarget as HTMLElement;
+    target.setPointerCapture(e.pointerId);
     isDraggingPanRef.current = true;
     dragStartYRef.current = e.clientY;
     startPanValueRef.current = verticalPan;
+    containerHeightRef.current = target.clientHeight || 280;
   };
 
   const handlePanPointerMove = (e: React.PointerEvent) => {
     if (!isDraggingPanRef.current) return;
     const dy = e.clientY - dragStartYRef.current;
-    // Map vertical pixel drag to percentage offset
-    const deltaPercent = (dy / 200) * 100;
+    // Moving pointer UP (dy < 0) moves photo up, showing lower areas (pan % increases)
+    // Moving pointer DOWN (dy > 0) pulls photo down, showing upper areas (pan % decreases)
+    const panRange = Math.max(140, containerHeightRef.current);
+    const deltaPercent = -(dy / panRange) * 100;
     const nextPan = Math.max(0, Math.min(100, Math.round(startPanValueRef.current + deltaPercent)));
     setVerticalPan(nextPan);
   };
 
   const handlePanPointerUp = (e: React.PointerEvent) => {
+    if (!isDraggingPanRef.current) return;
     isDraggingPanRef.current = false;
     try {
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {}
   };
+
+  // Geometry calculations for instant 60 FPS CSS rendering
+  const origW = imageDimensions?.width || 1920;
+  const origH = imageDimensions?.height || 1080;
+  const imageAspect = origW / origH;
+  const targetSlideAspect = aspectRatio === "1:1" ? 1.0 : 0.8; // 4:5 = 0.8
+  const carouselAspect = sliceCount * targetSlideAspect;
+  const isTaller = imageAspect < carouselAspect;
+  const heightRatio = isTaller ? carouselAspect / imageAspect : 1.0;
+  const overflow = heightRatio - 1.0;
+  const translateYPercent = isTaller && overflow > 0 ? (verticalPan / 100) * overflow * (100 / heightRatio) : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fade-in select-none">
@@ -158,11 +209,11 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
               <h2 className="text-sm font-semibold text-white flex items-center gap-2">
                 <span>Kesintisiz Panorama Bölücü</span>
                 <span className="text-[10px] font-sans font-medium px-2 py-0.5 rounded-full bg-white/10 text-neutral-300">
-                  Instagram 4:5 Swipe
+                  Instagram Karusel
                 </span>
               </h2>
               <p className="text-[11px] text-neutral-400">
-                Görsel üzerine dokunup yukarı/aşağı sürükleyerek kadrajı belirleyin. Slaytlar kesintisiz bölünür.
+                Görseli sürükleyerek veya slider ile dikey kadrajı anlık ayarlayın. Parçalar kesintisiz bölünür.
               </p>
             </div>
           </div>
@@ -232,7 +283,7 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
             )}
           </div>
 
-          {/* 2. Slicing Controls & Direct Touch Framing */}
+          {/* 2. Slicing Controls & Framing Options */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white/[0.03] p-4 rounded-2xl border border-white/10">
             {/* Carousel Ratio */}
             <div className="space-y-2">
@@ -298,39 +349,53 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
               </div>
             </div>
 
-            {/* Direct Touch Framing Info HUD (Item 4: Hantal slider kaldırıldı) */}
+            {/* Dikey Kadraj Slider & Jump Buttons */}
             <div className="space-y-2 flex flex-col justify-between">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-neutral-300 flex items-center gap-1.5">
                   <MoveVertical className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Dikey Kadraj Konumu</span>
+                  <span>Dikey Kadraj</span>
                 </span>
                 <span className="font-mono text-amber-300 text-xs font-semibold">
                   %{verticalPan}
                 </span>
               </div>
-              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300/90 leading-tight">
-                Önizleme görseline dokunup <strong>yukarı/aşağı sürükleyerek</strong> dikey kadrajı serbestçe ayarlayın.
-              </div>
-              <div className="flex justify-between text-[10px] text-neutral-500 font-sans">
+
+              {/* Slider for ultra-smooth precision */}
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={verticalPan}
+                onChange={(e) => setVerticalPan(parseInt(e.target.value, 10))}
+                className="w-full accent-amber-400 cursor-pointer"
+              />
+
+              <div className="flex justify-between text-[10px] text-neutral-400 font-sans">
                 <button
                   type="button"
                   onClick={() => setVerticalPan(0)}
-                  className="hover:text-white transition-colors"
+                  className={`px-1.5 py-0.5 rounded transition-colors ${
+                    verticalPan === 0 ? "text-amber-300 bg-amber-400/10 font-semibold" : "hover:text-white"
+                  }`}
                 >
                   Üst (%0)
                 </button>
                 <button
                   type="button"
                   onClick={() => setVerticalPan(50)}
-                  className="hover:text-white transition-colors"
+                  className={`px-1.5 py-0.5 rounded transition-colors ${
+                    verticalPan === 50 ? "text-amber-300 bg-amber-400/10 font-semibold" : "hover:text-white"
+                  }`}
                 >
                   Merkez (%50)
                 </button>
                 <button
                   type="button"
                   onClick={() => setVerticalPan(100)}
-                  className="hover:text-white transition-colors"
+                  className={`px-1.5 py-0.5 rounded transition-colors ${
+                    verticalPan === 100 ? "text-amber-300 bg-amber-400/10 font-semibold" : "hover:text-white"
+                  }`}
                 >
                   Alt (%100)
                 </button>
@@ -338,24 +403,19 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
             </div>
           </div>
 
-          {/* 3. Interactive Seamless Carousel Preview (Drag-to-Pan Enabled) */}
+          {/* 3. Interactive Seamless Carousel Preview (Always Mounted & 60 FPS Reactive) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-neutral-400 font-sans">
               <span className="font-medium text-white/90">
                 Kesintisiz Karusel Önizlemesi ({sliceCount} Parça)
               </span>
               <span className="text-[11px] font-sans font-medium text-amber-300 flex items-center gap-1">
-                <Hand className="w-3 h-3 animate-bounce" />
-                <span>Görseli Yukarı/Aşağı Sürükleyerek Kadrajlayın</span>
+                <Hand className="w-3 h-3 text-amber-400" />
+                <span>Görseli sürükleyerek veya slider ile dikey kadrajı ayarlayın</span>
               </span>
             </div>
 
-            {isProcessing ? (
-              <div className="h-64 rounded-2xl bg-neutral-950 flex flex-col items-center justify-center gap-3 text-neutral-400 border border-white/10">
-                <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-                <span className="text-xs">Kesintisiz slaytlar hesaplanıyor...</span>
-              </div>
-            ) : slices.length > 0 ? (
+            {selectedImageSrc ? (
               <div
                 className="relative rounded-2xl bg-neutral-950 p-3 border border-white/15 cursor-ns-resize touch-none select-none group"
                 onPointerDown={handlePanPointerDown}
@@ -363,28 +423,81 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
                 onPointerUp={handlePanPointerUp}
                 onPointerCancel={handlePanPointerUp}
               >
-                {/* Floating Gesture Helper Tag */}
+                {/* Floating Gesture & Position Tag */}
                 <div className="absolute top-4 right-4 z-20 px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white font-sans text-[10px] font-medium flex items-center gap-1.5 pointer-events-none shadow-md">
                   <MoveVertical className="w-3 h-3 text-amber-400" />
-                  <span>Sürükle: %{verticalPan}</span>
+                  <span>Kadraj: %{verticalPan}</span>
+                  {isProcessing && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping ml-0.5" />
+                  )}
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {slices.map((slice) => (
+                {/* Slices Grid — Rendered via Instant 60 FPS GPU CSS Transform */}
+                <div
+                  className="grid gap-2"
+                  style={{
+                    gridTemplateColumns: `repeat(${sliceCount}, minmax(0, 1fr))`,
+                  }}
+                >
+                  {Array.from({ length: sliceCount }).map((_, idx) => (
                     <div
-                      key={slice.index}
-                      className="group/slide relative rounded-xl overflow-hidden border border-white/15 bg-black flex flex-col pointer-events-none"
+                      key={idx}
+                      className="group/slide relative rounded-xl overflow-hidden border border-white/15 bg-black flex flex-col pointer-events-none select-none"
                     >
-                      <div className="relative aspect-[4/5] w-full overflow-hidden">
-                        <img
-                          src={slice.dataUrl}
-                          alt={slice.filename}
-                          className="w-full h-full object-cover pointer-events-none"
-                        />
+                      {/* Fixed Aspect Container */}
+                      <div
+                        className="relative w-full overflow-hidden bg-neutral-950"
+                        style={{
+                          aspectRatio: aspectRatio === "1:1" ? "1/1" : "4/5",
+                        }}
+                      >
+                        {/* Unified Carousel Window for this Slice */}
+                        <div
+                          style={{
+                            position: "absolute",
+                            width: `${sliceCount * 100}%`,
+                            height: "100%",
+                            left: `-${idx * 100}%`,
+                            top: 0,
+                          }}
+                          className="pointer-events-none select-none"
+                        >
+                          {isTaller ? (
+                            <img
+                              src={selectedImageSrc}
+                              alt={`Slayt ${idx + 1}`}
+                              style={{
+                                position: "absolute",
+                                width: "100%",
+                                height: `${heightRatio * 100}%`,
+                                left: 0,
+                                top: 0,
+                                transform: `translate3d(0, -${translateYPercent}%, 0)`,
+                                objectFit: "cover",
+                              }}
+                              className="select-none pointer-events-none transition-transform duration-75 ease-out"
+                            />
+                          ) : (
+                            <img
+                              src={selectedImageSrc}
+                              alt={`Slayt ${idx + 1}`}
+                              style={{
+                                position: "absolute",
+                                width: "auto",
+                                height: "100%",
+                                left: "50%",
+                                top: 0,
+                                transform: "translate3d(-50%, 0, 0)",
+                                objectFit: "contain",
+                              }}
+                              className="select-none pointer-events-none"
+                            />
+                          )}
+                        </div>
 
                         {/* Slide Number Badge */}
-                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md border border-white/20 text-white font-sans font-semibold text-[10px] shadow-md">
-                          Slayt {slice.index}
+                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md border border-white/20 text-white font-sans font-semibold text-[10px] shadow-md z-10 pointer-events-none">
+                          Slayt {idx + 1}
                         </div>
 
                         {/* Quick single download overlay */}
@@ -392,17 +505,17 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDownloadSingle(slice);
+                            handleDownloadSingle(idx + 1);
                           }}
-                          className="pointer-events-auto absolute bottom-2 right-2 p-2 rounded-lg bg-black/75 hover:bg-amber-400 hover:text-black text-white border border-white/20 transition-all opacity-0 group-hover/slide:opacity-100 shadow-md"
-                          title={`${slice.filename} indir`}
+                          className="pointer-events-auto absolute bottom-2 right-2 p-2 rounded-lg bg-black/75 hover:bg-amber-400 hover:text-black text-white border border-white/20 transition-all opacity-0 group-hover/slide:opacity-100 shadow-md z-10"
+                          title={`Slayt ${idx + 1} indir`}
                         >
                           <Download className="w-3.5 h-3.5" />
                         </button>
                       </div>
 
-                      <div className="p-2 text-center text-[10px] font-sans text-neutral-400 border-t border-white/10 bg-neutral-900/80 truncate">
-                        {slice.filename}
+                      <div className="p-2 text-center text-[10px] font-sans text-neutral-400 border-t border-white/10 bg-neutral-900/80 truncate pointer-events-none">
+                        {String(idx + 1).padStart(2, "0")}_panorama_part{idx + 1}.jpg
                       </div>
                     </div>
                   ))}
@@ -419,11 +532,9 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
         {/* Footer Actions */}
         <div className="px-6 py-4 border-t border-white/10 bg-neutral-950/80 flex flex-wrap items-center justify-between gap-3">
           <div className="text-xs text-neutral-400 font-sans flex items-center gap-2">
-            {slices.length > 0 && (
-              <span>
-                {slices.length} adet 1080×1350 px ({aspectRatio}) kesintisiz karusel slaytı hazır
-              </span>
-            )}
+            <span>
+              {sliceCount} adet 1080×{aspectRatio === "1:1" ? 1080 : 1350} px ({aspectRatio}) kesintisiz karusel slaytı
+            </span>
             {currentSourceImage?.filters.activePresetId && (
               <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
                 Preset aktarılacak
@@ -434,7 +545,7 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleAddSlices}
-              disabled={slices.length === 0 || addedSuccess}
+              disabled={!selectedImageSrc || addedSuccess}
               className={`pressable px-4 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 addedSuccess
                   ? "bg-emerald-500 text-black border-emerald-500"
@@ -449,18 +560,18 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
               ) : (
                 <>
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Stüdyo Serisine Ekle (+{sliceCount})</span>
+                  <span>Stüdyo Serisine Ekle</span>
                 </>
               )}
             </button>
 
             <button
               onClick={handleDownloadAllZip}
-              disabled={slices.length === 0}
-              className="pressable px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-black text-xs font-semibold flex items-center gap-1.5 transition-all shadow-glass-sm"
+              disabled={!selectedImageSrc}
+              className="pressable px-4 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-semibold flex items-center gap-1.5 transition-all shadow-glass-sm"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Numaralı İndir (ZIP)</span>
+              <span>Tümünü İndir (ZIP)</span>
             </button>
           </div>
         </div>
