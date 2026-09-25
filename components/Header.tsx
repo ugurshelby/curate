@@ -13,6 +13,7 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { CurateImage } from "@/lib/types";
+import { VersionsPopover } from "@/components/VersionsPopover";
 
 interface HeaderProps {
   images: CurateImage[];
@@ -24,6 +25,11 @@ interface HeaderProps {
   onOpenPanoramaModal: () => void;
   onOpenCollageModal: () => void;
   onExitEdit?: () => void;
+  timeline?: {
+    entries: import("@/lib/history").HistorySnapshot[];
+    currentIndex: number;
+  };
+  onJumpToVersion?: (index: number) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -36,6 +42,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenPanoramaModal,
   onOpenCollageModal,
   onExitEdit,
+  timeline,
+  onJumpToVersion,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -214,6 +222,13 @@ export const Header: React.FC<HeaderProps> = ({
               <span>Story Kolaj</span>
             </button>
           </div>
+        )}
+
+        {timeline && onJumpToVersion && (
+          <VersionsPopover
+            timeline={timeline}
+            onJumpToVersion={onJumpToVersion}
+          />
         )}
 
         <button

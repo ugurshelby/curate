@@ -8,6 +8,7 @@ import { Sparkles, CopyCheck, Check, Info } from "lucide-react";
 interface SignaturePresetCardsProps {
   activePresetId: string | null;
   onSelectPreset: (preset: FilmPreset) => void;
+  onResetPreset?: () => void;
   onBatchApplyPreset?: (preset: FilmPreset) => void;
   recommendedPresetId?: string | null;
   recommendationReason?: string | null;
@@ -21,11 +22,13 @@ const SIGNATURE_GRADIENTS: Record<string, string> = {
   "night-cinematic": "linear-gradient(135deg, #090a10 0%, #171635 45%, #0891b2 80%, #e11d48 100%)",
   "muted-coastal": "linear-gradient(135deg, #1e293b 0%, #475569 45%, #94a3b8 80%, #cbd5e1 100%)",
   "amber-grain": "linear-gradient(135deg, #241306 0%, #5e2808 40%, #9a3412 70%, #d97706 100%)",
+  "monochrome-noir": "linear-gradient(135deg, #050505 0%, #171717 40%, #525252 75%, #f5f5f5 100%)",
 };
 
 export const SignaturePresetCards: React.FC<SignaturePresetCardsProps> = ({
   activePresetId,
   onSelectPreset,
+  onResetPreset,
   onBatchApplyPreset,
   recommendedPresetId,
   recommendationReason,
@@ -43,8 +46,29 @@ export const SignaturePresetCards: React.FC<SignaturePresetCardsProps> = ({
     }
   };
 
+  const activePreset = SIGNATURE_PRESETS.find((p) => p.id === activePresetId);
+
   return (
     <div className="space-y-2 select-none">
+      {/* Active Preset Indicator & Reset Action (Item 2) */}
+      {activePresetId && onResetPreset && (
+        <div className="flex items-center justify-between p-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs animate-fade-in shadow-sm">
+          <span className="text-[11px] text-amber-300 font-medium truncate flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+            <span className="text-neutral-400">Aktif:</span>
+            <strong className="text-white font-semibold">{activePreset?.name || activePresetId}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={onResetPreset}
+            className="pressable px-2.5 py-1 rounded-lg bg-white/10 hover:bg-rose-500/20 text-neutral-300 hover:text-rose-300 border border-white/10 hover:border-rose-500/30 text-[10px] font-semibold transition-all shrink-0"
+            title="Renk profilini nötrle ve ham renklere dön"
+          >
+            Preseti Kaldır / Reset
+          </button>
+        </div>
+      )}
+
       {/* Cards Grid */}
       <div
         className={

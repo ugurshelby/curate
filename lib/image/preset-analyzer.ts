@@ -15,7 +15,8 @@ export type RecommendedPresetId =
   | "warm-silhouette"
   | "night-cinematic"
   | "muted-coastal"
-  | "amber-grain";
+  | "amber-grain"
+  | "monochrome-noir";
 
 export interface ImageAnalysisResult {
   presetId: RecommendedPresetId;
@@ -66,6 +67,7 @@ export function analyzeImageForPreset(
   const totalPixels = sampleW * sampleH;
 
   let sumLum = 0;
+  let sumChroma = 0;
   let shadowsCount = 0; // Lum < 45
   let deepBlackCount = 0; // Lum < 20
   let highlightsCount = 0; // Lum > 215
@@ -86,6 +88,10 @@ export function analyzeImageForPreset(
     luminances[pixelIndex] = lum;
     sumLum += lum;
 
+    // Fast chroma approximation
+    const chroma = Math.max(Math.abs(r - g), Math.abs(r - b), Math.abs(g - b));
+    sumChroma += chroma;
+
     if (lum < 45) shadowsCount++;
     if (lum < 20) deepBlackCount++;
     if (lum > 215) highlightsCount++;
@@ -101,6 +107,7 @@ export function analyzeImageForPreset(
   }
 
   const meanLum = sumLum / totalPixels;
+  const meanChroma = sumChroma / totalPixels;
 
   // Standard deviation (contrast)
   let varianceSum = 0;
@@ -120,9 +127,15 @@ export function analyzeImageForPreset(
 
   // Decision Tree based on Spec 3.2:
 
+  // Rule 0: Monochrome Noir
+  // Düşük renk doygunluğu (monokrom) + yüksek kontrast veya derin gölgeler
+  if (meanChroma < 14 && (contrastStdDev > 32 || deepBlackRatio > 0.12)) {
+    presetId = "monochrome-noir";
+    reason = "Yüksek kontrastlı monokrom / siyah-beyaz sahne tespit edildi";
+  }
   // Rule 1: Night Cinematic
   // Görüntü genel olarak koyu + tek parlak/neon ışık kaynağı
-  if (meanLum < 75 && (highlightRatio > 0.015 || shadowsRatioCondition(shadowRatio, meanLum))) {
+  else if (meanLum < 75 && (highlightRatio > 0.015 || shadowsRatioCondition(shadowRatio, meanLum))) {
     presetId = "night-cinematic";
     reason = "Koyu gece karesi ve ışık kaynakları tespit edildi";
   }

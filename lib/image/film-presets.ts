@@ -1,8 +1,8 @@
 import { FilmPreset, FilterState } from "../types";
 
 /**
- * Uğur'un Kişisel Estetik İmzası — 5 Temel Preset Ailesi
- * Kaynak: curate-preset-spec.md
+ * Uğur'un Kişisel Estetik İmzası — 6 Temel Preset Ailesi
+ * Kaynak: curate-preset-spec.md (Reinhard CIELAB kalibreli)
  */
 export const SIGNATURE_PRESETS: FilmPreset[] = [
   {
@@ -12,10 +12,10 @@ export const SIGNATURE_PRESETS: FilmPreset[] = [
     tag: "Mimari & Gökyüzü",
     contextNote: "Viyana/Budapeşte serisi, dramatik gökyüzü/bina kontrastı, soğuk teal-orange dengesi.",
     description: "Dramatik gökyüzü, net mimari hatlar, cyan-teal highlight'lar ve serin gölge tonları.",
-    contrast: 25,
-    saturation: 15,
-    warmth: -8, // Soğuk yönde
-    tint: 4, // Yeşil-cyan yönde
+    contrast: 22,
+    saturation: 10,
+    warmth: -10, // Soğuk yönde
+    tint: 5, // Yeşil-cyan yönde
     fade: 0,
     highlightsTint: [-4, 8, 12], // Cyan/teal hafif
     shadowsTint: [-2, 0, 8], // Nötr-hafif mavi
@@ -24,8 +24,8 @@ export const SIGNATURE_PRESETS: FilmPreset[] = [
     category: "signature",
     analogDefaults: {
       grain: 8,
-      halation: 5,
-      vignette: 10,
+      halation: 4,
+      vignette: 12,
       lightLeak: { enabled: false, type: "subtle", amount: 0 },
     },
   },
@@ -36,19 +36,19 @@ export const SIGNATURE_PRESETS: FilmPreset[] = [
     tag: "Ters Işık & Gün Batımı",
     contextNote: "Ters ışık, figür silüetleri, shadow crush & zengin gün batımı parıltısı.",
     description: "Ters ışık ve figür silüetleri için derin ezilmiş siyahlar, zengin turuncu-kırmızı gökyüzü ve sıcak halation.",
-    contrast: 35, // Yüksek - shadow crush
-    saturation: 20,
-    warmth: 15, // Sıcak yönde
-    tint: 5, // Kırmızı-magenta yönde
+    contrast: 36, // Yüksek - shadow crush
+    saturation: 22,
+    warmth: 18, // Sıcak yönde
+    tint: 8, // Kırmızı-magenta yönde
     fade: 0,
-    highlightsTint: [18, 10, -8], // Sıcak turuncu, orta-güçlü
+    highlightsTint: [22, 12, -6], // Sıcak turuncu, güçlü
     shadowsTint: [0, 0, 0], // Nötr derin siyah
-    grainBase: 12,
+    grainBase: 10,
     isSignature: true,
     category: "signature",
     analogDefaults: {
-      grain: 12,
-      halation: 15,
+      grain: 10,
+      halation: 18,
       vignette: 15,
       lightLeak: { enabled: false, type: "warm-side", amount: 0 },
     },
@@ -60,20 +60,20 @@ export const SIGNATURE_PRESETS: FilmPreset[] = [
     tag: "Gece & Neon Işık",
     contextNote: "Gece, iç mekan, tek renkli neon ışığı, milky black & imza halation.",
     description: "Düşük doygunluk, sinematik milky black, soğuk gölgeler ve ışık kaynağı etrafında güçlü taşan imza halation.",
-    contrast: 20,
-    saturation: -10,
-    warmth: 0, // Nötr varsayılan
-    tint: 0,
-    fade: 5, // Çok hafif milky black
+    contrast: 24,
+    saturation: -8,
+    warmth: -6, // Soğuk gece tabanı
+    tint: 2,
+    fade: 4, // Sinematik milky black
     highlightsTint: [2, 2, -2],
-    shadowsTint: [-6, 2, 12], // Soğuk mavi-mor
-    grainBase: 20,
+    shadowsTint: [-4, 0, 14], // Soğuk mavi gece gölgesi
+    grainBase: 18,
     isSignature: true,
     category: "signature",
     analogDefaults: {
-      grain: 20,
-      halation: 20,
-      vignette: 20,
+      grain: 18,
+      halation: 22,
+      vignette: 18,
       lightLeak: { enabled: false, type: "subtle", amount: 0 },
     },
   },
@@ -84,16 +84,16 @@ export const SIGNATURE_PRESETS: FilmPreset[] = [
     tag: "Sakin Sahil & Pastel",
     contextNote: "Sakin anlar, deniz, açık alan; crush YOK, yumuşak geçişler ve pastel matlık.",
     description: "Düşük kontrast, belirgin pastel düşük doygunluk, açık gölgeler ve yumuşak film matlığı.",
-    contrast: 5, // Çok hafif
-    saturation: -20, // Belirgin düşük pastel
-    warmth: -3,
-    tint: 0,
-    fade: 15, // Belirgin yumuşak film
-    grainBase: 5,
+    contrast: 6, // Çok hafif
+    saturation: -15, // Belirgin düşük pastel
+    warmth: -2,
+    tint: 2,
+    fade: 12, // Belirgin yumuşak film
+    grainBase: 6,
     isSignature: true,
     category: "signature",
     analogDefaults: {
-      grain: 5,
+      grain: 6,
       halation: 0,
       vignette: 5,
       lightLeak: { enabled: false, type: "subtle", amount: 0 },
@@ -106,21 +106,45 @@ export const SIGNATURE_PRESETS: FilmPreset[] = [
     tag: "Sokak & Amber Doku",
     contextNote: "Sokak, yansıma ve detay kareleri; sıcak amber ton, yoğun gren & hafif ışık sızması.",
     description: "Sıcak amber renk kimliği, hafif yıpranmış film dokusu, imza yoğun gren ve hafif analog sızma.",
-    contrast: 15,
-    saturation: 10,
-    warmth: 10,
-    tint: 8,
-    fade: 10,
+    contrast: 18,
+    saturation: 12,
+    warmth: 12,
+    tint: 7,
+    fade: 8,
     highlightsTint: [14, 8, -6],
     shadowsTint: [8, 4, -4],
-    grainBase: 25,
+    grainBase: 24,
     isSignature: true,
     category: "signature",
     analogDefaults: {
-      grain: 25,
-      halation: 8,
-      vignette: 20,
+      grain: 24,
+      halation: 10,
+      vignette: 18,
       lightLeak: { enabled: true, type: "subtle", amount: 25 },
+    },
+  },
+  {
+    id: "monochrome-noir",
+    name: "Monochrome Noir",
+    filmType: "black-white",
+    tag: "Grafiksel S/B & Derin Gölge",
+    contextNote: "Yüksek kontrast, kömür siyahı derin gölgeler (shadow crush), saf beyazlar ve keskin grafik hatlar.",
+    description: "Maksimum kontrast, derin ezilmiş siyahlar, saf beyaz highlight'lar ve minimal temiz gren.",
+    contrast: 40,
+    saturation: -100,
+    warmth: 0,
+    tint: 0,
+    fade: 0,
+    highlightsTint: [0, 0, 0],
+    shadowsTint: [0, 0, 0],
+    grainBase: 8,
+    isSignature: true,
+    category: "signature",
+    analogDefaults: {
+      grain: 8,
+      halation: 0,
+      vignette: 15,
+      lightLeak: { enabled: false, type: "subtle", amount: 0 },
     },
   },
 ];
@@ -282,7 +306,7 @@ export const CLASSIC_FILM_PRESETS: FilmPreset[] = [
   },
 ];
 
-/** Tüm presetler: Önce 5 Kişisel Estetik İmzası, ardından 10 Film Preseti */
+/** Tüm presetler: Önce 6 Kişisel Estetik İmzası, ardından 10 Film Preseti */
 export const FILM_PRESETS: FilmPreset[] = [
   ...SIGNATURE_PRESETS,
   ...CLASSIC_FILM_PRESETS,
@@ -290,7 +314,7 @@ export const FILM_PRESETS: FilmPreset[] = [
 
 /**
  * Tek tıkla preset uygulama motoru:
- * Eğer seçilen preset Uğur'un 5 imza presetinden biriyse,
+ * Eğer seçilen preset Uğur'un 6 imza presetinden biriyse,
  * hem renk LUT kalibrasyonunu hem de analog katmanı (grain, halation, vignette, light leak)
  * spec'te belirtilen kalibre edilmiş değerlerle tek hamlede state'e yazar.
  */

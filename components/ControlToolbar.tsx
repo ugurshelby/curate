@@ -244,6 +244,17 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
     onUpdateFilters(updates);
   };
 
+  const handleResetPreset = () => {
+    onUpdateFilters({
+      activePresetId: null,
+      presetAmount: 100,
+      grainEnabled: false,
+      halationEnabled: false,
+      vignetteEnabled: false,
+      lightLeakEnabled: false,
+    });
+  };
+
   const handleBatchApplySignaturePreset = (preset: FilmPreset) => {
     const updates = applySignaturePresetToFilterState(preset);
     onUpdateFilters(updates);
@@ -295,16 +306,17 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
                   Senin Presetlerin
                 </h3>
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                  5 Estetik Aile
+                  6 Estetik Aile
                 </span>
               </div>
 
               {filters.activePresetId && (
                 <button
-                  onClick={() => onUpdateFilters({ activePresetId: null })}
+                  type="button"
+                  onClick={handleResetPreset}
                   className="pressable px-2 py-0.5 rounded text-[10px] text-neutral-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                 >
-                  Preset Sıfırla
+                  Preseti Kaldır
                 </button>
               )}
             </div>
@@ -312,6 +324,7 @@ export const ControlToolbar: React.FC<ControlToolbarProps> = ({
             <SignaturePresetCards
               activePresetId={filters.activePresetId}
               onSelectPreset={handleSelectSignaturePreset}
+              onResetPreset={handleResetPreset}
               onBatchApplyPreset={handleBatchApplySignaturePreset}
               recommendedPresetId={recommendation?.presetId}
               recommendationReason={recommendation?.reason}

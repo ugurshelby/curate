@@ -92,6 +92,9 @@ export default function CurateStudioPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const historyRef = useRef(new EditHistory());
+  const [historyTimeline, setHistoryTimeline] = useState(() =>
+    historyRef.current.getTimeline()
+  );
   const isApplyingHistoryRef = useRef(false);
   const filterHistoryArmedRef = useRef(false);
   const cropGesturePreRef = useRef<{
@@ -114,15 +117,19 @@ export default function CurateStudioPage() {
     };
   }, []);
 
-  const pushHistory = useCallback(() => {
+  const pushHistory = useCallback((label = "Ayar Değişikliği") => {
     if (isApplyingHistoryRef.current) return;
-    historyRef.current.push({
-      images: imagesRef.current,
-      activeImageId,
-      referenceImageId,
-    });
+    historyRef.current.push(
+      {
+        images: imagesRef.current,
+        activeImageId,
+        referenceImageId,
+      },
+      label
+    );
     setCanUndo(historyRef.current.canUndo());
     setCanRedo(historyRef.current.canRedo());
+    setHistoryTimeline(historyRef.current.getTimeline());
   }, [activeImageId, referenceImageId]);
 
   // Helper to construct a CurateImage from file/URL
@@ -359,16 +366,17 @@ export default function CurateStudioPage() {
     const pre = cropGesturePreRef.current;
     if (!pre) return;
     cropGestureCommittedRef.current = true;
-    historyRef.current.push(pre);
+    historyRef.current.push(pre, "Kadraj / Zoom");
     setCanUndo(historyRef.current.canUndo());
     setCanRedo(historyRef.current.canRedo());
+    setHistoryTimeline(historyRef.current.getTimeline());
     cropGesturePreRef.current = null;
   }, []);
 
   // Update aspect ratio for active image
   const handleUpdateCropRatio = (aspectRatio: AspectRatio) => {
     if (!activeImageId) return;
-    pushHistory();
+    pushHistory(`Kırpma: ${aspectRatio}`);
     setImages((prev) =>
       prev.map((img) =>
         img.id === activeImageId
@@ -387,7 +395,7 @@ export default function CurateStudioPage() {
   // 90° Clockwise rotation for active image
   const handleRotate90 = () => {
     if (!activeImageId) return;
-    pushHistory();
+    pushHistory("90° Döndürme");
     setImages((prev) =>
       prev.map((img) =>
         img.id === activeImageId
@@ -406,7 +414,7 @@ export default function CurateStudioPage() {
   // Flip horizontal (mirror) for active image
   const handleToggleFlipHorizontal = () => {
     if (!activeImageId) return;
-    pushHistory();
+    pushHistory("Aynalama");
     setImages((prev) =>
       prev.map((img) =>
         img.id === activeImageId
@@ -426,7 +434,17 @@ export default function CurateStudioPage() {
   const handleUpdateFilters = (newFilters: Partial<CurateImage["filters"]>) => {
     if (!activeImageId) return;
     if (!filterHistoryArmedRef.current) {
-      pushHistory();
+      let label = "Renk / Efekt Ayarı";
+      if (newFilters.activePresetId) {
+        label = `Preset: ${newFilters.activePresetId}`;
+      } else if (newFilters.grainAmount !== undefined) {
+        label = `Gren: %${Math.round(newFilters.grainAmount * 100)}`;
+      } else if (newFilters.halationAmount !== undefined) {
+        label = `Halation: %${Math.round(newFilters.halationAmount * 100)}`;
+      } else if (newFilters.vignetteAmount !== undefined) {
+        label = `Vignette: %${Math.round(newFilters.vignetteAmount * 100)}`;
+      }
+      pushHistory(label);
       filterHistoryArmedRef.current = true;
       window.setTimeout(() => {
         filterHistoryArmedRef.current = false;
@@ -454,7 +472,7 @@ export default function CurateStudioPage() {
   // Reset filters for active image
   const handleResetFilters = () => {
     if (!activeImageId) return;
-    pushHistory();
+    pushHistory("Filtreleri Sıfırla");
     setImages((prev) =>
       prev.map((img) =>
         img.id === activeImageId
@@ -536,7 +554,7 @@ export default function CurateStudioPage() {
   const handleBatchSync = useCallback(() => {
     if (!activeImage) return;
     const { filters, border, timestamp, upscaleFactor } = activeImage;
-    pushHistory();
+    pushHistory("Seriyle Eşitle");
 
     setImages((prev) =>
       prev.map((img) => ({
@@ -565,6 +583,7 @@ export default function CurateStudioPage() {
     setReferenceImageId(snap.referenceImageId);
     setCanUndo(historyRef.current.canUndo());
     setCanRedo(historyRef.current.canRedo());
+    setHistoryTimeline(historyRef.current.getTimeline());
     queueMicrotask(() => {
       isApplyingHistoryRef.current = false;
     });
@@ -583,10 +602,26 @@ export default function CurateStudioPage() {
     setReferenceImageId(snap.referenceImageId);
     setCanUndo(historyRef.current.canUndo());
     setCanRedo(historyRef.current.canRedo());
+    setHistoryTimeline(historyRef.current.getTimeline());
     queueMicrotask(() => {
       isApplyingHistoryRef.current = false;
     });
   }, [images, activeImageId, referenceImageId]);
+
+  const handleJumpToVersion = useCallback((index: number) => {
+    const snap = historyRef.current.jumpTo(index);
+    if (!snap) return;
+    isApplyingHistoryRef.current = true;
+    setImages(snap.images);
+    setActiveImageId(snap.activeImageId);
+    setReferenceImageId(snap.referenceImageId);
+    setCanUndo(historyRef.current.canUndo());
+    setCanRedo(historyRef.current.canRedo());
+    setHistoryTimeline(historyRef.current.getTimeline());
+    queueMicrotask(() => {
+      isApplyingHistoryRef.current = false;
+    });
+  }, []);
 
   const handleSaveAesthetic = (name: string) => {
     if (!activeImage) return;
@@ -600,7 +635,7 @@ export default function CurateStudioPage() {
   };
 
   const handleBatchApplyPreset = useCallback((preset: FilmPreset) => {
-    pushHistory();
+    pushHistory(`Preset: ${preset.name}`);
     const updates = applySignaturePresetToFilterState(preset);
     setImages((prev) =>
       prev.map((img) => ({
@@ -616,7 +651,7 @@ export default function CurateStudioPage() {
   }, [pushHistory]);
 
   const handleApplyAesthetic = (preset: AestheticPreset) => {
-    pushHistory();
+    pushHistory(`Estetik: ${preset.name}`);
     setImages((prev) => applyAestheticToSeries(prev, preset));
     setSyncSuccess(true);
     window.setTimeout(() => setSyncSuccess(false), 2000);
@@ -652,18 +687,26 @@ export default function CurateStudioPage() {
     });
   };
 
-  // Add slices from Panorama Splitter to the studio series
-  const handleAddPanoramaSlices = (slices: PanoramaSlice[]) => {
-    const newItems: CurateImage[] = slices.map((slice, idx) =>
-      createCurateImage(
+  // Add slices from Panorama Splitter to the studio series with filter preservation
+  const handleAddPanoramaSlices = (slices: PanoramaSlice[], sourceImage?: CurateImage | null) => {
+    const newItems: CurateImage[] = slices.map((slice, idx) => {
+      const item = createCurateImage(
         `pano_${Date.now()}_${idx}`,
         slice.filename,
         slice.dataUrl,
         slice.width,
         slice.height
-      )
-    );
+      );
+      if (sourceImage) {
+        item.filters = { ...sourceImage.filters };
+        item.border = sourceImage.border ? { ...sourceImage.border } : undefined;
+        item.timestamp = sourceImage.timestamp ? { ...sourceImage.timestamp } : undefined;
+        item.upscaleFactor = sourceImage.upscaleFactor;
+      }
+      return item;
+    });
     setImages((prev) => [...prev, ...newItems]);
+    pushHistory("Panorama Parçaları Eklendi");
   };
 
   // Add generated Story Collage to the studio series
@@ -799,6 +842,8 @@ export default function CurateStudioPage() {
           setFocusCategory(null);
           setSplitView(false);
         }}
+        timeline={historyTimeline}
+        onJumpToVersion={handleJumpToVersion}
       />
 
       {/* Main Viewport / Gallery Area */}

@@ -10,6 +10,8 @@ interface ResettableSliderProps {
   step?: number;
   defaultValue: number;
   onChange: (value: number) => void;
+  onChangeEnd?: () => void;
+  onInteractionStart?: () => void;
   suffix?: string;
   accentClassName?: string;
   className?: string;
@@ -21,7 +23,7 @@ interface ResettableSliderProps {
  * Range input that resets to `defaultValue` on double-click (mouse)
  * or double-tap (touch via rapid successive pointerdowns).
  * Stops pointer propagation so parent bottom-sheet drag does not steal the gesture.
- * Supports stacked (Apple Studio) or inline layouts.
+ * Emits onChangeEnd on pointerup/pointercancel/keyup for rAF render settle.
  */
 export const ResettableSlider: React.FC<ResettableSliderProps> = ({
   label,
@@ -31,6 +33,8 @@ export const ResettableSlider: React.FC<ResettableSliderProps> = ({
   step = 1,
   defaultValue,
   onChange,
+  onChangeEnd,
+  onInteractionStart,
   suffix = "",
   accentClassName = "",
   className = "",
@@ -43,17 +47,29 @@ export const ResettableSlider: React.FC<ResettableSliderProps> = ({
     e.preventDefault();
     e.stopPropagation();
     onChange(defaultValue);
+    onChangeEnd?.();
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
     e.stopPropagation();
+    onInteractionStart?.();
     const now = Date.now();
     if (now - lastTapRef.current < 320) {
       onChange(defaultValue);
+      onChangeEnd?.();
       lastTapRef.current = 0;
     } else {
       lastTapRef.current = now;
     }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    onChangeEnd?.();
+  };
+
+  const handleKeyUp = () => {
+    onChangeEnd?.();
   };
 
   const formattedValue = suffix === "%" ? `%${value}` : `${value}${suffix}`;
@@ -75,6 +91,9 @@ export const ResettableSlider: React.FC<ResettableSliderProps> = ({
           onChange={(e) => onChange(parseFloat(e.target.value))}
           onDoubleClick={handleDoubleClick}
           onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          onKeyUp={handleKeyUp}
           title={`Çift tıkla / çift dokun: varsayılan (${defaultValue}${suffix})`}
           className={`flex-1 cursor-pointer ${accentClassName}`}
           style={{ touchAction: "none" }}
@@ -107,6 +126,9 @@ export const ResettableSlider: React.FC<ResettableSliderProps> = ({
         onChange={(e) => onChange(parseFloat(e.target.value))}
         onDoubleClick={handleDoubleClick}
         onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onKeyUp={handleKeyUp}
         title={`Çift tıkla / çift dokun: varsayılan (${defaultValue}${suffix})`}
         className={`w-full cursor-pointer ${accentClassName}`}
         style={{ touchAction: "none" }}

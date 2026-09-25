@@ -21,7 +21,11 @@ import {
   Check,
   Upload,
   Layers,
+  ArrowLeftRight,
+  Smartphone,
 } from "lucide-react";
+import { SocialOverlay } from "./SocialOverlay";
+import { SocialOverlay as SocialOverlayType } from "@/lib/types";
 
 interface StoryCollageModalProps {
   isOpen: boolean;
@@ -46,6 +50,9 @@ export const StoryCollageModal: React.FC<StoryCollageModalProps> = ({
   const [innerGap, setInnerGap] = useState<number>(14);
   const [borderRadius, setBorderRadius] = useState<number>(16);
   const [backgroundColor, setBackgroundColor] = useState<string>("#000000");
+  const [socialOverlay, setSocialOverlay] = useState<SocialOverlayType>("instagram-story");
+  const [pendingSwapIndex, setPendingSwapIndex] = useState<number | null>(null);
+  const [draggedSlotIndex, setDraggedSlotIndex] = useState<number | null>(null);
 
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [addedSuccess, setAddedSuccess] = useState<boolean>(false);
@@ -57,6 +64,46 @@ export const StoryCollageModal: React.FC<StoryCollageModalProps> = ({
   const isDraggingCellRef = useRef<boolean>(false);
   const dragStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const dragStartPanRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Swap two slots data and positioning
+  const handleSwapSlots = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) {
+      setPendingSwapIndex(null);
+      return;
+    }
+    setSlots((prev) => {
+      const fromSlot = prev[fromIndex];
+      const toSlot = prev[toIndex];
+      if (!fromSlot || !toSlot) return prev;
+      return prev.map((slot, i) => {
+        if (i === fromIndex) {
+          return {
+            ...slot,
+            imageId: toSlot.imageId,
+            dataUrl: toSlot.dataUrl,
+            panX: toSlot.panX,
+            panY: toSlot.panY,
+            zoom: toSlot.zoom,
+          };
+        }
+        if (i === toIndex) {
+          return {
+            ...slot,
+            imageId: fromSlot.imageId,
+            dataUrl: fromSlot.dataUrl,
+            panX: fromSlot.panX,
+            panY: fromSlot.panY,
+            zoom: fromSlot.zoom,
+          };
+        }
+        return slot;
+      });
+    });
+    loadedImagesRef.current.delete(`slot_${fromIndex}`);
+    loadedImagesRef.current.delete(`slot_${toIndex}`);
+    setSelectedSlotIndex(toIndex);
+    setPendingSwapIndex(null);
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -118,6 +165,10 @@ export const StoryCollageModal: React.FC<StoryCollageModalProps> = ({
 
   // Handle cell pointer drag (pan)
   const handleCellPointerDown = (index: number, e: React.PointerEvent) => {
+    if (pendingSwapIndex !== null) {
+      handleSwapSlots(pendingSwapIndex, index);
+      return;
+    }
     setSelectedSlotIndex(index);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     isDraggingCellRef.current = true;
@@ -187,12 +238,13 @@ export const StoryCollageModal: React.FC<StoryCollageModalProps> = ({
       setIsExporting(true);
       await ensureImagesLoaded();
 
+      const exportScale = 1080 / 300;
       const options: CollageRenderOptions = {
         canvasWidth: 1080,
         canvasHeight: 1920,
-        outerPadding: outerPadding * 1.5,
-        innerGap: innerGap * 1.5,
-        borderRadius: borderRadius * 1.5,
+        outerPadding: Math.round(outerPadding * exportScale),
+        innerGap: Math.round(innerGap * exportScale),
+        borderRadius: Math.round(borderRadius * exportScale),
         backgroundColor,
       };
 
@@ -234,7 +286,7 @@ export const StoryCollageModal: React.FC<StoryCollageModalProps> = ({
                 </span>
               </h2>
               <p className="text-[11px] text-neutral-400">
-                2 ile 6 fotoğraf arası dikey story kolajları. Çerçeve içindeki fotoğrafları sürükleyip yakınlaştırabilirsiniz.
+                2 ile 6 fotoğraf arası dikey story kolajları. Çerçeve içindeki fotoğrafları sürükleyip yakınlaştırabilir, takas edebilirsiniz.
               </p>
             </div>
           </div>
@@ -250,83 +302,169 @@ export const StoryCollageModal: React.FC<StoryCollageModalProps> = ({
         {/* Content Body: Left Canvas Preview, Right Controls */}
         <div className="grid grid-cols-1 lg:grid-cols-12 overflow-y-auto flex-1 p-6 gap-6">
           {/* LEFT: 9:16 Interactive Canvas Stage (5 cols) */}
-          <div className="lg:col-span-5 flex flex-col items-center justify-center">
+          <div className="lg:col-span-5 flex flex-col items-center justify-center space-y-3">
+            {/* Social Overlay Simulator Toggle Bar */}
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/5 border border-white/10 text-[11px] font-sans">
+              <span className="text-neutral-400 px-1.5 flex items-center gap-1 text-[10px]">
+                <Smartphone className="w-3 h-3 text-amber-400" />
+                <span className="hidden sm:inline">Simülatör:</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setSocialOverlay("instagram-story")}
+                className={`px-2 py-1 rounded-lg transition-all ${
+                  socialOverlay === "instagram-story"
+                    ? "bg-gradient-to-r from-amber-500 to-pink-500 text-white font-semibold shadow-sm"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                Instagram Story
+              </button>
+              <button
+                type="button"
+                onClick={() => setSocialOverlay("tiktok-story")}
+                className={`px-2 py-1 rounded-lg transition-all ${
+                  socialOverlay === "tiktok-story"
+                    ? "bg-neutral-800 text-white font-semibold border border-white/20 shadow-sm"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                TikTok Story
+              </button>
+              <button
+                type="button"
+                onClick={() => setSocialOverlay("none")}
+                className={`px-2 py-1 rounded-lg transition-all ${
+                  socialOverlay === "none"
+                    ? "bg-white/20 text-white font-semibold"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                Kapat
+              </button>
+            </div>
+
+            {/* Active Swap Mode Helper Banner */}
+            {pendingSwapIndex !== null && (
+              <div className="px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-400 text-amber-300 text-xs font-medium flex items-center justify-between gap-2 animate-pulse w-full max-w-[320px]">
+                <div className="flex items-center gap-1.5">
+                  <ArrowLeftRight className="w-3.5 h-3.5" />
+                  <span>Hücre #{pendingSwapIndex + 1} seçili: Hedefe dokunun</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPendingSwapIndex(null)}
+                  className="px-1.5 py-0.5 rounded bg-black/40 text-[10px] text-white hover:bg-black/60"
+                >
+                  İptal
+                </button>
+              </div>
+            )}
+
+            {/* 9:16 Canvas Outer Container with Outer Padding */}
             <div
               style={{
                 backgroundColor,
                 padding: `${outerPadding}px`,
                 aspectRatio: "9/16",
               }}
-              className="relative w-full max-w-[280px] sm:max-w-[320px] rounded-2xl shadow-2xl border border-white/20 overflow-hidden select-none"
+              className="relative w-full max-w-[280px] sm:max-w-[320px] rounded-2xl shadow-2xl border border-white/20 overflow-hidden select-none flex flex-col"
             >
-              {/* Slots rendering */}
-              {slots.map((slot, index) => {
-                const isSelected = selectedSlotIndex === index;
-                const slotStyle: React.CSSProperties = {
-                  position: "absolute",
-                  left: `calc(${slot.rect.x * 100}% + ${slot.rect.x > 0 ? innerGap / 2 : 0}px)`,
-                  top: `calc(${slot.rect.y * 100}% + ${slot.rect.y > 0 ? innerGap / 2 : 0}px)`,
-                  width: `calc(${slot.rect.width * 100}% - ${
-                    slot.rect.x > 0 || slot.rect.x + slot.rect.width < 1 ? innerGap / 2 : 0
-                  }px)`,
-                  height: `calc(${slot.rect.height * 100}% - ${
-                    slot.rect.y > 0 || slot.rect.y + slot.rect.height < 1 ? innerGap / 2 : 0
-                  }px)`,
-                  borderRadius: `${borderRadius}px`,
-                };
+              {/* Inner wrapper that strictly bounds slots by outerPadding */}
+              <div className="relative w-full h-full overflow-hidden">
+                {slots.map((slot, index) => {
+                  const isSelected = selectedSlotIndex === index;
+                  const isPendingSwap = pendingSwapIndex === index;
+                  const slotStyle: React.CSSProperties = {
+                    position: "absolute",
+                    left: `calc(${slot.rect.x * 100}% + ${slot.rect.x > 0 ? innerGap / 2 : 0}px)`,
+                    top: `calc(${slot.rect.y * 100}% + ${slot.rect.y > 0 ? innerGap / 2 : 0}px)`,
+                    width: `calc(${slot.rect.width * 100}% - ${
+                      slot.rect.x > 0 || slot.rect.x + slot.rect.width < 1 ? innerGap / 2 : 0
+                    }px)`,
+                    height: `calc(${slot.rect.height * 100}% - ${
+                      slot.rect.y > 0 || slot.rect.y + slot.rect.height < 1 ? innerGap / 2 : 0
+                    }px)`,
+                    borderRadius: `${borderRadius}px`,
+                  };
 
-                return (
-                  <div
-                    key={slot.id}
-                    style={slotStyle}
-                    onPointerDown={(e) => handleCellPointerDown(index, e)}
-                    onPointerMove={(e) => handleCellPointerMove(index, e)}
-                    onPointerUp={handleCellPointerUp}
-                    onWheel={(e) => {
-                      const delta = -e.deltaY * 0.002;
-                      const nextZoom = Math.min(3.0, Math.max(1.0, (slot.zoom || 1.0) + delta));
-                      handleCellZoomChange(index, nextZoom);
-                    }}
-                    className={`relative overflow-hidden cursor-grab active:cursor-grabbing border-2 transition-all ${
-                      isSelected
-                        ? "border-amber-400 ring-2 ring-amber-400/30 z-10"
-                        : "border-white/10 hover:border-white/40"
-                    } bg-neutral-950 flex items-center justify-center`}
-                  >
-                    {slot.dataUrl ? (
+                  return (
+                    <div
+                      key={slot.id}
+                      style={slotStyle}
+                      onPointerDown={(e) => handleCellPointerDown(index, e)}
+                      onPointerMove={(e) => handleCellPointerMove(index, e)}
+                      onPointerUp={handleCellPointerUp}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const src =
+                          draggedSlotIndex ??
+                          parseInt(e.dataTransfer.getData("text/plain"), 10);
+                        if (!isNaN(src)) handleSwapSlots(src, index);
+                        setDraggedSlotIndex(null);
+                      }}
+                      onWheel={(e) => {
+                        const delta = -e.deltaY * 0.002;
+                        const nextZoom = Math.min(3.0, Math.max(1.0, (slot.zoom || 1.0) + delta));
+                        handleCellZoomChange(index, nextZoom);
+                      }}
+                      className={`relative overflow-hidden cursor-grab active:cursor-grabbing border-2 transition-all ${
+                        isPendingSwap
+                          ? "border-amber-400 ring-4 ring-amber-400/50 z-20 animate-pulse"
+                          : isSelected
+                          ? "border-amber-400 ring-2 ring-amber-400/30 z-10"
+                          : "border-white/10 hover:border-white/40"
+                      } bg-neutral-950 flex items-center justify-center`}
+                    >
+                      {slot.dataUrl ? (
+                        <div
+                          style={{
+                            transform: `translate3d(${slot.panX * 0.3}px, ${slot.panY * 0.3}px, 0) scale(${
+                              slot.zoom
+                            })`,
+                            transformOrigin: "center center",
+                          }}
+                          className="w-full h-full pointer-events-none transition-transform duration-75 flex items-center justify-center"
+                        >
+                          <img
+                            src={slot.dataUrl}
+                            alt={`Slot ${index + 1}`}
+                            className="w-full h-full object-cover select-none pointer-events-none"
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-neutral-500 font-sans font-medium">
+                          +{index + 1}
+                        </span>
+                      )}
+
+                      {/* Cell badge + Swap trigger draggable handle */}
                       <div
-                        style={{
-                          transform: `translate3d(${slot.panX * 0.3}px, ${slot.panY * 0.3}px, 0) scale(${
-                            slot.zoom
-                          })`,
-                          transformOrigin: "center center",
+                        draggable
+                        onDragStart={(e) => {
+                          e.stopPropagation();
+                          e.dataTransfer.setData("text/plain", String(index));
+                          setDraggedSlotIndex(index);
                         }}
-                        className="w-full h-full pointer-events-none transition-transform duration-75 flex items-center justify-center"
+                        className="absolute top-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/80 backdrop-blur-md text-white font-sans text-[9px] font-semibold cursor-move hover:bg-amber-400 hover:text-black transition-colors"
+                        title="Sürükleyip başka hücrenin üzerine bırakarak yer değiştirin"
                       >
-                        <img
-                          src={slot.dataUrl}
-                          alt={`Slot ${index + 1}`}
-                          className="w-full h-full object-cover select-none pointer-events-none"
-                        />
+                        <span>#{index + 1}</span>
+                        <ArrowLeftRight className="w-2.5 h-2.5 opacity-70" />
                       </div>
-                    ) : (
-                      <span className="text-[10px] text-neutral-500 font-sans font-medium">
-                        +{index + 1}
-                      </span>
-                    )}
-
-                    {/* Cell index tag */}
-                    <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/75 backdrop-blur-md text-white font-sans text-[9px] font-semibold pointer-events-none">
-                      #{index + 1}
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+
+              {/* Persistent Social Media Story Overlay (Instagram / TikTok) */}
+              <SocialOverlay type={socialOverlay} />
             </div>
 
-            <span className="text-[11px] text-neutral-400 mt-2 flex items-center gap-1 font-sans">
+            <span className="text-[11px] text-neutral-400 mt-1 flex items-center gap-1 font-sans">
               <Move className="w-3 h-3 text-amber-400" />
-              <span>Hücre içini sürükleyerek kadrajı ayarlayın</span>
+              <span>Sürükle: Kadraj / Badge: Takas (Swap)</span>
             </span>
           </div>
 
@@ -413,18 +551,39 @@ export const StoryCollageModal: React.FC<StoryCollageModalProps> = ({
                     }
                     className="flex-1 accent-amber-400 cursor-pointer"
                   />
-                  <button
-                    onClick={() => {
-                      setSlots((prev) =>
-                        prev.map((s, i) =>
-                          i === selectedSlotIndex ? { ...s, panX: 0, panY: 0, zoom: 1 } : s
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPendingSwapIndex(
+                          pendingSwapIndex === selectedSlotIndex ? null : selectedSlotIndex
                         )
-                      );
-                    }}
-                    className="px-2 py-1 rounded bg-black/40 text-[10px] text-amber-300 hover:text-white transition-colors"
-                  >
-                    Merkezle
-                  </button>
+                      }
+                      className={`px-2 py-1 rounded text-[10px] font-medium flex items-center gap-1 transition-colors ${
+                        pendingSwapIndex === selectedSlotIndex
+                          ? "bg-amber-400 text-black font-bold shadow-sm"
+                          : "bg-black/40 text-amber-300 hover:text-white"
+                      }`}
+                      title="Bu hücredeki görseli başka bir hücreyle takas et"
+                    >
+                      <ArrowLeftRight className="w-3 h-3" />
+                      <span>
+                        {pendingSwapIndex === selectedSlotIndex ? "Hedefe Dokunun" : "Takas (Swap)"}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSlots((prev) =>
+                          prev.map((s, i) =>
+                            i === selectedSlotIndex ? { ...s, panX: 0, panY: 0, zoom: 1 } : s
+                          )
+                        );
+                      }}
+                      className="px-2 py-1 rounded bg-black/40 text-[10px] text-amber-300 hover:text-white transition-colors"
+                    >
+                      Merkezle
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
