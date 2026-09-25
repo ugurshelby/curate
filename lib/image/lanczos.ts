@@ -19,11 +19,11 @@ function lanczos3Kernel(x: number): number {
 /**
  * Resamples source ImageData to target dimensions using 2-pass separable Lanczos-3
  */
-export function resampleLanczos3(
+export async function resampleLanczos3(
   source: ImageData,
   destWidth: number,
   destHeight: number
-): ImageData {
+): Promise<ImageData> {
   const srcWidth = source.width;
   const srcHeight = source.height;
   const srcData = source.data;
@@ -40,6 +40,7 @@ export function resampleLanczos3(
 
   // Pass 1: Horizontal resampling
   for (let y = 0; y < srcHeight; y++) {
+    if (y % 64 === 0) await new Promise((r) => setTimeout(r, 0)); // Yield to main thread
     const srcRowOffset = y * srcWidth * 4;
     const interRowOffset = y * destWidth * 4;
 
@@ -82,6 +83,7 @@ export function resampleLanczos3(
   const filterRadiusY = scaleY < 1 ? 3 / scaleY : 3;
 
   for (let dy = 0; dy < destHeight; dy++) {
+    if (dy % 64 === 0) await new Promise((r) => setTimeout(r, 0)); // Yield to main thread
     const centerSrcY = (dy + 0.5) / scaleY - 0.5;
     const startY = Math.max(0, Math.floor(centerSrcY - filterRadiusY));
     const endY = Math.min(srcHeight - 1, Math.ceil(centerSrcY + filterRadiusY));

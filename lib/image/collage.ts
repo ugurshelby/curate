@@ -265,7 +265,7 @@ export async function renderStoryCollage(
         else reject(new Error("Collage blob conversion failed"));
       },
       "image/jpeg",
-      0.95
+      0.85
     );
   });
 }

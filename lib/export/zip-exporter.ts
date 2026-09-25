@@ -142,7 +142,7 @@ export async function exportSingleImage(
       Math.round(baseCrop.height)
     );
     // 2. Lanczos-3 Separable Convolution Resample
-    renderedData = resampleLanczos3(intermediateData, targetW, targetH);
+    renderedData = await resampleLanczos3(intermediateData, targetW, targetH);
   } else {
     renderedData = await renderProcessedImage(
       imgObj,

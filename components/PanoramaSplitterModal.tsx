@@ -43,6 +43,7 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
   const [slices, setSlices] = useState<PanoramaSlice[]>([]);
   const [addedSuccess, setAddedSuccess] = useState<boolean>(false);
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
 
   // Drag-to-pan gesture state
   const isDraggingPanRef = useRef<boolean>(false);
@@ -113,14 +114,8 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
     }
   }, [selectedImageSrc, sliceCount, aspectRatio, verticalPan, slices]);
 
-  // Debounced background generation so blobs are ready when user clicks export
-  useEffect(() => {
-    if (!isOpen || !selectedImageSrc) return;
-    const timer = setTimeout(() => {
-      generateFullSlices();
-    }, 280);
-    return () => clearTimeout(timer);
-  }, [isOpen, selectedImageSrc, sliceCount, aspectRatio, verticalPan, generateFullSlices]);
+  // Background generation removed from debounce to prevent main-thread freeze during interactions.
+  // Generation only happens explicitly on Export/Add.
 
   if (!isOpen) return null;
 
@@ -161,6 +156,7 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
     const target = e.currentTarget as HTMLElement;
     target.setPointerCapture(e.pointerId);
     isDraggingPanRef.current = true;
+    setIsDragging(true);
     dragStartYRef.current = e.clientY;
     startPanValueRef.current = verticalPan;
     containerHeightRef.current = target.clientHeight || 280;
@@ -174,12 +170,16 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
     const panRange = Math.max(140, containerHeightRef.current);
     const deltaPercent = -(dy / panRange) * 100;
     const nextPan = Math.max(0, Math.min(100, Math.round(startPanValueRef.current + deltaPercent)));
-    setVerticalPan(nextPan);
+    
+    requestAnimationFrame(() => {
+      setVerticalPan(nextPan);
+    });
   };
 
   const handlePanPointerUp = (e: React.PointerEvent) => {
     if (!isDraggingPanRef.current) return;
     isDraggingPanRef.current = false;
+    setIsDragging(false);
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {}
@@ -475,7 +475,7 @@ export const PanoramaSplitterModal: React.FC<PanoramaSplitterModalProps> = ({
                                 transform: `translate3d(0, -${translateYPercent}%, 0)`,
                                 objectFit: "cover",
                               }}
-                              className="select-none pointer-events-none transition-transform duration-75 ease-out"
+                              className={`select-none pointer-events-none ${isDragging ? "" : "transition-transform duration-75 ease-out"}`}
                             />
                           ) : (
                             <img
