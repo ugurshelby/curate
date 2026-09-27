@@ -38,3 +38,8 @@ yarn-error.log*
 .idea/
 *.swp
 *.swo
+
+# QA & Visual Screenshots
+/screenshots/
+/.edge-temp/
+capture-screenshots.mjs

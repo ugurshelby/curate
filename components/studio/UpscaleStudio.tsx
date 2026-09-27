@@ -96,7 +96,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
       <main className="canvas-viewport flex items-center justify-center p-4">
         <div 
           ref={containerRef}
-          className="relative max-h-[72vh] aspect-[4/5] rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-[#0f0f11] cursor-ew-resize select-none"
+          className="relative h-[68vh] aspect-[4/5] max-w-[90vw] rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-[#0f0f11] cursor-ew-resize select-none"
           onPointerDown={handlePointerDown}
         >
           {/* Alttaki Katman: Orijinal */}

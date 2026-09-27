@@ -102,7 +102,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
       {/* 2. ÇERÇEVE SAHNESİ */}
       <main className="canvas-viewport flex items-center justify-center p-4">
         <div 
-          className="relative max-h-[70vh] aspect-[4/5] shadow-2xl transition-all duration-300 flex flex-col items-center justify-center"
+          className="relative h-[68vh] aspect-[4/5] max-w-[90vw] shadow-2xl transition-all duration-300 flex flex-col items-center justify-center"
           style={{
             padding: `${borderWidth}px`,
             paddingBottom: frameType === "polaroid" ? `${borderWidth * 2.2}px` : `${borderWidth}px`,
