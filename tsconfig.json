@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "target": "es2018",
+    "lib": ["dom", "dom.iterable", "esnext", "webworker"],
+    "downlevelIteration": true,
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,

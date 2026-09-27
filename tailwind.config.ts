@@ -12,16 +12,32 @@ const config: Config = {
       colors: {
         background: "#000000",
         surface: {
-          50: "#18181b",
-          100: "#121215",
-          200: "#0d0d10",
-          DEFAULT: "#09090b",
+          base: "#000000",
+          elevated: "#0f0f11",
+          overlay: "#18181b",
+          subtle: "#27272a",
+          border: "rgba(255, 255, 255, 0.08)",
+          "border-hover": "rgba(255, 255, 255, 0.16)",
+          "border-active": "rgba(245, 166, 35, 0.35)",
         },
         accent: {
-          DEFAULT: "#ffffff",
-          subtle: "#e4e4e7",
-          muted: "#71717a",
+          DEFAULT: "#f5f5f7",
+          warm: "#f5f5f7",
+          amber: "#f5a623",
+          "amber-muted": "rgba(245, 166, 35, 0.12)",
         },
+        content: {
+          primary: "#f5f5f7",
+          secondary: "#a1a1aa",
+          muted: "#71717a",
+          disabled: "#3f3f46",
+        },
+      },
+      borderRadius: {
+        sm: "8px",
+        md: "12px",
+        lg: "18px",
+        sheet: "28px",
       },
       fontFamily: {
         sans: [
@@ -33,22 +49,38 @@ const config: Config = {
           "system-ui",
           "sans-serif",
         ],
-        mono: ["SF Mono", "Menlo", "Monaco", "Courier New", "monospace"],
+        mono: [
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "Monaco",
+          "Consolas",
+          "monospace",
+        ],
       },
       boxShadow: {
-        glass: "inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 32px rgba(0, 0, 0, 0.6)",
-        "glass-sm": "inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 4px 16px rgba(0, 0, 0, 0.4)",
-        "glass-glow": "inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 24px rgba(255, 255, 255, 0.08)",
+        rim: "inset 0 1px 0 rgba(255, 255, 255, 0.12)",
+        glass: "inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 32px rgba(0, 0, 0, 0.5)",
+        "glow-amber": "0 0 20px rgba(245, 166, 35, 0.25)",
       },
       backdropBlur: {
         xs: "2px",
         xl: "20px",
         "2xl": "32px",
       },
+      transitionTimingFunction: {
+        "ios-spring": "cubic-bezier(0.32, 0.72, 0, 1)",
+        snappy: "cubic-bezier(0.16, 1, 0.3, 1)",
+      },
+      transitionDuration: {
+        fast: "150ms",
+        normal: "250ms",
+        sheet: "380ms",
+      },
       animation: {
-        "fade-in": "fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
-        "scale-in": "scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
-        "spin-slow": "spin 8s linear infinite",
+        "fade-in": "fadeIn 150ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "scale-in": "scaleIn 200ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "sheet-slide-up": "sheetSlideUp 380ms cubic-bezier(0.32, 0.72, 0, 1)",
       },
       keyframes: {
         fadeIn: {
@@ -58,6 +90,10 @@ const config: Config = {
         scaleIn: {
           "0%": { opacity: "0", transform: "scale(0.96)" },
           "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        sheetSlideUp: {
+          "0%": { transform: "translate3d(0, 100%, 0)" },
+          "100%": { transform: "translate3d(0, 0, 0)" },
         },
       },
     },

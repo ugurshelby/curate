@@ -2,23 +2,20 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Curate — Minimalist Post & Dump Studio",
-  description:
-    "Kayıpsız istemci-taraflı fotoğraf kürasyon, analog renk transferi, gren, halation ve akıllı Lanczos-3 upscale stüdyosu.",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Curate",
+  title: "Curate Studio — Minimalist Photo Curation & Preset Engine",
+  description: "High-contrast editorial curation and darkroom preset studio built with Apple HIG & Raycast precision.",
+  icons: {
+    icon: "/icon.svg",
   },
 };
 
 export const viewport: Viewport = {
+  themeColor: "#000000",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#000000",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -27,12 +24,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" className="dark bg-black">
-      <head>
-        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-      </head>
-      <body className="bg-black text-zinc-100 antialiased selection:bg-white/20 selection:text-white">
+    <html lang="en" className="dark bg-black text-[#f5f5f7]">
+      <body className="min-h-screen bg-black antialiased selection:bg-[#f5a623]/30 selection:text-[#f5f5f7]">
         {children}
       </body>
     </html>

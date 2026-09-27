@@ -1,0 +1,176 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "name": "Curate Design System Tokens",
+  "version": "1.0.0",
+  "surface": {
+    "base": {
+      "value": "#000000",
+      "type": "color",
+      "description": "60% Base Canvas — Deep OLED Black"
+    },
+    "elevated": {
+      "value": "#0f0f11",
+      "type": "color",
+      "description": "30% Elevated Panels, Cards & Bento containers"
+    },
+    "overlay": {
+      "value": "#18181b",
+      "type": "color",
+      "description": "Modals, Popovers, Floating Sheets"
+    },
+    "subtle": {
+      "value": "#27272a",
+      "type": "color",
+      "description": "Input wells, pressed state, slider tracks"
+    },
+    "border": {
+      "value": "rgba(255, 255, 255, 0.08)",
+      "type": "color",
+      "description": "1px hairline divider & container border"
+    },
+    "borderHover": {
+      "value": "rgba(255, 255, 255, 0.16)",
+      "type": "color",
+      "description": "Hover state rim border"
+    },
+    "borderActive": {
+      "value": "rgba(245, 166, 35, 0.35)",
+      "type": "color",
+      "description": "Accent active selection border"
+    }
+  },
+  "accent": {
+    "warmWhite": {
+      "value": "#f5f5f7",
+      "type": "color",
+      "description": "Apple Warm White — Primary contrast punctuation"
+    },
+    "amber": {
+      "value": "#f5a623",
+      "type": "color",
+      "description": "10% Minimal Amber — Single focal action & status indicator"
+    },
+    "amberMuted": {
+      "value": "rgba(245, 166, 35, 0.12)",
+      "type": "color",
+      "description": "Subtle amber wash for active tabs & badges"
+    }
+  },
+  "text": {
+    "primary": {
+      "value": "#f5f5f7",
+      "type": "color",
+      "description": "Primary high-contrast label"
+    },
+    "secondary": {
+      "value": "#a1a1aa",
+      "type": "color",
+      "description": "Secondary neutral reading copy"
+    },
+    "muted": {
+      "value": "#71717a",
+      "type": "color",
+      "description": "Muted captions, metadata & placeholders"
+    },
+    "disabled": {
+      "value": "#3f3f46",
+      "type": "color",
+      "description": "Inactive/disabled UI elements"
+    }
+  },
+  "radius": {
+    "sm": {
+      "value": "8px",
+      "type": "dimension",
+      "description": "Inner buttons, badges, micro pills"
+    },
+    "md": {
+      "value": "12px",
+      "type": "dimension",
+      "description": "Standard interactive elements, input fields"
+    },
+    "lg": {
+      "value": "18px",
+      "type": "dimension",
+      "description": "Cards, dialog boxes, floating toolbars"
+    },
+    "sheet": {
+      "value": "28px",
+      "type": "dimension",
+      "description": "Bottom sheets, modal cards, studio workspace frames"
+    },
+    "full": {
+      "value": "9999px",
+      "type": "dimension",
+      "description": "Pill buttons, floating status indicators"
+    }
+  },
+  "motion": {
+    "timing": {
+      "springSmooth": {
+        "value": "cubic-bezier(0.32, 0.72, 0, 1)",
+        "type": "cubicBezier",
+        "description": "Native iOS sheet & panel physics"
+      },
+      "springSnappy": {
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "type": "cubicBezier",
+        "description": "Button presses, quick toggles, feedback pulses"
+      }
+    },
+    "duration": {
+      "fast": {
+        "value": "150ms",
+        "type": "duration",
+        "description": "Hover, micro-feedback, state toggle"
+      },
+      "normal": {
+        "value": "250ms",
+        "type": "duration",
+        "description": "Dropdowns, expand/collapse, tab switches"
+      },
+      "sheet": {
+        "value": "380ms",
+        "type": "duration",
+        "description": "Bottom sheet entrance, modal reveals"
+      }
+    }
+  },
+  "glass": {
+    "fill": {
+      "value": "rgba(15, 15, 17, 0.72)",
+      "type": "color",
+      "description": "Liquid glass background fill"
+    },
+    "border": {
+      "value": "rgba(255, 255, 255, 0.08)",
+      "type": "color",
+      "description": "1px hairline glass border"
+    },
+    "blur": {
+      "value": "20px",
+      "type": "dimension",
+      "description": "GPU-friendly backdrop-blur-xl"
+    },
+    "rimLight": {
+      "value": "inset 0 1px 0 rgba(255, 255, 255, 0.12)",
+      "type": "boxShadow",
+      "description": "Top rim light reflecting edge"
+    },
+    "shadow": {
+      "value": "0 8px 32px rgba(0, 0, 0, 0.5)",
+      "type": "boxShadow",
+      "description": "Depth elevation shadow"
+    }
+  },
+  "typography": {
+    "fontSans": {
+      "value": "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', system-ui, sans-serif",
+      "type": "fontFamily"
+    },
+    "fontMono": {
+      "value": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+      "type": "fontFamily"
+    }
+  }
+}
