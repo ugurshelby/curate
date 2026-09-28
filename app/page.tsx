@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
-import Image from "next/image";
+import React, { useState, useRef } from "react";
 import { 
   Sparkles, 
   Layers, 
@@ -10,8 +9,9 @@ import {
   ZoomIn, 
   ArrowRight,
   ShieldCheck,
-  Zap,
-  Camera
+  Upload,
+  Plus,
+  Image as ImageIcon
 } from "lucide-react";
 import { CarouselStudio } from "@/components/studio/CarouselStudio";
 import { StoryStudio } from "@/components/studio/StoryStudio";
@@ -21,6 +21,8 @@ import { StudioModule } from "@/lib";
 
 export default function CurateStudioMain() {
   const [activeModule, setActiveModule] = useState<StudioModule | null>(null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // 1. Modül Ekranları (Tam Ekran Açılış)
   if (activeModule === "carousel") {
@@ -36,10 +38,33 @@ export default function CurateStudioMain() {
     return <UpscaleStudio onBack={() => setActiveModule(null)} />;
   }
 
+  const handleFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      // Doğrudan Carousel modülüne geç
+      setActiveModule("carousel");
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setActiveModule("carousel");
+    }
+  };
+
   // 2. Karşılama Ekranı (Studio Hub View)
   return (
     <div className="relative min-h-screen w-screen bg-black text-[#f5f5f7] select-none flex flex-col justify-between p-6 sm:p-12 overflow-x-hidden">
-      
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+
       {/* ÜST BAR: Minimal Curate Logosu */}
       <header className="w-full max-w-5xl mx-auto flex items-center justify-between py-4">
         <div className="flex items-center gap-3">
@@ -52,23 +77,69 @@ export default function CurateStudioMain() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full glass-panel text-[11px] text-[#a1a1aa] border border-white/10">
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span>Client-Side Engine Active</span>
+        <div className="flex items-center gap-3">
+          {/* Hızlı [+ Fotoğraf Yükle] Butonu */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="touch-target px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-medium flex items-center gap-1.5 transition-all border border-white/10"
+          >
+            <Plus className="w-3.5 h-3.5 text-[#f5a623]" />
+            <span>Fotoğraf Yükle</span>
+          </button>
+
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full glass-panel text-[11px] text-[#a1a1aa] border border-white/10">
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span>Client-Side Engine Active</span>
+          </div>
         </div>
       </header>
 
-      {/* MERKEZ ALAN: 4 Temiz, Yüksek Kontrastlı Stüdyo Kartı */}
-      <main className="w-full max-w-5xl mx-auto py-8 flex flex-col gap-8">
+      {/* MERKEZ ALAN: Drag & Drop Yükleme Alanı + 4 Stüdyo Kartı */}
+      <main className="w-full max-w-5xl mx-auto py-6 flex flex-col gap-6">
         
         {/* Başlık Alanı */}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5">
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">
             Stüdyo Modülü Seçin
           </h1>
           <p className="text-xs sm:text-sm text-[#a1a1aa] max-w-xl">
             Sosyal medya kürasyonu, iPhone kolaj tuvali, analog çerçeveleme ve Lanczos-3 süper çözünürlük motoru.
           </p>
+        </div>
+
+        {/* DRAG & DROP FOTOĞRAF YÜKLEME ALANI */}
+        <div
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleFileDrop}
+          onClick={() => fileInputRef.current?.click()}
+          className={`relative p-5 rounded-2xl border-2 border-dashed transition-all duration-300 cursor-pointer flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl ${
+            isDragging
+              ? "border-[#f5a623] bg-[#f5a623]/10 scale-[1.01]"
+              : "border-white/15 hover:border-[#f5a623]/50 bg-[#0f0f11]/80 hover:bg-[#141418]"
+          }`}
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[#f5a623] shrink-0">
+              <Upload className="w-5 h-5" />
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-white">Fotoğraflarınızı buraya sürükleyin</span>
+                <span className="text-[10px] bg-[#f5a623]/15 text-[#f5a623] px-2 py-0.5 rounded font-mono">
+                  Hızlı Başla
+                </span>
+              </div>
+              <p className="text-xs text-[#a1a1aa] mt-0.5">
+                Veya cihazınızdan fotoğraf seçmek için tıklayın (JPEG, PNG, HEIC, WEBP)
+              </p>
+            </div>
+          </div>
+
+          <button className="touch-target px-4 py-2 rounded-xl bg-[#f5a623] text-black text-xs font-semibold hover:bg-[#ffbc3c] transition-all shrink-0 flex items-center gap-1.5 shadow-[0_0_16px_rgba(245,166,35,0.25)]">
+            <Plus className="w-4 h-4" />
+            <span>Fotoğrafları Seç</span>
+          </button>
         </div>
 
         {/* 4'lü Bento Kart Izgarası */}

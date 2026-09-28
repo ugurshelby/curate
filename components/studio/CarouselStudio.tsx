@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import Image from "next/image";
 import { 
   ArrowLeft, 
   Eye, 
@@ -9,14 +8,16 @@ import {
   Sliders, 
   Maximize2, 
   Minimize2, 
-  Sparkles, 
   Download, 
   Plus, 
   Trash2, 
   Star, 
   Palette, 
   X,
-  Check
+  Upload,
+  FileCode,
+  Smartphone,
+  Layers
 } from "lucide-react";
 import { 
   useStudio, 
@@ -24,11 +25,15 @@ import {
   extractColorMetrics, 
   applyHarmonizeSync, 
   applyPresetToImageData, 
+  applyCubeLutToImageData,
+  parseCubeLUT,
+  CubeLUT,
   PLATFORM_SPECS, 
   calculateAspectCrop,
   ColorMetrics
 } from "@/lib";
 import { InstagramOverlay } from "./InstagramOverlay";
+import { TikTokOverlay } from "./TikTokOverlay";
 import { ResettableSlider } from "./ResettableSlider";
 import { QuickExportSheet } from "./QuickExportSheet";
 
@@ -36,42 +41,58 @@ interface CarouselStudioProps {
   onBack: () => void;
 }
 
-export function CarouselStudio({ onBack }: CarouselStudioProps) {
-  const { state, actions } = useStudio();
+interface PhotoItem {
+  id: string;
+  name: string;
+  path: string;
+}
 
-  // Test veya yüklenen görseller
-  const [photos, setPhotos] = useState<{ id: string; name: string; path: string }[]>([
-    { id: "p1", name: "Kapak", path: "/reference-images/ic-mekan-bar.jfif" },
-    { id: "p2", name: "Saha", path: "/reference-images/cim-saha.jfif" },
-    { id: "p3", name: "Gökdelen", path: "/reference-images/sehir-gokdelen.jfif" },
-    { id: "p4", name: "Günbatımı", path: "/reference-images/gun-batimi-gunese-dokunan-eleman.jfif" },
-    { id: "p5", name: "Tren", path: "/reference-images/tren.jfif" },
+export function CarouselStudio({ onBack }: CarouselStudioProps) {
+  const { actions } = useStudio();
+
+  // Varsayılan ve yüklenen fotoğraflar
+  const [photos, setPhotos] = useState<PhotoItem[]>([
+    { id: "p1", name: "01-Kapak.jpg", path: "/reference-images/ic-mekan-bar.jfif" },
+    { id: "p2", name: "02-Saha.jpg", path: "/reference-images/cim-saha.jfif" },
+    { id: "p3", name: "03-Gokdelen.jpg", path: "/reference-images/sehir-gokdelen.jfif" },
+    { id: "p4", name: "04-Gunbatimi.jpg", path: "/reference-images/gun-batimi-gunese-dokunan-eleman.jfif" },
+    { id: "p5", name: "05-Tren.jpg", path: "/reference-images/tren.jfif" },
   ]);
 
   const [activePhotoId, setActivePhotoId] = useState<string>("p1");
   const [fitMode, setFitMode] = useState<"fill" | "fit">("fill");
-  const [showOverlay, setShowOverlay] = useState<boolean>(false);
+  const [previewMode, setPreviewMode] = useState<"none" | "instagram" | "tiktok">("none");
   const [zoomScale, setZoomScale] = useState<number>(1);
   const [isEditSheetOpen, setIsEditSheetOpen] = useState<boolean>(false);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
 
   // Düzenleme Değerleri
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+  const [customLut, setCustomLut] = useState<CubeLUT | null>(null);
   const [itemIntensity, setItemIntensity] = useState<number>(100);
   const [heroColorMetrics, setHeroColorMetrics] = useState<ColorMetrics | null>(null);
 
-  // Long press context menu
-  const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  // Sürükle - Bırak (Drag to Reorder)
+  const [draggedPhotoIndex, setDraggedPhotoIndex] = useState<number | null>(null);
 
+  // Context Menu
+  const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const lastTapRef = useRef<{ id: string; time: number } | null>(null);
+
+  // Refs
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const lutInputRef = useRef<HTMLInputElement | null>(null);
+
   const activePhoto = photos.find((p) => p.id === activePhotoId) || photos[0];
 
   // Aktif görseli canvas üzerinde çiz ve filtreleri uygula
   useEffect(() => {
     if (!activePhoto) return;
     const img = new window.Image();
-    img.crossOrigin = "anonymous";
+    if (!activePhoto.path.startsWith("data:")) {
+      img.crossOrigin = "anonymous";
+    }
     img.src = activePhoto.path;
     img.onload = () => {
       const canvas = canvasRef.current;
@@ -85,13 +106,17 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
 
       let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-      // Hero harmonize varsa uygula (%20)
+      // 1. Hero harmonize varsa uygula (%20)
       if (heroColorMetrics) {
         imgData = applyHarmonizeSync(imgData, heroColorMetrics, 0.20);
       }
 
-      // Preset varsa uygula
-      if (selectedPresetId) {
+      // 2. Custom 3D LUT (.CUBE) varsa uygula
+      if (customLut && selectedPresetId === "custom_lut") {
+        imgData = applyCubeLutToImageData(imgData, customLut, itemIntensity / 100);
+      }
+      // 3. Standart Preset varsa uygula
+      else if (selectedPresetId && selectedPresetId !== "custom_lut") {
         const preset = CURATE_PRESETS.find((p) => p.id === selectedPresetId);
         if (preset) {
           imgData = applyPresetToImageData(imgData, preset, itemIntensity / 100);
@@ -100,7 +125,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
 
       ctx.putImageData(imgData, 0, 0);
     };
-  }, [activePhoto, selectedPresetId, itemIntensity, heroColorMetrics]);
+  }, [activePhoto, selectedPresetId, customLut, itemIntensity, heroColorMetrics]);
 
   // Wheel zoom (izole)
   const handleWheelZoom = (e: React.WheelEvent) => {
@@ -108,21 +133,106 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
     setZoomScale((prev) => Math.min(3, Math.max(1, prev + (e.deltaY < 0 ? 0.15 : -0.15))));
   };
 
-  // Long-press başlangıcı
-  const handleTouchStart = (photoId: string, e: React.MouseEvent | React.TouchEvent) => {
-    const clientX = "touches" in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-    const clientY = "touches" in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-
-    longPressTimer.current = setTimeout(() => {
-      setContextMenu({ id: photoId, x: clientX, y: clientY });
-    }, 450);
+  // Fotoğraf Yükleme (Dosya Seçici & Drop)
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    loadFiles(Array.from(files));
+    e.target.value = "";
   };
 
-  const handleTouchEnd = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
+  const loadFiles = (files: File[]) => {
+    const validImageFiles = files.filter((f) => f.type.startsWith("image/"));
+    if (validImageFiles.length === 0) return;
+
+    validImageFiles.forEach((file, idx) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        if (!dataUrl) return;
+
+        const newPhoto: PhotoItem = {
+          id: `photo_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+          name: file.name,
+          path: dataUrl,
+        };
+
+        setPhotos((prev) => {
+          const next = [...prev, newPhoto];
+          if (prev.length === 0) {
+            setActivePhotoId(newPhoto.id);
+          }
+          return next;
+        });
+
+        // İlk yüklenen kareyi aktif seç
+        if (idx === 0) {
+          setActivePhotoId(newPhoto.id);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // .CUBE LUT Yükleme
+  const handleLutUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const parsedLut = parseCubeLUT(text, file.name.replace(/\.[^/.]+$/, ""));
+        setCustomLut(parsedLut);
+        setSelectedPresetId("custom_lut");
+      } catch (err) {
+        console.error("LUT parse hatası:", err);
+        alert("Geçersiz .cube dosyası: Lütfen standart 3D LUT dosyası seçin.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  // Drag-and-Drop Reorder İşlemleri
+  const handleDragStart = (index: number) => {
+    setDraggedPhotoIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (dropIndex: number) => {
+    if (draggedPhotoIndex === null || draggedPhotoIndex === dropIndex) return;
+
+    const updated = [...photos];
+    const [movedItem] = updated.splice(draggedPhotoIndex, 1);
+    updated.splice(dropIndex, 0, movedItem);
+
+    setPhotos(updated);
+    setDraggedPhotoIndex(null);
+  };
+
+  // Çift Dokunma (Mobile Double-Tap) veya Masaüstü Sağ Tık (ContextMenu)
+  const handleCardClick = (photoId: string) => {
+    setActivePhotoId(photoId);
+
+    // Mobil için Double-Tap algılama
+    const now = Date.now();
+    if (lastTapRef.current && lastTapRef.current.id === photoId && now - lastTapRef.current.time < 320) {
+      // Çift dokunma algılandı -> Menüyü aç
+      setContextMenu({ id: photoId, x: window.innerWidth / 2 - 85, y: window.innerHeight - 200 });
+      lastTapRef.current = null;
+    } else {
+      lastTapRef.current = { id: photoId, time: now };
     }
+  };
+
+  const handleContextMenu = (photoId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ id: photoId, x: e.clientX, y: e.clientY });
   };
 
   // Context Menu Eylemleri
@@ -168,7 +278,9 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
     if (!ctx) throw new Error("Canvas context failed");
 
     const img = new window.Image();
-    img.crossOrigin = "anonymous";
+    if (!photoPath.startsWith("data:")) {
+      img.crossOrigin = "anonymous";
+    }
     img.src = photoPath;
     await new Promise((res) => { img.onload = res; });
 
@@ -197,30 +309,91 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   };
 
   return (
-    <div className="relative flex flex-col h-screen w-screen overflow-hidden bg-black text-[#f5f5f7] select-none">
-      
-      {/* 1. ÜST HEADER: Minimal Nav & Export */}
-      <header className="absolute top-4 left-4 right-4 z-40 flex items-center justify-between px-4 py-2.5 rounded-lg glass-panel max-w-4xl mx-auto">
-        <button
-          onClick={onBack}
-          className="touch-target text-xs text-[#a1a1aa] hover:text-white flex items-center gap-1.5 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Stüdyo</span>
-        </button>
+    <div 
+      className="relative flex flex-col h-screen w-screen overflow-hidden bg-black text-[#f5f5f7] select-none"
+      onClick={() => { if (contextMenu) setContextMenu(null); }}
+    >
+      {/* Gizli Dosya Inputları */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*"
+        className="hidden"
+        onChange={handlePhotoUpload}
+      />
+      <input
+        ref={lutInputRef}
+        type="file"
+        accept=".cube"
+        className="hidden"
+        onChange={handleLutUpload}
+      />
 
+      {/* 1. ÜST HEADER: Minimal Nav, Fotoğraf Yükle & Export */}
+      <header className="absolute top-4 left-4 right-4 z-40 flex items-center justify-between px-3.5 py-2 rounded-xl glass-panel max-w-4xl mx-auto border border-white/10 shadow-2xl">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="touch-target text-xs text-[#a1a1aa] hover:text-white flex items-center gap-1.5 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Stüdyo</span>
+          </button>
+
+          <div className="h-4 w-[1px] bg-white/10" />
+
+          {/* [+ Fotoğraf Yükle] Butonu */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="touch-target px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-medium flex items-center gap-1.5 transition-all border border-white/10"
+            title="Bilgisayar veya Telefondan Fotoğraf Ekle"
+          >
+            <Plus className="w-3.5 h-3.5 text-[#f5a623]" />
+            <span>Fotoğraf Yükle</span>
+          </button>
+        </div>
+
+        {/* Başlık ve Platform Bilgisi */}
         <div className="flex flex-col items-center">
           <span className="text-xs font-semibold tracking-tight text-[#f5f5f7]">Carousel Dump</span>
           <span className="text-[10px] text-[#71717a] font-mono">1080 × 1350 px (4:5)</span>
         </div>
 
-        <button
-          onClick={() => setIsExportOpen(true)}
-          className="touch-target px-3.5 py-1.5 rounded-md bg-[#f5a623] hover:bg-[#ffbc3c] text-black text-xs font-semibold active:scale-95 transition-all shadow-[0_0_16px_rgba(245,166,35,0.25)] flex items-center gap-1.5"
-        >
-          <Download className="w-3.5 h-3.5" />
-          <span>Export</span>
-        </button>
+        {/* Sağ Taraf: Önizleme Modu & Export */}
+        <div className="flex items-center gap-2">
+          {/* Önizleme Seçici */}
+          <div className="flex bg-[#18181b] p-0.5 rounded-lg border border-white/10">
+            <button
+              onClick={() => setPreviewMode(previewMode === "instagram" ? "none" : "instagram")}
+              className={`px-2 py-1 text-[11px] rounded-md transition-all flex items-center gap-1 ${
+                previewMode === "instagram" ? "bg-[#f5a623] text-black font-semibold" : "text-[#a1a1aa] hover:text-white"
+              }`}
+              title="Instagram Önizleme"
+            >
+              <Layers className="w-3 h-3" />
+              <span className="hidden md:inline">IG</span>
+            </button>
+            <button
+              onClick={() => setPreviewMode(previewMode === "tiktok" ? "none" : "tiktok")}
+              className={`px-2 py-1 text-[11px] rounded-md transition-all flex items-center gap-1 ${
+                previewMode === "tiktok" ? "bg-[#fe2c55] text-white font-semibold" : "text-[#a1a1aa] hover:text-white"
+              }`}
+              title="TikTok Önizleme"
+            >
+              <Smartphone className="w-3 h-3" />
+              <span className="hidden md:inline">TikTok</span>
+            </button>
+          </div>
+
+          <button
+            onClick={() => setIsExportOpen(true)}
+            className="touch-target px-3 py-1.5 rounded-lg bg-[#f5a623] hover:bg-[#ffbc3c] text-black text-xs font-semibold active:scale-95 transition-all shadow-[0_0_16px_rgba(245,166,35,0.25)] flex items-center gap-1.5"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export</span>
+          </button>
+        </div>
       </header>
 
       {/* 2. GÖRSEL SAHNESİ (STAGE): Görsel asla altta ezilmez */}
@@ -231,7 +404,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         onWheel={handleWheelZoom}
       >
         <div 
-          className={`relative max-w-full max-h-[70vh] aspect-[4/5] rounded-lg overflow-hidden border border-white/10 shadow-2xl bg-[#0a0a0c] flex items-center justify-center transition-all duration-300 ${
+          className={`relative max-w-full max-h-[70vh] aspect-[4/5] rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-[#0a0a0c] flex items-center justify-center transition-all duration-300 ${
             isEditSheetOpen ? "-translate-y-2 scale-[0.88]" : ""
           }`}
         >
@@ -248,26 +421,18 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
             }`}
           />
 
-          {/* Instagram Post Safe-Zone Overlay */}
-          {showOverlay && <InstagramOverlay type="post" />}
+          {/* Platform Safe-Zone Overlays */}
+          {previewMode === "instagram" && <InstagramOverlay type="post" />}
+          {previewMode === "tiktok" && <TikTokOverlay type="post" />}
 
-          {/* Sağ Üst: Yüzen Göz İkonu (Safe-Zone) */}
-          <button
-            onClick={() => setShowOverlay(!showOverlay)}
-            className="absolute top-3 right-3 z-30 p-2 rounded-full glass-panel hover:bg-white/10 text-white/80 hover:text-white transition-all"
-            title="Instagram Safe-Zone Önizleme"
-          >
-            {showOverlay ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
-
-          {/* Sağ Alt: Fill / Fit Toggle */}
+          {/* Sol Alt: Fill / Fit Toggle (Instagram Kaydet butonuyla çakışmaz) */}
           <button
             onClick={() => setFitMode(fitMode === "fill" ? "fit" : "fill")}
-            className="absolute bottom-3 right-3 z-30 px-2.5 py-1.5 rounded-md glass-panel text-[11px] font-mono text-white/90 hover:text-white flex items-center gap-1.5 transition-all"
+            className="absolute bottom-3 left-3 z-30 px-2.5 py-1.5 rounded-md glass-panel text-[11px] font-mono text-white/90 hover:text-white flex items-center gap-1.5 transition-all border border-white/10 shadow-lg"
             title="Fill / Fit Değiştir"
           >
             {fitMode === "fill" ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
-            <span className="uppercase">{fitMode}</span>
+            <span className="uppercase font-semibold">{fitMode}</span>
           </button>
         </div>
       </main>
@@ -277,7 +442,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         
         {/* Düzenleme Modu (Edit Sheet) */}
         {isEditSheetOpen && (
-          <div className="w-full mb-3 p-4 rounded-sheet glass-panel animate-sheet-slide-up border border-white/10 flex flex-col gap-4 shadow-2xl">
+          <div className="w-full mb-3 p-4 rounded-2xl glass-panel animate-sheet-slide-up border border-white/10 flex flex-col gap-4 shadow-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-white/10">
               <div className="flex items-center gap-2">
                 <Sliders className="w-4 h-4 text-[#f5a623]" />
@@ -285,42 +450,66 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
               </div>
               <button 
                 onClick={() => setIsEditSheetOpen(false)}
-                className="p-1 rounded-full text-[#71717a] hover:text-white"
+                className="p-1.5 rounded-full text-[#71717a] hover:text-white hover:bg-white/10 transition-colors"
+                title="Paneli Kapat"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Global Preset Seçici */}
+            {/* Global Preset & .CUBE LUT Seçici */}
             <div className="flex flex-col gap-2">
-              <span className="text-[11px] text-[#a1a1aa]">Global Preset (Tüm Seriye):</span>
-              <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-[#a1a1aa]">Global Preset & 3D LUT (Tüm Seriye):</span>
+                {customLut && (
+                  <span className="text-[10px] text-[#f5a623] font-mono truncate max-w-[150px]">
+                    LUT: {customLut.title}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
                 <button
-                  onClick={() => setSelectedPresetId(null)}
+                  onClick={() => { setSelectedPresetId(null); setCustomLut(null); }}
                   className={`p-1.5 rounded-md text-[11px] border text-center transition-all ${
-                    selectedPresetId === null ? "border-[#f5a623] bg-[#f5a623]/10 text-white" : "border-white/5 bg-[#18181b]/60 text-[#a1a1aa]"
+                    selectedPresetId === null ? "border-[#f5a623] bg-[#f5a623]/10 text-white font-medium" : "border-white/5 bg-[#18181b]/60 text-[#a1a1aa]"
                   }`}
                 >
                   Ham
                 </button>
+
                 {CURATE_PRESETS.map((p) => (
                   <button
                     key={p.id}
                     onClick={() => setSelectedPresetId(p.id)}
                     className={`p-1.5 rounded-md text-[11px] border text-center transition-all truncate ${
-                      selectedPresetId === p.id ? "border-[#f5a623] bg-[#f5a623]/10 text-white" : "border-white/5 bg-[#18181b]/60 text-[#a1a1aa]"
+                      selectedPresetId === p.id ? "border-[#f5a623] bg-[#f5a623]/10 text-white font-medium" : "border-white/5 bg-[#18181b]/60 text-[#a1a1aa]"
                     }`}
                   >
                     {p.name.split(" ")[0]}
                   </button>
                 ))}
+
+                {/* [+ LUT / Preset Yükle] Butonu */}
+                <button
+                  onClick={() => lutInputRef.current?.click()}
+                  className={`p-1.5 rounded-md text-[11px] border text-center transition-all flex items-center justify-center gap-1 ${
+                    selectedPresetId === "custom_lut"
+                      ? "border-[#f5a623] bg-[#f5a623]/20 text-[#f5a623] font-semibold"
+                      : "border-dashed border-white/20 bg-white/5 text-[#a1a1aa] hover:text-white"
+                  }`}
+                  title="Dışarıdan .cube dosyası yükle"
+                >
+                  <FileCode className="w-3 h-3 shrink-0 text-[#f5a623]" />
+                  <span className="truncate">.CUBE</span>
+                </button>
               </div>
             </div>
 
             {/* Seçili Kare İnce Ayar Slider'ı */}
             <div className="pt-1 border-t border-white/5">
               <ResettableSlider
-                label="Seçili Kare Yoğunluk"
+                label="Preset & LUT Yoğunluğu"
                 value={itemIntensity}
                 min={0}
                 max={100}
@@ -335,38 +524,60 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         {/* Filmstrip Barı */}
         <div className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl glass-panel border border-white/10 shadow-2xl">
           
-          {/* Yatay Kaydırılabilir Filmstrip */}
-          <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar py-0.5 max-w-full">
+          {/* Yatay Kaydırılabilir & Sürükle-Bırak Sıralanabilir Filmstrip */}
+          <div className="flex items-center gap-2.5 overflow-x-auto hide-scrollbar py-0.5 max-w-full">
             {photos.map((photo, index) => (
               <div
                 key={photo.id}
-                onClick={() => setActivePhotoId(photo.id)}
-                onMouseDown={(e) => handleTouchStart(photo.id, e)}
-                onMouseUp={handleTouchEnd}
-                onTouchStart={(e) => handleTouchStart(photo.id, e)}
-                onTouchEnd={handleTouchEnd}
-                className={`relative w-12 h-14 rounded-md overflow-hidden shrink-0 cursor-pointer border transition-all ${
+                draggable
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={handleDragOver}
+                onDrop={() => handleDrop(index)}
+                onClick={() => handleCardClick(photo.id)}
+                onContextMenu={(e) => handleContextMenu(photo.id, e)}
+                className={`relative group w-13 h-15 rounded-lg overflow-hidden shrink-0 cursor-grab active:cursor-grabbing border transition-all ${
                   activePhotoId === photo.id
-                    ? "border-[#f5a623] scale-105 shadow-[0_0_12px_rgba(245,166,35,0.3)]"
-                    : "border-white/10 opacity-70 hover:opacity-100"
+                    ? "border-[#f5a623] scale-105 shadow-[0_0_14px_rgba(245,166,35,0.4)]"
+                    : "border-white/15 opacity-75 hover:opacity-100"
                 }`}
+                title="Sıralamak için sürükleyin · Masaüstü: Sağ tık menü · Mobil: Çift dokunma"
               >
-                <Image
+                {/* Standart <img> ile sıfır kırık görsel / blob desteği */}
+                <img
                   src={photo.path}
                   alt={photo.name}
-                  fill
-                  className="object-cover"
+                  className="w-full h-full object-cover pointer-events-none"
+                  loading="eager"
                 />
-                <span className="absolute top-0.5 left-1 text-[9px] font-mono bg-black/60 px-1 rounded text-white font-bold">
+
+                {/* Temiz Sıra Numarası Rozeti */}
+                <span className="absolute top-1 left-1 text-[9px] font-mono bg-black/75 px-1 py-0.2 rounded text-white font-bold tracking-tight">
                   {String(index + 1).padStart(2, "0")}
                 </span>
+
+                {/* Alt Kısımda Dosya Adı (text-xs truncate) */}
+                <div className="absolute bottom-0 inset-x-0 bg-black/80 px-1 py-0.5">
+                  <p className="text-[8px] text-zinc-300 truncate text-center leading-tight">
+                    {photo.name}
+                  </p>
+                </div>
               </div>
             ))}
+
+            {/* Filmstrip İçinde Hızlı Ekle Kartı */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-13 h-15 rounded-lg border border-dashed border-white/20 hover:border-[#f5a623]/60 bg-white/5 hover:bg-white/10 shrink-0 flex flex-col items-center justify-center gap-1 text-[#a1a1aa] hover:text-white transition-all"
+              title="Yeni Fotoğraf Ekle"
+            >
+              <Plus className="w-4 h-4 text-[#f5a623]" />
+              <span className="text-[8px]">Ekle</span>
+            </button>
           </div>
 
           <div className="w-[1px] h-6 bg-white/10 shrink-0" />
 
-          {/* Düzenle Butonu */}
+          {/* Düzenle Butonu (Gereksiz Kapat butonu kaldırıldı) */}
           <button
             onClick={() => setIsEditSheetOpen(!isEditSheetOpen)}
             className={`touch-target px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 ${
@@ -374,37 +585,39 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
             }`}
           >
             <Sliders className="w-3.5 h-3.5" />
-            <span>{isEditSheetOpen ? "Kapat" : "Düzenle"}</span>
+            <span>Düzenle</span>
           </button>
         </div>
       </footer>
 
-      {/* Long-Press Context Menu */}
+      {/* Context Menu (Masaüstü Sağ Tık / Mobil Çift Dokunma) */}
       {contextMenu && (
         <div 
-          className="fixed z-50 rounded-lg glass-panel border border-white/15 p-1 shadow-2xl flex flex-col gap-0.5 min-w-[170px] animate-scale-in"
+          className="fixed z-50 rounded-xl glass-panel border border-white/15 p-1 shadow-2xl flex flex-col gap-0.5 min-w-[180px] animate-scale-in"
           style={{ 
-            top: Math.min(window.innerHeight - 150, contextMenu.y - 120), 
-            left: Math.min(window.innerWidth - 180, contextMenu.x) 
+            top: Math.min(window.innerHeight - 160, contextMenu.y), 
+            left: Math.min(window.innerWidth - 190, contextMenu.x) 
           }}
+          onClick={(e) => e.stopPropagation()}
         >
           <button
             onClick={() => handleMakeCover(contextMenu.id)}
-            className="w-full text-left px-2.5 py-1.5 text-xs text-[#f5f5f7] hover:bg-white/10 rounded-md flex items-center gap-2"
+            className="w-full text-left px-2.5 py-2 text-xs text-[#f5f5f7] hover:bg-white/10 rounded-lg flex items-center gap-2 transition-colors"
           >
             <Star className="w-3.5 h-3.5 text-amber-400" />
             <span>01 Kapak Yap</span>
           </button>
           <button
             onClick={() => handleHeroHarmonize(contextMenu.id)}
-            className="w-full text-left px-2.5 py-1.5 text-xs text-[#f5f5f7] hover:bg-white/10 rounded-md flex items-center gap-2"
+            className="w-full text-left px-2.5 py-2 text-xs text-[#f5f5f7] hover:bg-white/10 rounded-lg flex items-center gap-2 transition-colors"
           >
             <Palette className="w-3.5 h-3.5 text-[#f5a623]" />
             <span>Seriyi Bu Renge Eşitle</span>
           </button>
+          <div className="h-[1px] bg-white/10 my-0.5" />
           <button
             onClick={() => handleRemovePhoto(contextMenu.id)}
-            className="w-full text-left px-2.5 py-1.5 text-xs text-rose-400 hover:bg-rose-500/10 rounded-md flex items-center gap-2"
+            className="w-full text-left px-2.5 py-2 text-xs text-rose-400 hover:bg-rose-500/10 rounded-lg flex items-center gap-2 transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Seriden Çıkar</span>

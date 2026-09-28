@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import Image from "next/image";
-import { ArrowLeft, Download, Sliders, Calendar, Sparkles } from "lucide-react";
+import { ArrowLeft, Download, Calendar, Plus } from "lucide-react";
 import { ResettableSlider } from "./ResettableSlider";
 import { QuickExportSheet } from "./QuickExportSheet";
 import { extractAdaptiveGradient, AdaptiveGradientResult } from "@/lib";
@@ -20,7 +19,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
   const [adaptiveGradient, setAdaptiveGradient] = useState<AdaptiveGradientResult | null>(null);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
 
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Günün analog tarih formatı: '26 09 27
   const getTodayStamp = () => {
@@ -31,10 +30,28 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
     return `'${yy} ${mm} ${dd}`;
   };
 
+  // Fotoğraf Yükleme
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (dataUrl) {
+        setPhotoPath(dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
   // Görsel yüklendiğinde gradyan çıkar
   useEffect(() => {
     const img = new window.Image();
-    img.crossOrigin = "anonymous";
+    if (!photoPath.startsWith("data:")) {
+      img.crossOrigin = "anonymous";
+    }
     img.src = photoPath;
     img.onload = () => {
       const c = document.createElement("canvas");
@@ -75,15 +92,37 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
 
   return (
     <div className="relative flex flex-col h-screen w-screen overflow-hidden bg-black text-[#f5f5f7] select-none">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handlePhotoUpload}
+      />
+
       {/* 1. ÜST HEADER */}
-      <header className="absolute top-4 left-4 right-4 z-40 flex items-center justify-between px-4 py-2.5 rounded-lg glass-panel max-w-4xl mx-auto">
-        <button
-          onClick={onBack}
-          className="touch-target text-xs text-[#a1a1aa] hover:text-white flex items-center gap-1.5 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Stüdyo</span>
-        </button>
+      <header className="absolute top-4 left-4 right-4 z-40 flex items-center justify-between px-3.5 py-2 rounded-xl glass-panel max-w-4xl mx-auto border border-white/10 shadow-2xl">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="touch-target text-xs text-[#a1a1aa] hover:text-white flex items-center gap-1.5 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Stüdyo</span>
+          </button>
+
+          <div className="h-4 w-[1px] bg-white/10" />
+
+          {/* [+ Fotoğraf Yükle] Butonu */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="touch-target px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-medium flex items-center gap-1.5 transition-all border border-white/10"
+            title="Kendi Fotoğrafını Çerçevele"
+          >
+            <Plus className="w-3.5 h-3.5 text-[#f5a623]" />
+            <span>Fotoğraf Yükle</span>
+          </button>
+        </div>
 
         <div className="flex flex-col items-center">
           <span className="text-xs font-semibold tracking-tight text-[#f5f5f7]">Minimal Çerçeve</span>
@@ -92,7 +131,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
 
         <button
           onClick={() => setIsExportOpen(true)}
-          className="touch-target px-3.5 py-1.5 rounded-md bg-[#f5a623] hover:bg-[#ffbc3c] text-black text-xs font-semibold active:scale-95 transition-all shadow-[0_0_16px_rgba(245,166,35,0.25)] flex items-center gap-1.5"
+          className="touch-target px-3.5 py-1.5 rounded-lg bg-[#f5a623] hover:bg-[#ffbc3c] text-black text-xs font-semibold active:scale-95 transition-all shadow-[0_0_16px_rgba(245,166,35,0.25)] flex items-center gap-1.5"
         >
           <Download className="w-3.5 h-3.5" />
           <span>Export</span>
@@ -100,7 +139,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
       </header>
 
       {/* 2. ÇERÇEVE SAHNESİ */}
-      <main className="canvas-viewport flex items-center justify-center p-4">
+      <main className="canvas-viewport flex items-center justify-center p-4 pb-24">
         <div 
           className="relative h-[68vh] aspect-[4/5] max-w-[90vw] shadow-2xl transition-all duration-300 flex flex-col items-center justify-center"
           style={{
@@ -115,11 +154,10 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
         >
           {/* İç Fotoğraf */}
           <div className="relative w-full h-full rounded-sm overflow-hidden shadow-inner flex items-center justify-center bg-black">
-            <Image
+            <img
               src={photoPath}
               alt="frame photo"
-              fill
-              className="object-cover"
+              className="w-full h-full object-cover"
             />
           </div>
 
@@ -141,7 +179,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
 
       {/* 3. ALT KONTROL PANELİ */}
       <footer className="absolute bottom-4 left-4 right-4 z-40 max-w-xl mx-auto flex flex-col items-center">
-        <div className="w-full p-4 rounded-sheet glass-panel border border-white/10 shadow-2xl flex flex-col gap-3.5">
+        <div className="w-full p-4 rounded-2xl glass-panel border border-white/10 shadow-2xl flex flex-col gap-3.5">
           
           {/* Üst Sekmeler: Çerçeve Tipi & Tarih Damgası */}
           <div className="flex items-center justify-between text-xs pb-2 border-b border-white/10">

@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import Image from "next/image";
-import { ArrowLeft, Download, ZoomIn, RefreshCw, Sparkles, Check } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { ArrowLeft, Download, ZoomIn, Plus } from "lucide-react";
 import { upscaleLanczos3 } from "@/lib";
 import { QuickExportSheet } from "./QuickExportSheet";
 
@@ -14,11 +13,27 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
   const [photoPath, setPhotoPath] = useState<string>("/reference-images/tren.jfif");
   const [scaleFactor, setScaleFactor] = useState<2 | 4>(2);
   const [splitPos, setSplitPos] = useState<number>(50); // %0 - %100
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const isDragging = useRef<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Fotoğraf Yükleme
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (dataUrl) {
+        setPhotoPath(dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
 
   // Split view slider sürükleme
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -38,7 +53,9 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
 
   const getExportBlob = async (): Promise<Blob> => {
     const img = new window.Image();
-    img.crossOrigin = "anonymous";
+    if (!photoPath.startsWith("data:")) {
+      img.crossOrigin = "anonymous";
+    }
     img.src = photoPath;
     await new Promise((res) => { img.onload = res; });
 
@@ -68,15 +85,37 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
     >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handlePhotoUpload}
+      />
+
       {/* 1. ÜST HEADER */}
-      <header className="absolute top-4 left-4 right-4 z-40 flex items-center justify-between px-4 py-2.5 rounded-lg glass-panel max-w-4xl mx-auto">
-        <button
-          onClick={onBack}
-          className="touch-target text-xs text-[#a1a1aa] hover:text-white flex items-center gap-1.5 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Stüdyo</span>
-        </button>
+      <header className="absolute top-4 left-4 right-4 z-40 flex items-center justify-between px-3.5 py-2 rounded-xl glass-panel max-w-4xl mx-auto border border-white/10 shadow-2xl">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="touch-target text-xs text-[#a1a1aa] hover:text-white flex items-center gap-1.5 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Stüdyo</span>
+          </button>
+
+          <div className="h-4 w-[1px] bg-white/10" />
+
+          {/* [+ Fotoğraf Yükle] Butonu */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="touch-target px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-medium flex items-center gap-1.5 transition-all border border-white/10"
+            title="Büyütülecek Fotoğrafı Yükle"
+          >
+            <Plus className="w-3.5 h-3.5 text-[#f5a623]" />
+            <span>Fotoğraf Yükle</span>
+          </button>
+        </div>
 
         <div className="flex flex-col items-center">
           <span className="text-xs font-semibold tracking-tight text-[#f5f5f7]">Kayıpsız Upscale</span>
@@ -85,7 +124,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
 
         <button
           onClick={() => setIsExportOpen(true)}
-          className="touch-target px-3.5 py-1.5 rounded-md bg-[#f5a623] hover:bg-[#ffbc3c] text-black text-xs font-semibold active:scale-95 transition-all shadow-[0_0_16px_rgba(245,166,35,0.25)] flex items-center gap-1.5"
+          className="touch-target px-3.5 py-1.5 rounded-lg bg-[#f5a623] hover:bg-[#ffbc3c] text-black text-xs font-semibold active:scale-95 transition-all shadow-[0_0_16px_rgba(245,166,35,0.25)] flex items-center gap-1.5"
         >
           <Download className="w-3.5 h-3.5" />
           <span>Export ({scaleFactor}x)</span>
@@ -93,7 +132,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
       </header>
 
       {/* 2. SPLIT VIEW SAHNESİ */}
-      <main className="canvas-viewport flex items-center justify-center p-4">
+      <main className="canvas-viewport flex items-center justify-center p-4 pb-24">
         <div 
           ref={containerRef}
           className="relative h-[68vh] aspect-[4/5] max-w-[90vw] rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-[#0f0f11] cursor-ew-resize select-none"
@@ -101,13 +140,12 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
         >
           {/* Alttaki Katman: Orijinal */}
           <div className="absolute inset-0">
-            <Image
+            <img
               src={photoPath}
               alt="original"
-              fill
-              className="object-cover filter blur-[0.5px]"
+              className="w-full h-full object-cover filter blur-[0.5px]"
             />
-            <span className="absolute bottom-3 left-3 text-[10px] font-mono bg-black/70 px-2 py-0.5 rounded text-[#a1a1aa] border border-white/5">
+            <span className="absolute bottom-3 left-3 text-[10px] font-mono bg-black/75 px-2 py-0.5 rounded text-[#a1a1aa] border border-white/10">
               1x Orijinal
             </span>
           </div>
@@ -119,16 +157,15 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
               clipPath: `polygon(${splitPos}% 0, 100% 0, 100% 100%, ${splitPos}% 100%)`,
             }}
           >
-            <Image
+            <img
               src={photoPath}
               alt="upscaled"
-              fill
-              className="object-cover"
+              className="w-full h-full object-cover"
               style={{
                 filter: "contrast(1.04) brightness(1.02)",
               }}
             />
-            <span className="absolute bottom-3 right-3 text-[10px] font-mono bg-black/70 px-2 py-0.5 rounded text-[#f5a623] border border-[#f5a623]/30">
+            <span className="absolute bottom-3 right-3 text-[10px] font-mono bg-black/75 px-2 py-0.5 rounded text-[#f5a623] border border-[#f5a623]/30">
               Lanczos-3 ({scaleFactor}x Keskin)
             </span>
           </div>
@@ -160,7 +197,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
                 scaleFactor === 2 ? "bg-[#f5a623] text-black font-bold" : "text-[#71717a] hover:text-white"
               }`}
             >
-              2x (Lanczos)
+              2x
             </button>
             <button
               onClick={() => setScaleFactor(4)}
@@ -168,7 +205,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
                 scaleFactor === 4 ? "bg-[#f5a623] text-black font-bold" : "text-[#71717a] hover:text-white"
               }`}
             >
-              4x (Ultra HD)
+              4x
             </button>
           </div>
         </div>
