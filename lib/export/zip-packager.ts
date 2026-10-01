@@ -29,7 +29,8 @@ export async function packageDumpZip(
   for (let i = 0; i < total; i++) {
     const item = sortedItems[i];
     const indexStr = String(i + 1).padStart(2, '0');
-    const fileName = `${prefix}_${indexStr}.jpg`;
+    const ext = item.blob.type === 'image/png' ? 'png' : 'jpg';
+    const fileName = `${prefix}_${indexStr}.${ext}`;
 
     if (onProgress) {
       onProgress({

@@ -4,7 +4,7 @@
  * Applied with linear interpolation (lerp) from 0 to 100% intensity.
  */
 
-import { PresetProfile } from '../core/types';
+import { PresetProfile, CubeLUT } from '../core/types';
 
 export const CURATE_PRESETS: PresetProfile[] = [
   {
@@ -101,14 +101,7 @@ export const CURATE_PRESETS: PresetProfile[] = [
   },
 ];
 
-/**
- * 3D LUT Data Interface
- */
-export interface CubeLUT {
-  title: string;
-  size: number;
-  data: Float32Array; // Flattened size^3 * 3 RGB values in [0, 1]
-}
+export type { CubeLUT };
 
 /**
  * Parses a standard .cube (Adobe 3D LUT) text content into an in-memory 3D LUT

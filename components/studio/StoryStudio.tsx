@@ -18,26 +18,23 @@ import { ResettableSlider } from "./ResettableSlider";
 import { InstagramOverlay } from "./InstagramOverlay";
 import { TikTokOverlay } from "./TikTokOverlay";
 import { QuickExportSheet } from "./QuickExportSheet";
-import { PLATFORM_SPECS, extractAdaptiveGradient, AdaptiveGradientResult } from "@/lib";
+import { 
+  PLATFORM_SPECS, 
+  extractAdaptiveGradient, 
+  AdaptiveGradientResult, 
+  useStudio, 
+  StudioItem 
+} from "@/lib";
 
 interface StoryStudioProps {
   onBack: () => void;
 }
 
 export function StoryStudio({ onBack }: StoryStudioProps) {
-  // Mock / Yüklenen kareler (2-6 arası)
-  const [storyPhotos, setStoryPhotos] = useState<string[]>([
-    "/reference-images/gol-evi.jfif",
-    "/reference-images/gun-batimi-gunese-dokunan-eleman.jfif",
-    "/reference-images/ic-mekan-bar.jfif",
-    "/reference-images/sehir-gokdelen.jfif",
-    "/reference-images/cim-saha.jfif",
-    "/reference-images/kovboy.jfif",
-  ]);
+  const { state, actions } = useStudio();
+  const storyPhotos = state.items;
+  const { slotCount, spacing, backgroundMode } = state.storyLayout;
 
-  const [slotCount, setSlotCount] = useState<2 | 3 | 4 | 5 | 6>(4);
-  const [spacing, setSpacing] = useState<number>(10); // Space slider
-  const [bgMode, setBgMode] = useState<"adaptive" | "black" | "white" | "charcoal">("adaptive");
   const [previewMode, setPreviewMode] = useState<"none" | "instagram" | "tiktok">("instagram");
   const [swapSelectedIdx, setSwapSelectedIdx] = useState<number | null>(null);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
@@ -49,8 +46,9 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
   useEffect(() => {
     if (storyPhotos.length === 0) return;
     const heroImg = new window.Image();
-    const targetSrc = storyPhotos[0];
-    if (!targetSrc.startsWith("data:")) {
+    const firstItem = storyPhotos[0];
+    const targetSrc = firstItem.originalUrl || firstItem.proxyUrl;
+    if (!targetSrc.startsWith("data:") && !targetSrc.startsWith("blob:")) {
       heroImg.crossOrigin = "anonymous";
     }
     heroImg.src = targetSrc;
@@ -75,20 +73,24 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
     const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
     if (validFiles.length === 0) return;
 
-    validFiles.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const dataUrl = event.target?.result as string;
-        if (!dataUrl) return;
-
-        setStoryPhotos((prev) => {
-          const next = [dataUrl, ...prev];
-          return next;
-        });
+    const newItems: StudioItem[] = validFiles.map((file, idx) => {
+      const url = URL.createObjectURL(file);
+      return {
+        id: `story_photo_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+        file,
+        name: file.name,
+        originalUrl: url,
+        proxyUrl: url,
+        dimensions: { width: 1080, height: 1920, aspectRatio: 9 / 16 },
+        proxyDimensions: { width: 1080, height: 1920, aspectRatio: 9 / 16 },
+        preset: null,
+        harmonize: { enabled: false, referenceItemId: null, strength: 0.2 },
+        order: storyPhotos.length + idx,
+        createdAt: Date.now() + idx,
       };
-      reader.readAsDataURL(file);
     });
 
+    actions.addItems(newItems);
     e.target.value = "";
   };
 
@@ -99,12 +101,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
     } else if (swapSelectedIdx === index) {
       setSwapSelectedIdx(null); // Deselect
     } else {
-      // Swap yap
-      const copy = [...storyPhotos];
-      const temp = copy[swapSelectedIdx];
-      copy[swapSelectedIdx] = copy[index];
-      copy[index] = temp;
-      setStoryPhotos(copy);
+      actions.swapItems(swapSelectedIdx, index);
       setSwapSelectedIdx(null);
     }
   };
@@ -129,14 +126,15 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
 
   // Zemin stili
   const getBackgroundStyle = () => {
-    switch (bgMode) {
+    switch (backgroundMode) {
       case "black":
         return { backgroundColor: "#000000" };
       case "white":
         return { backgroundColor: "#ffffff" };
       case "charcoal":
         return { backgroundColor: "#18181b" };
-      case "adaptive":
+      case "adaptive-gradient":
+      default:
         return {
           background: adaptiveGradient
             ? adaptiveGradient.cssLinear
@@ -145,36 +143,177 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
     }
   };
 
-  const isDarkBg = bgMode !== "white";
+  const isDarkBg = backgroundMode !== "white";
 
-  // Export render fonksiyonu
-  const getStoryExportBlob = async (): Promise<Blob> => {
+  // Helper: Yuvarlatılmış dikdörtgen çizici
+  const drawRoundedRect = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    r: number
+  ) => {
+    ctx.beginPath();
+    if (typeof ctx.roundRect === "function") {
+      ctx.roundRect(x, y, w, h, r);
+    } else {
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+    }
+    ctx.closePath();
+  };
+
+  // Export render fonksiyonu — Tam 1080x1920 Çözünürlükte Zemin + Grid Fotoğrafları
+  const getStoryExportBlob = async (format: "jpeg" | "png" = "jpeg"): Promise<Blob> => {
+    const W = PLATFORM_SPECS.ig_story_9_16.width; // 1080
+    const H = PLATFORM_SPECS.ig_story_9_16.height; // 1920
+
     const canvas = document.createElement("canvas");
-    canvas.width = PLATFORM_SPECS.ig_story_9_16.width;
-    canvas.height = PLATFORM_SPECS.ig_story_9_16.height;
+    canvas.width = W;
+    canvas.height = H;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas context failed");
 
-    // Zemin dolgusu
-    if (bgMode === "white") {
+    // 1. Zemin dolgusu
+    if (backgroundMode === "white") {
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    } else if (bgMode === "charcoal") {
+      ctx.fillRect(0, 0, W, H);
+    } else if (backgroundMode === "charcoal") {
       ctx.fillStyle = "#18181b";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    } else if (bgMode === "adaptive" && adaptiveGradient) {
-      const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      grad.addColorStop(0, adaptiveGradient.colorTop);
-      grad.addColorStop(1, adaptiveGradient.colorBottom);
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    } else {
+      ctx.fillRect(0, 0, W, H);
+    } else if (backgroundMode === "black") {
       ctx.fillStyle = "#000000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, W, H);
+    } else {
+      // Adaptive Gradient
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      if (adaptiveGradient) {
+        grad.addColorStop(0, adaptiveGradient.colorTop);
+        grad.addColorStop(1, adaptiveGradient.colorBottom);
+      } else {
+        grad.addColorStop(0, "#2e201b");
+        grad.addColorStop(1, "#141113");
+      }
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
     }
 
+    // 2. Grid Hücre Geometrileri Hesabı (Safe area & Space slider ölçekli)
+    const topSafe = 140; // Dynamic Island safe area
+    const bottomSafe = 130; // Instagram story alt etkileşim alanı
+    const usableH = H - topSafe - bottomSafe;
+    const gap = Math.round(spacing * 2.5); // Ölçeklenmiş piksel boşluğu
+    const sidePadding = Math.max(28, gap);
+    const usableW = W - sidePadding * 2;
+
+    interface CellRect {
+      x: number;
+      y: number;
+      w: number;
+      h: number;
+    }
+    const cells: CellRect[] = [];
+
+    if (slotCount === 2) {
+      const cellH = (usableH - gap) / 2;
+      const cellW = usableW;
+      cells.push({ x: sidePadding, y: topSafe, w: cellW, h: cellH });
+      cells.push({ x: sidePadding, y: topSafe + cellH + gap, w: cellW, h: cellH });
+    } else if (slotCount === 3) {
+      const cellH = (usableH - gap * 2) / 3;
+      const cellW = usableW;
+      for (let r = 0; r < 3; r++) {
+        cells.push({ x: sidePadding, y: topSafe + r * (cellH + gap), w: cellW, h: cellH });
+      }
+    } else if (slotCount === 4) {
+      const cellW = (usableW - gap) / 2;
+      const cellH = (usableH - gap) / 2;
+      for (let r = 0; r < 2; r++) {
+        for (let c = 0; c < 2; c++) {
+          cells.push({ x: sidePadding + c * (cellW + gap), y: topSafe + r * (cellH + gap), w: cellW, h: cellH });
+        }
+      }
+    } else if (slotCount === 5) {
+      const cellW = (usableW - gap) / 2;
+      const cellH = (usableH - gap * 2) / 3;
+      for (let r = 0; r < 2; r++) {
+        for (let c = 0; c < 2; c++) {
+          cells.push({ x: sidePadding + c * (cellW + gap), y: topSafe + r * (cellH + gap), w: cellW, h: cellH });
+        }
+      }
+      // 5. hücre: 3. satırda tam genişlikte yatay kart
+      cells.push({ x: sidePadding, y: topSafe + 2 * (cellH + gap), w: usableW, h: cellH });
+    } else if (slotCount === 6) {
+      const cellW = (usableW - gap) / 2;
+      const cellH = (usableH - gap * 2) / 3;
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 2; c++) {
+          cells.push({ x: sidePadding + c * (cellW + gap), y: topSafe + r * (cellH + gap), w: cellW, h: cellH });
+        }
+      }
+    }
+
+    // 3. Her hücreye görseli cover modunda ve yuvarlatılmış köşelerle çiz
+    const cornerRadius = 32;
+
+    for (let i = 0; i < cells.length; i++) {
+      const cell = cells[i];
+      const photoItem = storyPhotos[i];
+      if (!photoItem) continue;
+
+      const photoSrc = photoItem.originalUrl || photoItem.proxyUrl;
+      const img = new window.Image();
+      if (!photoSrc.startsWith("data:") && !photoSrc.startsWith("blob:")) {
+        img.crossOrigin = "anonymous";
+      }
+      img.src = photoSrc;
+
+      await new Promise((resolve) => {
+        img.onload = () => resolve(null);
+        img.onerror = () => resolve(null);
+      });
+
+      if (!img.naturalWidth || !img.naturalHeight) continue;
+
+      ctx.save();
+      drawRoundedRect(ctx, cell.x, cell.y, cell.w, cell.h, cornerRadius);
+      ctx.clip();
+
+      // Cover kırpması hesabı
+      const imgRatio = img.naturalWidth / img.naturalHeight;
+      const cellRatio = cell.w / cell.h;
+      let sw = img.naturalWidth;
+      let sh = img.naturalHeight;
+      let sx = 0;
+      let sy = 0;
+
+      if (imgRatio > cellRatio) {
+        sw = img.naturalHeight * cellRatio;
+        sx = (img.naturalWidth - sw) / 2;
+      } else {
+        sh = img.naturalWidth / cellRatio;
+        sy = (img.naturalHeight - sh) / 2;
+      }
+
+      ctx.drawImage(img, sx, sy, sw, sh, cell.x, cell.y, cell.w, cell.h);
+      ctx.restore();
+    }
+
+    const mimeType = format === "png" ? "image/png" : "image/jpeg";
     return new Promise((resolve) => {
-      canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.92);
+      canvas.toBlob(
+        (b) => resolve(b!),
+        mimeType,
+        mimeType === "image/jpeg" ? 0.92 : undefined
+      );
     });
   };
 
@@ -284,20 +423,23 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
                 paddingRight: `${Math.max(8, spacing)}px`,
               }}
             >
-              {storyPhotos.slice(0, slotCount).map((src, idx) => {
+              {storyPhotos.slice(0, slotCount).map((photoItem, idx) => {
                 const isSelected = swapSelectedIdx === idx;
+                const photoSrc = photoItem.proxyUrl || photoItem.originalUrl;
                 return (
                   <div
-                    key={idx}
+                    key={photoItem.id || idx}
                     onClick={() => handleCellClick(idx)}
                     className={`relative rounded-xl overflow-hidden cursor-pointer transition-all duration-150 ${
+                      slotCount === 5 && idx === 4 ? "col-span-2" : ""
+                    } ${
                       isSelected
                         ? "ring-2 ring-[#f5a623] scale-[0.98] shadow-lg"
                         : "hover:opacity-95 shadow-md"
                     }`}
                   >
                     <img
-                      src={src}
+                      src={photoSrc}
                       alt={`slot-${idx}`}
                       className="w-full h-full object-cover pointer-events-none"
                     />
@@ -329,7 +471,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
                 {([2, 3, 4, 5, 6] as const).map((count) => (
                   <button
                     key={count}
-                    onClick={() => setSlotCount(count)}
+                    onClick={() => actions.setStoryLayout({ slotCount: count })}
                     className={`px-2 py-0.5 text-[11px] rounded transition-all ${
                       slotCount === count ? "bg-[#f5a623] text-black font-semibold" : "text-[#71717a] hover:text-white"
                     }`}
@@ -346,9 +488,9 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
               <div className="flex items-center gap-1.5 bg-[#18181b] p-1 rounded-lg border border-white/5">
                 {/* Akıllı Gradyan Butonu */}
                 <button
-                  onClick={() => setBgMode("adaptive")}
+                  onClick={() => actions.setStoryLayout({ backgroundMode: "adaptive-gradient" })}
                   className={`px-2 py-0.5 rounded text-[10px] flex items-center gap-1 transition-all ${
-                    bgMode === "adaptive"
+                    backgroundMode === "adaptive-gradient"
                       ? "bg-[#f5a623] text-black font-semibold"
                       : "text-[#a1a1aa] hover:text-white"
                   }`}
@@ -361,9 +503,9 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
                 {(["black", "white", "charcoal"] as const).map((m) => (
                   <button
                     key={m}
-                    onClick={() => setBgMode(m)}
+                    onClick={() => actions.setStoryLayout({ backgroundMode: m })}
                     className={`w-4 h-4 rounded-full border transition-all ${
-                      bgMode === m ? "ring-2 ring-[#f5a623] scale-110" : "border-white/20"
+                      backgroundMode === m ? "ring-2 ring-[#f5a623] scale-110" : "border-white/20"
                     } ${
                       m === "black" ? "bg-black" : m === "white" ? "bg-white" : "bg-[#18181b]"
                     }`}
@@ -383,7 +525,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
               max={32}
               defaultValue={10}
               unit="px"
-              onChange={(val) => setSpacing(val)}
+              onChange={(val) => actions.setStoryLayout({ spacing: val })}
             />
           </div>
         </div>
@@ -398,7 +540,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
           id: "story_1",
           name: "story_dump",
           order: 0,
-          getBlob: getStoryExportBlob,
+          getBlob: (fmt) => getStoryExportBlob(fmt),
         }]}
       />
     </div>

@@ -17,7 +17,7 @@ import { CarouselStudio } from "@/components/studio/CarouselStudio";
 import { StoryStudio } from "@/components/studio/StoryStudio";
 import { FrameStudio } from "@/components/studio/FrameStudio";
 import { UpscaleStudio } from "@/components/studio/UpscaleStudio";
-import { StudioModule } from "@/lib";
+import { StudioModule, studioStore, StudioItem } from "@/lib";
 
 export default function CurateStudioMain() {
   const [activeModule, setActiveModule] = useState<StudioModule | null>(null);
@@ -38,18 +38,43 @@ export default function CurateStudioMain() {
     return <UpscaleStudio onBack={() => setActiveModule(null)} />;
   }
 
+  const processUploadedFiles = (files: FileList | File[]) => {
+    const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (validFiles.length === 0) return;
+
+    const newItems: StudioItem[] = validFiles.map((file, idx) => {
+      const url = URL.createObjectURL(file);
+      return {
+        id: `photo_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+        file,
+        name: file.name,
+        originalUrl: url,
+        proxyUrl: url,
+        dimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
+        proxyDimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
+        preset: null,
+        harmonize: { enabled: false, referenceItemId: null, strength: 0.2 },
+        order: idx,
+        createdAt: Date.now() + idx,
+      };
+    });
+
+    studioStore.addItems(newItems);
+    setActiveModule("carousel");
+  };
+
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      // Doğrudan Carousel modülüne geç
-      setActiveModule("carousel");
+      processUploadedFiles(e.dataTransfer.files);
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setActiveModule("carousel");
+      processUploadedFiles(e.target.files);
+      e.target.value = "";
     }
   };
 

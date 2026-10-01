@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { ArrowLeft, Download, ZoomIn, Plus } from "lucide-react";
-import { upscaleLanczos3 } from "@/lib";
+import { upscaleLanczos3, useStudio, StudioItem } from "@/lib";
 import { QuickExportSheet } from "./QuickExportSheet";
 
 interface UpscaleStudioProps {
@@ -10,8 +10,11 @@ interface UpscaleStudioProps {
 }
 
 export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
-  const [photoPath, setPhotoPath] = useState<string>("/reference-images/tren.jfif");
-  const [scaleFactor, setScaleFactor] = useState<2 | 4>(2);
+  const { state, actions } = useStudio();
+  const activeItem = state.items.find((i) => i.id === state.selectedItemId) || state.items[0];
+  const photoPath = activeItem ? (activeItem.originalUrl || activeItem.proxyUrl) : "/reference-images/tren.jfif";
+  const scaleFactor = state.upscaleConfig.scaleFactor;
+
   const [splitPos, setSplitPos] = useState<number>(50); // %0 - %100
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
 
@@ -24,14 +27,23 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      if (dataUrl) {
-        setPhotoPath(dataUrl);
-      }
+    const url = URL.createObjectURL(file);
+    const newItem: StudioItem = {
+      id: `upscale_photo_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      file,
+      name: file.name,
+      originalUrl: url,
+      proxyUrl: url,
+      dimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
+      proxyDimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
+      preset: null,
+      harmonize: { enabled: false, referenceItemId: null, strength: 0.2 },
+      order: state.items.length,
+      createdAt: Date.now(),
     };
-    reader.readAsDataURL(file);
+
+    actions.addItems([newItem]);
+    actions.selectItem(newItem.id);
     e.target.value = "";
   };
 
@@ -51,7 +63,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     isDragging.current = false;
   };
 
-  const getExportBlob = async (): Promise<Blob> => {
+  const getExportBlob = async (format: "jpeg" | "png" = "jpeg"): Promise<Blob> => {
     const img = new window.Image();
     if (!photoPath.startsWith("data:")) {
       img.crossOrigin = "anonymous";
@@ -74,8 +86,13 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     const outCtx = outC.getContext("2d")!;
     outCtx.putImageData(upscaledData, 0, 0);
 
+    const mimeType = format === "png" ? "image/png" : "image/jpeg";
     return new Promise((res) => {
-      outC.toBlob((b) => res(b!), "image/jpeg", 0.94);
+      outC.toBlob(
+        (b) => res(b!),
+        mimeType,
+        mimeType === "image/jpeg" ? 0.94 : undefined
+      );
     });
   };
 
@@ -192,7 +209,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
 
           <div className="flex bg-[#18181b] p-0.5 rounded-full border border-white/5">
             <button
-              onClick={() => setScaleFactor(2)}
+              onClick={() => actions.setUpscaleScale(2)}
               className={`px-3 py-1 text-xs rounded-full transition-all ${
                 scaleFactor === 2 ? "bg-[#f5a623] text-black font-bold" : "text-[#71717a] hover:text-white"
               }`}
@@ -200,7 +217,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
               2x
             </button>
             <button
-              onClick={() => setScaleFactor(4)}
+              onClick={() => actions.setUpscaleScale(4)}
               className={`px-3 py-1 text-xs rounded-full transition-all ${
                 scaleFactor === 4 ? "bg-[#f5a623] text-black font-bold" : "text-[#71717a] hover:text-white"
               }`}
@@ -220,7 +237,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
           id: "upscale_1",
           name: `upscaled_${scaleFactor}x`,
           order: 0,
-          getBlob: getExportBlob,
+          getBlob: (fmt) => getExportBlob(fmt),
         }]}
       />
     </div>

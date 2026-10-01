@@ -7,22 +7,53 @@
  * 4. Lossless Upscale (Lanczos-3)
  */
 
-import { StudioItem, StudioModule, StudioState, ActivePreset } from './types';
+import { StudioItem, StudioModule, StudioState, ActivePreset, CubeLUT, ColorMetrics } from './types';
 import { revokeUrl, cleanupAllUrls } from '../engine/proxy';
+
+const DEFAULT_REFERENCE_PHOTOS = [
+  { id: "p1", name: "01-Kapak.jpg", path: "/reference-images/ic-mekan-bar.jfif" },
+  { id: "p2", name: "02-Saha.jpg", path: "/reference-images/cim-saha.jfif" },
+  { id: "p3", name: "03-Gokdelen.jpg", path: "/reference-images/sehir-gokdelen.jfif" },
+  { id: "p4", name: "04-Gunbatimi.jpg", path: "/reference-images/gun-batimi-gunese-dokunan-eleman.jfif" },
+  { id: "p5", name: "05-Tren.jpg", path: "/reference-images/tren.jfif" },
+  { id: "p6", name: "06-GolEvi.jpg", path: "/reference-images/gol-evi.jfif" },
+  { id: "p7", name: "07-Kovboy.jpg", path: "/reference-images/kovboy.jfif" },
+];
+
+const INITIAL_ITEMS: StudioItem[] = DEFAULT_REFERENCE_PHOTOS.map((p, idx) => ({
+  id: p.id,
+  name: p.name,
+  originalUrl: p.path,
+  proxyUrl: p.path,
+  dimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
+  proxyDimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
+  preset: null,
+  harmonize: { enabled: false, referenceItemId: null, strength: 0.2 },
+  order: idx,
+  createdAt: 1000 + idx,
+}));
 
 const INITIAL_STATE: StudioState = {
   activeModule: 'carousel',
-  items: [],
-  selectedItemId: null,
+  items: INITIAL_ITEMS,
+  selectedItemId: 'p1',
   globalPreset: null,
+  customLut: null,
+  heroColorMetrics: null,
   globalHarmonize: {
     referenceItemId: null,
     strength: 0.20,
   },
   storyLayout: {
-    slotCount: 3,
-    spacing: 12,
+    slotCount: 4,
+    spacing: 10,
     backgroundMode: 'adaptive-gradient',
+  },
+  frameConfig: {
+    frameType: 'polaroid',
+    borderWidth: 24,
+    borderRadius: 12,
+    showTimestamp: true,
   },
   upscaleConfig: {
     scaleFactor: 2,
@@ -117,6 +148,14 @@ class StudioStateMachine {
     this.setState({ globalPreset: preset });
   }
 
+  public setCustomLut(customLut: CubeLUT | null) {
+    this.setState({ customLut });
+  }
+
+  public setHeroColorMetrics(heroColorMetrics: ColorMetrics | null) {
+    this.setState({ heroColorMetrics });
+  }
+
   public setItemPreset(itemId: string, preset: ActivePreset | null) {
     this.setState((prev) => ({
       items: prev.items.map((item) =>
@@ -134,10 +173,53 @@ class StudioStateMachine {
     });
   }
 
+  public makeCover(id: string) {
+    this.setState((prev) => {
+      const targetIdx = prev.items.findIndex((p) => p.id === id);
+      if (targetIdx <= 0) return { selectedItemId: id };
+      const copy = [...prev.items];
+      const [item] = copy.splice(targetIdx, 1);
+      copy.unshift(item);
+      return {
+        items: copy.map((p, idx) => ({ ...p, order: idx })),
+        selectedItemId: id,
+      };
+    });
+  }
+
+  public swapItems(indexA: number, indexB: number) {
+    this.setState((prev) => {
+      if (indexA < 0 || indexB < 0 || indexA >= prev.items.length || indexB >= prev.items.length) {
+        return {};
+      }
+      const copy = [...prev.items];
+      const temp = copy[indexA];
+      copy[indexA] = copy[indexB];
+      copy[indexB] = temp;
+      return {
+        items: copy.map((p, idx) => ({ ...p, order: idx })),
+      };
+    });
+  }
+
   public setStoryLayout(layout: Partial<StudioState['storyLayout']>) {
     this.setState((prev) => ({
       storyLayout: { ...prev.storyLayout, ...layout },
     }));
+  }
+
+  public setFrameConfig(config: Partial<StudioState['frameConfig']>) {
+    this.setState((prev) => ({
+      frameConfig: { ...prev.frameConfig, ...config },
+    }));
+  }
+
+  public clearItems() {
+    this.state.items.forEach((item) => {
+      revokeUrl(item.originalUrl);
+      revokeUrl(item.proxyUrl);
+    });
+    this.setState({ items: [], selectedItemId: null });
   }
 
   public setUpscaleScale(scaleFactor: 2 | 4) {

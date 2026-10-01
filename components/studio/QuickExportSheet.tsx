@@ -8,7 +8,7 @@ interface QuickExportSheetProps {
   isOpen: boolean;
   onClose: () => void;
   platform: ExportPlatform;
-  itemsToExport: { id: string; name?: string; getBlob: () => Promise<Blob>; order: number }[];
+  itemsToExport: { id: string; name?: string; getBlob: (format: "jpeg" | "png") => Promise<Blob>; order: number }[];
 }
 
 export function QuickExportSheet({
@@ -35,7 +35,7 @@ export function QuickExportSheet({
       for (let i = 0; i < itemsToExport.length; i++) {
         const item = itemsToExport[i];
         setProgressStatus(`İşleniyor (${i + 1}/${itemsToExport.length})...`);
-        const rawBlob = await item.getBlob();
+        const rawBlob = await item.getBlob(format);
         const cleanBlob = await sanitizeImageBlob(rawBlob);
         exportableItems.push({
           id: item.id,
@@ -51,7 +51,7 @@ export function QuickExportSheet({
         (p) => setProgressStatus(p.status)
       );
 
-      downloadBlob(zipBlob, `curate_${platform}_archive.zip`);
+      downloadBlob(zipBlob, `curate_${platform}_${format}_archive.zip`);
       setTimeout(() => {
         setIsExporting(false);
         setProgressStatus("");

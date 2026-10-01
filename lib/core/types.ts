@@ -59,9 +59,22 @@ export interface AdaptiveGradientResult {
   cssRadial: string;
 }
 
+export interface CubeLUT {
+  title: string;
+  size: number;
+  data: Float32Array; // Flattened size^3 * 3 RGB values in [0, 1]
+}
+
+export interface FrameConfig {
+  frameType: 'polaroid' | 'matte' | 'gradient';
+  borderWidth: number;
+  borderRadius: number;
+  showTimestamp: boolean;
+}
+
 export interface StudioItem {
   id: string;
-  file: File;
+  file?: File;
   name: string;
   originalUrl: string;
   proxyUrl: string;
@@ -78,6 +91,8 @@ export interface StudioState {
   items: StudioItem[];
   selectedItemId: string | null;
   globalPreset: ActivePreset | null;
+  customLut: CubeLUT | null;
+  heroColorMetrics: ColorMetrics | null;
   globalHarmonize: {
     referenceItemId: string | null;
     strength: number;
@@ -85,8 +100,9 @@ export interface StudioState {
   storyLayout: {
     slotCount: 2 | 3 | 4 | 5 | 6;
     spacing: number; // 0 - 48px
-    backgroundMode: 'adaptive-gradient' | 'black' | 'polaroid';
+    backgroundMode: 'adaptive-gradient' | 'black' | 'white' | 'charcoal';
   };
+  frameConfig: FrameConfig;
   upscaleConfig: {
     scaleFactor: 2 | 4;
   };

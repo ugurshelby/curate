@@ -4,24 +4,24 @@ import React, { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Download, Calendar, Plus } from "lucide-react";
 import { ResettableSlider } from "./ResettableSlider";
 import { QuickExportSheet } from "./QuickExportSheet";
-import { extractAdaptiveGradient, AdaptiveGradientResult } from "@/lib";
+import { extractAdaptiveGradient, AdaptiveGradientResult, useStudio, StudioItem } from "@/lib";
 
 interface FrameStudioProps {
   onBack: () => void;
 }
 
 export function FrameStudio({ onBack }: FrameStudioProps) {
-  const [photoPath, setPhotoPath] = useState<string>("/reference-images/kovboy.jfif");
-  const [frameType, setFrameType] = useState<"polaroid" | "matte" | "gradient">("polaroid");
-  const [borderWidth, setBorderWidth] = useState<number>(24);
-  const [borderRadius, setBorderRadius] = useState<number>(12);
-  const [showTimestamp, setShowTimestamp] = useState<boolean>(true);
+  const { state, actions } = useStudio();
+  const activeItem = state.items.find((i) => i.id === state.selectedItemId) || state.items[0];
+  const photoPath = activeItem ? (activeItem.originalUrl || activeItem.proxyUrl) : "/reference-images/kovboy.jfif";
+
+  const { frameType, borderWidth, borderRadius, showTimestamp } = state.frameConfig;
   const [adaptiveGradient, setAdaptiveGradient] = useState<AdaptiveGradientResult | null>(null);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Günün analog tarih formatı: '26 09 27
+  // Günün analog tarih formatı: '26 10 01
   const getTodayStamp = () => {
     const d = new Date();
     const yy = String(d.getFullYear()).slice(-2);
@@ -35,21 +35,30 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      if (dataUrl) {
-        setPhotoPath(dataUrl);
-      }
+    const url = URL.createObjectURL(file);
+    const newItem: StudioItem = {
+      id: `frame_photo_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      file,
+      name: file.name,
+      originalUrl: url,
+      proxyUrl: url,
+      dimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
+      proxyDimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
+      preset: null,
+      harmonize: { enabled: false, referenceItemId: null, strength: 0.2 },
+      order: state.items.length,
+      createdAt: Date.now(),
     };
-    reader.readAsDataURL(file);
+
+    actions.addItems([newItem]);
+    actions.selectItem(newItem.id);
     e.target.value = "";
   };
 
   // Görsel yüklendiğinde gradyan çıkar
   useEffect(() => {
     const img = new window.Image();
-    if (!photoPath.startsWith("data:")) {
+    if (!photoPath.startsWith("data:") && !photoPath.startsWith("blob:")) {
       img.crossOrigin = "anonymous";
     }
     img.src = photoPath;
@@ -66,27 +75,134 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
     };
   }, [photoPath]);
 
-  // Dışa aktarma blobu
-  const getExportBlob = async (): Promise<Blob> => {
+  // Helper: Yuvarlatılmış dikdörtgen çizici
+  const drawRoundedRect = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    r: number
+  ) => {
+    ctx.beginPath();
+    if (typeof ctx.roundRect === "function") {
+      ctx.roundRect(x, y, w, h, r);
+    } else {
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+    }
+    ctx.closePath();
+  };
+
+  // Dışa aktarma blobu — Tam 1080x1350 Çözünürlükte Zemin + İç Fotoğraf + Analog Tarih Damgası
+  const getExportBlob = async (format: "jpeg" | "png" = "jpeg"): Promise<Blob> => {
+    const W = 1080;
+    const H = 1350;
     const canvas = document.createElement("canvas");
-    canvas.width = 1080;
-    canvas.height = 1350;
+    canvas.width = W;
+    canvas.height = H;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Context failed");
 
-    // Zemin
+    // 1. Çerçeve Zemini Çiz
     if (frameType === "gradient" && adaptiveGradient) {
-      const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
       grad.addColorStop(0, adaptiveGradient.colorTop);
       grad.addColorStop(1, adaptiveGradient.colorBottom);
       ctx.fillStyle = grad;
     } else {
       ctx.fillStyle = frameType === "polaroid" ? "#fbfbfa" : "#111214";
     }
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, W, H);
 
+    // 2. Çerçeve Payları & Fotoğraf Alanı Hesabı
+    const scale = 2.2;
+    const padX = Math.round(borderWidth * scale);
+    const padTop = Math.round(borderWidth * scale);
+    const padBottom = frameType === "polaroid" ? Math.round(borderWidth * 2.2 * scale) : Math.round(borderWidth * scale);
+    const photoX = padX;
+    const photoY = padTop;
+    const photoW = W - padX * 2;
+    const photoH = H - padTop - padBottom;
+    const innerRadius = Math.max(4, Math.round(borderRadius * scale));
+
+    // 3. İç Fotoğrafı Yükle ve Cover Modunda Çiz
+    const img = new window.Image();
+    if (!photoPath.startsWith("data:") && !photoPath.startsWith("blob:")) {
+      img.crossOrigin = "anonymous";
+    }
+    img.src = photoPath;
+    await new Promise((res, rej) => {
+      img.onload = () => res(null);
+      img.onerror = () => res(null);
+    });
+
+    if (img.naturalWidth && img.naturalHeight) {
+      ctx.save();
+      drawRoundedRect(ctx, photoX, photoY, photoW, photoH, innerRadius);
+      ctx.clip();
+
+      const imgRatio = img.naturalWidth / img.naturalHeight;
+      const targetRatio = photoW / photoH;
+      let sw = img.naturalWidth;
+      let sh = img.naturalHeight;
+      let sx = 0;
+      let sy = 0;
+
+      if (imgRatio > targetRatio) {
+        sw = img.naturalHeight * targetRatio;
+        sx = (img.naturalWidth - sw) / 2;
+      } else {
+        sh = img.naturalWidth / targetRatio;
+        sy = (img.naturalHeight - sh) / 2;
+      }
+
+      ctx.drawImage(img, sx, sy, sw, sh, photoX, photoY, photoW, photoH);
+      ctx.restore();
+
+      // Matte modunda ince sınır
+      if (frameType === "matte") {
+        ctx.save();
+        drawRoundedRect(ctx, photoX, photoY, photoW, photoH, innerRadius);
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // 4. Analog Turuncu Tarih Damgası Çiz
+    if (showTimestamp) {
+      const stampText = getTodayStamp();
+      ctx.save();
+      ctx.font = "bold 26px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+      ctx.fillStyle = frameType === "polaroid" ? "#d96b27" : "#f5a623";
+      ctx.shadowColor = "rgba(245, 166, 35, 0.45)";
+      ctx.shadowBlur = 8;
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+
+      const stampX = W - padX - 16;
+      const stampY = frameType === "polaroid" ? H - Math.round(padBottom / 2) : H - 24;
+
+      ctx.fillText(stampText, stampX, stampY);
+      ctx.restore();
+    }
+
+    const mimeType = format === "png" ? "image/png" : "image/jpeg";
     return new Promise((res) => {
-      canvas.toBlob((b) => res(b!), "image/jpeg", 0.92);
+      canvas.toBlob(
+        (b) => res(b!),
+        mimeType,
+        mimeType === "image/jpeg" ? 0.92 : undefined
+      );
     });
   };
 
@@ -187,7 +303,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
               {(["polaroid", "matte", "gradient"] as const).map((t) => (
                 <button
                   key={t}
-                  onClick={() => setFrameType(t)}
+                  onClick={() => actions.setFrameConfig({ frameType: t })}
                   className={`px-3 py-1 rounded text-xs transition-all ${
                     frameType === t ? "bg-[#f5a623] text-black font-semibold" : "text-[#71717a] hover:text-white"
                   }`}
@@ -199,7 +315,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
 
             {/* Tarih Damgası Butonu */}
             <button
-              onClick={() => setShowTimestamp(!showTimestamp)}
+              onClick={() => actions.setFrameConfig({ showTimestamp: !showTimestamp })}
               className={`px-3 py-1 rounded-md border text-xs flex items-center gap-1.5 transition-all ${
                 showTimestamp ? "border-[#f5a623] bg-[#f5a623]/10 text-[#f5a623]" : "border-white/10 text-[#71717a]"
               }`}
@@ -218,7 +334,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
               max={56}
               defaultValue={24}
               unit="px"
-              onChange={(val) => setBorderWidth(val)}
+              onChange={(val) => actions.setFrameConfig({ borderWidth: val })}
             />
             <ResettableSlider
               label="Köşe Yuvarlaklığı"
@@ -227,7 +343,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
               max={32}
               defaultValue={12}
               unit="px"
-              onChange={(val) => setBorderRadius(val)}
+              onChange={(val) => actions.setFrameConfig({ borderRadius: val })}
             />
           </div>
         </div>
@@ -242,7 +358,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
           id: "frame_1",
           name: "minimal_frame",
           order: 0,
-          getBlob: getExportBlob,
+          getBlob: (fmt) => getExportBlob(fmt),
         }]}
       />
     </div>

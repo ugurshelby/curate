@@ -37,40 +37,23 @@ import { TikTokOverlay } from "./TikTokOverlay";
 import { ResettableSlider } from "./ResettableSlider";
 import { QuickExportSheet } from "./QuickExportSheet";
 
+import { StudioItem } from "@/lib";
+
 interface CarouselStudioProps {
   onBack: () => void;
 }
 
-interface PhotoItem {
-  id: string;
-  name: string;
-  path: string;
-}
-
 export function CarouselStudio({ onBack }: CarouselStudioProps) {
-  const { actions } = useStudio();
+  const { state, actions } = useStudio();
+  const photos = state.items;
+  const activePhotoId = state.selectedItemId || (photos.length > 0 ? photos[0].id : null);
+  const activePhoto = photos.find((p) => p.id === activePhotoId) || photos[0];
 
-  // Varsayılan ve yüklenen fotoğraflar
-  const [photos, setPhotos] = useState<PhotoItem[]>([
-    { id: "p1", name: "01-Kapak.jpg", path: "/reference-images/ic-mekan-bar.jfif" },
-    { id: "p2", name: "02-Saha.jpg", path: "/reference-images/cim-saha.jfif" },
-    { id: "p3", name: "03-Gokdelen.jpg", path: "/reference-images/sehir-gokdelen.jfif" },
-    { id: "p4", name: "04-Gunbatimi.jpg", path: "/reference-images/gun-batimi-gunese-dokunan-eleman.jfif" },
-    { id: "p5", name: "05-Tren.jpg", path: "/reference-images/tren.jfif" },
-  ]);
-
-  const [activePhotoId, setActivePhotoId] = useState<string>("p1");
   const [fitMode, setFitMode] = useState<"fill" | "fit">("fill");
   const [previewMode, setPreviewMode] = useState<"none" | "instagram" | "tiktok">("none");
   const [zoomScale, setZoomScale] = useState<number>(1);
   const [isEditSheetOpen, setIsEditSheetOpen] = useState<boolean>(false);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
-
-  // Düzenleme Değerleri
-  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
-  const [customLut, setCustomLut] = useState<CubeLUT | null>(null);
-  const [itemIntensity, setItemIntensity] = useState<number>(100);
-  const [heroColorMetrics, setHeroColorMetrics] = useState<ColorMetrics | null>(null);
 
   // Sürükle - Bırak (Drag to Reorder)
   const [draggedPhotoIndex, setDraggedPhotoIndex] = useState<number | null>(null);
@@ -84,16 +67,18 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const lutInputRef = useRef<HTMLInputElement | null>(null);
 
-  const activePhoto = photos.find((p) => p.id === activePhotoId) || photos[0];
+  const selectedPresetId = state.globalPreset?.id ?? null;
+  const itemIntensity = Math.round((state.globalPreset?.intensity ?? 1.0) * 100);
 
   // Aktif görseli canvas üzerinde çiz ve filtreleri uygula
   useEffect(() => {
     if (!activePhoto) return;
     const img = new window.Image();
-    if (!activePhoto.path.startsWith("data:")) {
+    const photoSrc = activePhoto.originalUrl || activePhoto.proxyUrl;
+    if (!photoSrc.startsWith("data:") && !photoSrc.startsWith("blob:")) {
       img.crossOrigin = "anonymous";
     }
-    img.src = activePhoto.path;
+    img.src = photoSrc;
     img.onload = () => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -107,13 +92,13 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
       let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
       // 1. Hero harmonize varsa uygula (%20)
-      if (heroColorMetrics) {
-        imgData = applyHarmonizeSync(imgData, heroColorMetrics, 0.20);
+      if (state.heroColorMetrics) {
+        imgData = applyHarmonizeSync(imgData, state.heroColorMetrics, 0.20);
       }
 
       // 2. Custom 3D LUT (.CUBE) varsa uygula
-      if (customLut && selectedPresetId === "custom_lut") {
-        imgData = applyCubeLutToImageData(imgData, customLut, itemIntensity / 100);
+      if (state.customLut && selectedPresetId === "custom_lut") {
+        imgData = applyCubeLutToImageData(imgData, state.customLut, itemIntensity / 100);
       }
       // 3. Standart Preset varsa uygula
       else if (selectedPresetId && selectedPresetId !== "custom_lut") {
@@ -125,7 +110,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
 
       ctx.putImageData(imgData, 0, 0);
     };
-  }, [activePhoto, selectedPresetId, customLut, itemIntensity, heroColorMetrics]);
+  }, [activePhoto, selectedPresetId, state.customLut, itemIntensity, state.heroColorMetrics]);
 
   // Wheel zoom (izole)
   const handleWheelZoom = (e: React.WheelEvent) => {
@@ -137,41 +122,28 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    loadFiles(Array.from(files));
-    e.target.value = "";
-  };
+    const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (validFiles.length === 0) return;
 
-  const loadFiles = (files: File[]) => {
-    const validImageFiles = files.filter((f) => f.type.startsWith("image/"));
-    if (validImageFiles.length === 0) return;
-
-    validImageFiles.forEach((file, idx) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const dataUrl = event.target?.result as string;
-        if (!dataUrl) return;
-
-        const newPhoto: PhotoItem = {
-          id: `photo_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
-          name: file.name,
-          path: dataUrl,
-        };
-
-        setPhotos((prev) => {
-          const next = [...prev, newPhoto];
-          if (prev.length === 0) {
-            setActivePhotoId(newPhoto.id);
-          }
-          return next;
-        });
-
-        // İlk yüklenen kareyi aktif seç
-        if (idx === 0) {
-          setActivePhotoId(newPhoto.id);
-        }
+    const newItems: StudioItem[] = validFiles.map((file, idx) => {
+      const url = URL.createObjectURL(file);
+      return {
+        id: `photo_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+        file,
+        name: file.name,
+        originalUrl: url,
+        proxyUrl: url,
+        dimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
+        proxyDimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
+        preset: null,
+        harmonize: { enabled: false, referenceItemId: null, strength: 0.2 },
+        order: photos.length + idx,
+        createdAt: Date.now() + idx,
       };
-      reader.readAsDataURL(file);
     });
+
+    actions.addItems(newItems);
+    e.target.value = "";
   };
 
   // .CUBE LUT Yükleme
@@ -184,8 +156,8 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
       try {
         const text = event.target?.result as string;
         const parsedLut = parseCubeLUT(text, file.name.replace(/\.[^/.]+$/, ""));
-        setCustomLut(parsedLut);
-        setSelectedPresetId("custom_lut");
+        actions.setCustomLut(parsedLut);
+        actions.setGlobalPreset({ id: "custom_lut", intensity: itemIntensity / 100 });
       } catch (err) {
         console.error("LUT parse hatası:", err);
         alert("Geçersiz .cube dosyası: Lütfen standart 3D LUT dosyası seçin.");
@@ -206,23 +178,17 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
 
   const handleDrop = (dropIndex: number) => {
     if (draggedPhotoIndex === null || draggedPhotoIndex === dropIndex) return;
-
-    const updated = [...photos];
-    const [movedItem] = updated.splice(draggedPhotoIndex, 1);
-    updated.splice(dropIndex, 0, movedItem);
-
-    setPhotos(updated);
+    actions.reorderItems(draggedPhotoIndex, dropIndex);
     setDraggedPhotoIndex(null);
   };
 
   // Çift Dokunma (Mobile Double-Tap) veya Masaüstü Sağ Tık (ContextMenu)
   const handleCardClick = (photoId: string) => {
-    setActivePhotoId(photoId);
+    actions.selectItem(photoId);
 
     // Mobil için Double-Tap algılama
     const now = Date.now();
     if (lastTapRef.current && lastTapRef.current.id === photoId && now - lastTapRef.current.time < 320) {
-      // Çift dokunma algılandı -> Menüyü aç
       setContextMenu({ id: photoId, x: window.innerWidth / 2 - 85, y: window.innerHeight - 200 });
       lastTapRef.current = null;
     } else {
@@ -237,13 +203,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
 
   // Context Menu Eylemleri
   const handleMakeCover = (id: string) => {
-    const targetIdx = photos.findIndex((p) => p.id === id);
-    if (targetIdx <= 0) return;
-    const copy = [...photos];
-    const [item] = copy.splice(targetIdx, 1);
-    copy.unshift(item);
-    setPhotos(copy);
-    setActivePhotoId(id);
+    actions.makeCover(id);
     setContextMenu(null);
   };
 
@@ -253,7 +213,8 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
       if (ctx) {
         const metrics = extractColorMetrics(ctx.getImageData(0, 0, canvas.width, canvas.height));
-        setHeroColorMetrics(metrics);
+        actions.setHeroColorMetrics(metrics);
+        actions.setHarmonizeReference(id, 0.20);
       }
     }
     setContextMenu(null);
@@ -261,50 +222,116 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
 
   const handleRemovePhoto = (id: string) => {
     if (photos.length <= 1) return;
-    const filtered = photos.filter((p) => p.id !== id);
-    setPhotos(filtered);
-    if (activePhotoId === id) {
-      setActivePhotoId(filtered[0].id);
-    }
+    actions.removeItem(id);
     setContextMenu(null);
   };
 
-  // Export için Blob oluşturucu
-  const getExportBlob = async (photoPath: string): Promise<Blob> => {
+  // Export için Blob oluşturucu — Yüksek Çözünürlüklü ve Filtreleri İşlenmiş Çıktı
+  const getExportBlob = async (item: StudioItem, format: "jpeg" | "png" = "jpeg"): Promise<Blob> => {
+    const targetW = PLATFORM_SPECS.ig_post_4_5.width; // 1080
+    const targetH = PLATFORM_SPECS.ig_post_4_5.height; // 1350
+
     const expCanvas = document.createElement("canvas");
-    expCanvas.width = PLATFORM_SPECS.ig_post_4_5.width;
-    expCanvas.height = PLATFORM_SPECS.ig_post_4_5.height;
-    const ctx = expCanvas.getContext("2d");
+    expCanvas.width = targetW;
+    expCanvas.height = targetH;
+    const ctx = expCanvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) throw new Error("Canvas context failed");
 
     const img = new window.Image();
-    if (!photoPath.startsWith("data:")) {
+    const photoPath = item.originalUrl || item.proxyUrl;
+    if (!photoPath.startsWith("data:") && !photoPath.startsWith("blob:")) {
       img.crossOrigin = "anonymous";
     }
     img.src = photoPath;
-    await new Promise((res) => { img.onload = res; });
+    await new Promise((res, rej) => {
+      img.onload = () => res(null);
+      img.onerror = () => rej(new Error(`Failed to load ${item.name}`));
+    });
 
-    const crop = calculateAspectCrop(
-      img.naturalWidth,
-      img.naturalHeight,
-      PLATFORM_SPECS.ig_post_4_5.width,
-      PLATFORM_SPECS.ig_post_4_5.height
-    );
+    let targetX = 0;
+    let targetY = 0;
+    let targetDrawW = targetW;
+    let targetDrawH = targetH;
 
-    ctx.drawImage(
-      img,
-      crop.sx,
-      crop.sy,
-      crop.sw,
-      crop.sh,
-      0,
-      0,
-      PLATFORM_SPECS.ig_post_4_5.width,
-      PLATFORM_SPECS.ig_post_4_5.height
-    );
+    if (fitMode === "fit") {
+      // Önizlemedeki bg-[#0a0a0c] zemin rengiyle eşle
+      ctx.fillStyle = "#0a0a0c";
+      ctx.fillRect(0, 0, targetW, targetH);
 
+      const targetRatio = targetW / targetH;
+      const imgRatio = img.naturalWidth / img.naturalHeight;
+
+      if (imgRatio > targetRatio) {
+        // Yatay görsel -> üst ve altta letterbox
+        targetDrawW = targetW;
+        targetDrawH = Math.round(targetW / imgRatio);
+        targetX = 0;
+        targetY = Math.round((targetH - targetDrawH) / 2);
+      } else {
+        // Dikey görsel -> sol ve sağda pillarbox
+        targetDrawH = targetH;
+        targetDrawW = Math.round(targetH * imgRatio);
+        targetX = Math.round((targetW - targetDrawW) / 2);
+        targetY = 0;
+      }
+
+      ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, targetX, targetY, targetDrawW, targetDrawH);
+    } else {
+      // Fill modu -> 4:5 tam dolgu cover kırpma
+      const crop = calculateAspectCrop(
+        img.naturalWidth,
+        img.naturalHeight,
+        targetW,
+        targetH
+      );
+
+      ctx.drawImage(
+        img,
+        crop.sx,
+        crop.sy,
+        crop.sw,
+        crop.sh,
+        0,
+        0,
+        targetW,
+        targetH
+      );
+    }
+
+    // Ekranda görülen canlı filtrelerin birebir aynısını yalnızca fotoğraf piksellerine uygula
+    let imgData = ctx.getImageData(targetX, targetY, targetDrawW, targetDrawH);
+
+    // 1. Hero harmonize varsa uygula (%20)
+    if (state.heroColorMetrics) {
+      imgData = applyHarmonizeSync(imgData, state.heroColorMetrics, 0.20);
+    }
+
+    // 2. Custom 3D LUT (.CUBE) varsa uygula
+    if (state.customLut && (item.preset?.id === "custom_lut" || (!item.preset && state.globalPreset?.id === "custom_lut"))) {
+      const intensity = item.preset?.intensity ?? state.globalPreset?.intensity ?? 1.0;
+      imgData = applyCubeLutToImageData(imgData, state.customLut, intensity);
+    }
+    // 3. Standart Preset varsa uygula
+    else {
+      const activePresetId = item.preset?.id ?? state.globalPreset?.id;
+      if (activePresetId && activePresetId !== "custom_lut") {
+        const preset = CURATE_PRESETS.find((p) => p.id === activePresetId);
+        if (preset) {
+          const intensity = item.preset?.intensity ?? state.globalPreset?.intensity ?? 1.0;
+          imgData = applyPresetToImageData(imgData, preset, intensity);
+        }
+      }
+    }
+
+    ctx.putImageData(imgData, targetX, targetY);
+
+    const mimeType = format === "png" ? "image/png" : "image/jpeg";
     return new Promise((resolve) => {
-      expCanvas.toBlob((b) => resolve(b!), "image/jpeg", 0.92);
+      expCanvas.toBlob(
+        (b) => resolve(b!),
+        mimeType,
+        mimeType === "image/jpeg" ? 0.92 : undefined
+      );
     });
   };
 
@@ -461,16 +488,16 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] text-[#a1a1aa]">Global Preset & 3D LUT (Tüm Seriye):</span>
-                {customLut && (
+                {state.customLut && (
                   <span className="text-[10px] text-[#f5a623] font-mono truncate max-w-[150px]">
-                    LUT: {customLut.title}
+                    LUT: {state.customLut.title}
                   </span>
                 )}
               </div>
 
               <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
                 <button
-                  onClick={() => { setSelectedPresetId(null); setCustomLut(null); }}
+                  onClick={() => { actions.setGlobalPreset(null); actions.setCustomLut(null); }}
                   className={`p-1.5 rounded-md text-[11px] border text-center transition-all ${
                     selectedPresetId === null ? "border-[#f5a623] bg-[#f5a623]/10 text-white font-medium" : "border-white/5 bg-[#18181b]/60 text-[#a1a1aa]"
                   }`}
@@ -481,7 +508,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
                 {CURATE_PRESETS.map((p) => (
                   <button
                     key={p.id}
-                    onClick={() => setSelectedPresetId(p.id)}
+                    onClick={() => actions.setGlobalPreset({ id: p.id, intensity: itemIntensity / 100 })}
                     className={`p-1.5 rounded-md text-[11px] border text-center transition-all truncate ${
                       selectedPresetId === p.id ? "border-[#f5a623] bg-[#f5a623]/10 text-white font-medium" : "border-white/5 bg-[#18181b]/60 text-[#a1a1aa]"
                     }`}
@@ -515,7 +542,11 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
                 max={100}
                 defaultValue={100}
                 unit="%"
-                onChange={(val) => setItemIntensity(val)}
+                onChange={(val) => {
+                  if (selectedPresetId) {
+                    actions.setGlobalPreset({ id: selectedPresetId, intensity: val / 100 });
+                  }
+                }}
               />
             </div>
           </div>
@@ -544,7 +575,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
               >
                 {/* Standart <img> ile sıfır kırık görsel / blob desteği */}
                 <img
-                  src={photo.path}
+                  src={photo.proxyUrl || photo.originalUrl}
                   alt={photo.name}
                   className="w-full h-full object-cover pointer-events-none"
                   loading="eager"
@@ -634,7 +665,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
           id: p.id,
           name: p.name,
           order: idx,
-          getBlob: () => getExportBlob(p.path),
+          getBlob: (fmt) => getExportBlob(p, fmt),
         }))}
       />
     </div>
