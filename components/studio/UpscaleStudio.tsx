@@ -2,7 +2,14 @@
 
 import React, { useState, useRef } from "react";
 import { ArrowLeft, Download, ZoomIn, Plus } from "lucide-react";
-import { upscaleLanczos3, useStudio, StudioItem } from "@/lib";
+import { 
+  upscaleLanczos3, 
+  useStudio, 
+  StudioItem, 
+  getStudioSelection, 
+  calculateUpscaleSplitPos, 
+  stepUpscaleSplitPos 
+} from "@/lib";
 import { QuickExportSheet } from "./QuickExportSheet";
 
 interface UpscaleStudioProps {
@@ -11,15 +18,13 @@ interface UpscaleStudioProps {
 
 export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
   const { state, actions } = useStudio();
-  const activeItem = state.items.find((i) => i.id === state.selectedItemId) || state.items[0];
-  const photoPath = activeItem ? (activeItem.originalUrl || activeItem.proxyUrl) : "";
+  const { hasPhoto, photoUrl: photoPath } = getStudioSelection(state.items, state.selectedItemId);
   const scaleFactor = state.upscaleConfig.scaleFactor;
 
   const [splitPos, setSplitPos] = useState<number>(50); // %0 - %100
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const isDragging = useRef<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Fotoğraf Yükleme
@@ -47,23 +52,52 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     e.target.value = "";
   };
 
-  // Split view slider sürükleme
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging.current || !containerRef.current) return;
+  // Split view slider: Pointer capture ve dokunmatik desteği
+  const handleDividerPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
-    setSplitPos(Math.round((x / rect.width) * 100));
+    setSplitPos(calculateUpscaleSplitPos(e.clientX, rect.left, rect.width));
   };
 
-  const handlePointerDown = () => {
-    isDragging.current = true;
+  const handleDividerPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    setSplitPos(calculateUpscaleSplitPos(e.clientX, rect.left, rect.width));
   };
 
-  const handlePointerUp = () => {
-    isDragging.current = false;
+  const handleDividerPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  };
+
+  const handleContainerPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    setSplitPos(calculateUpscaleSplitPos(e.clientX, rect.left, rect.width));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+      e.preventDefault();
+      setSplitPos((curr) => stepUpscaleSplitPos(curr, "left"));
+    } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+      e.preventDefault();
+      setSplitPos((curr) => stepUpscaleSplitPos(curr, "right"));
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setSplitPos((curr) => stepUpscaleSplitPos(curr, "home"));
+    } else if (e.key === "End") {
+      e.preventDefault();
+      setSplitPos((curr) => stepUpscaleSplitPos(curr, "end"));
+    }
   };
 
   const getExportBlob = async (format: "jpeg" | "png" = "jpeg"): Promise<Blob> => {
+    if (!photoPath) throw new Error("No photo to export");
     const img = new window.Image();
     if (!photoPath.startsWith("data:")) {
       img.crossOrigin = "anonymous";
@@ -97,11 +131,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
   };
 
   return (
-    <div 
-      className="relative flex flex-col h-screen w-screen overflow-hidden bg-black text-[#f5f5f7] select-none"
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-    >
+    <div className="relative flex flex-col h-screen w-screen overflow-hidden bg-black text-[#f5f5f7] select-none">
       <input
         ref={fileInputRef}
         type="file"
@@ -141,7 +171,12 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
 
         <button
           onClick={() => setIsExportOpen(true)}
-          className="touch-target px-3.5 py-1.5 rounded-lg bg-[#f5a623] hover:bg-[#ffbc3c] text-black text-xs font-semibold active:scale-95 transition-all shadow-[0_0_16px_rgba(245,166,35,0.25)] flex items-center gap-1.5"
+          disabled={!hasPhoto}
+          className={`touch-target px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            hasPhoto
+              ? "bg-[#f5a623] hover:bg-[#ffbc3c] text-black active:scale-95 shadow-[0_0_16px_rgba(245,166,35,0.25)] cursor-pointer"
+              : "bg-white/10 text-white/40 cursor-not-allowed"
+          }`}
         >
           <Download className="w-3.5 h-3.5" />
           <span>Export ({scaleFactor}x)</span>
@@ -153,25 +188,26 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
         <div 
           ref={containerRef}
           className="relative h-[68vh] aspect-[4/5] max-w-[90vw] rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-[#0f0f11] cursor-ew-resize select-none"
-          onPointerDown={photoPath ? handlePointerDown : undefined}
+          onPointerDown={hasPhoto ? handleContainerPointerDown : undefined}
+          style={{ touchAction: "none" }}
         >
-          {photoPath ? (
+          {hasPhoto && photoPath ? (
             <>
               {/* Alttaki Katman: Orijinal */}
-              <div className="absolute inset-0">
+              <div className="absolute inset-0 pointer-events-none">
                 <img
                   src={photoPath}
                   alt="original"
-                  className="w-full h-full object-cover filter blur-[0.5px]"
+                  className="w-full h-full object-cover"
                 />
-                <span className="absolute bottom-3 left-3 text-[10px] font-mono bg-black/75 px-2 py-0.5 rounded text-[#a1a1aa] border border-white/10">
+                <span className="absolute bottom-3 left-3 text-[10px] font-mono bg-black/75 px-2 py-0.5 rounded text-[#a1a1aa] border border-white/10 pointer-events-none">
                   1x Orijinal
                 </span>
               </div>
 
               {/* Üstteki Katman: Lanczos-3 Keskinleştirilmiş (Clip-Path ile Bölünmüş) */}
               <div 
-                className="absolute inset-0 overflow-hidden"
+                className="absolute inset-0 overflow-hidden pointer-events-none"
                 style={{
                   clipPath: `polygon(${splitPos}% 0, 100% 0, 100% 100%, ${splitPos}% 100%)`,
                 }}
@@ -184,17 +220,33 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
                     filter: "contrast(1.04) brightness(1.02)",
                   }}
                 />
-                <span className="absolute bottom-3 right-3 text-[10px] font-mono bg-black/75 px-2 py-0.5 rounded text-[#f5a623] border border-[#f5a623]/30">
+                <span className="absolute bottom-3 right-3 text-[10px] font-mono bg-black/75 px-2 py-0.5 rounded text-[#f5a623] border border-[#f5a623]/30 pointer-events-none">
                   Önizleme Kontrast ({scaleFactor}x)
                 </span>
               </div>
 
-              {/* Bölücü Çizgi ve Kulakçık */}
+              {/* Bölücü Çizgi ve Kulakçık (Erişilebilir Slider) */}
               <div 
-                className="absolute top-0 bottom-0 w-[2px] bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)] z-30 pointer-events-none"
-                style={{ left: `${splitPos}%` }}
+                role="slider"
+                tabIndex={0}
+                aria-label="Öncesi / Sonrası Karşılaştırma Bölücüsü"
+                aria-valuenow={splitPos}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuetext={`%${splitPos}`}
+                onKeyDown={handleKeyDown}
+                onPointerDown={handleDividerPointerDown}
+                onPointerMove={handleDividerPointerMove}
+                onPointerUp={handleDividerPointerUp}
+                onPointerCancel={handleDividerPointerUp}
+                className="absolute top-0 bottom-0 z-30 w-8 -ml-4 flex items-center justify-center cursor-ew-resize outline-none focus-visible:ring-2 focus-visible:ring-[#f5a623] select-none"
+                style={{ left: `${splitPos}%`, touchAction: "none" }}
               >
-                <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white shadow-xl flex items-center justify-center text-black text-[9px] font-bold">
+                <div className="w-[2px] h-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)] pointer-events-none" />
+                <div 
+                  className="absolute top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white shadow-xl flex items-center justify-center text-black text-[10px] font-bold border border-black/10 select-none pointer-events-none"
+                  style={{ touchAction: "none" }}
+                >
                   ↔
                 </div>
               </div>
