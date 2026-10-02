@@ -26,18 +26,27 @@ export default function CurateStudioMain() {
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const openModule = (mod: StudioModule) => {
+    actions.setModule(mod);
+    setActiveModule(mod);
+  };
+
+  const closeModule = () => {
+    setActiveModule(null);
+  };
+
   // 1. Modül Ekranları (Tam Ekran Açılış)
   if (activeModule === "carousel") {
-    return <CarouselStudio onBack={() => setActiveModule(null)} />;
+    return <CarouselStudio onBack={closeModule} />;
   }
   if (activeModule === "story") {
-    return <StoryStudio onBack={() => setActiveModule(null)} />;
+    return <StoryStudio onBack={closeModule} />;
   }
   if (activeModule === "frame") {
-    return <FrameStudio onBack={() => setActiveModule(null)} />;
+    return <FrameStudio onBack={closeModule} />;
   }
   if (activeModule === "upscale") {
-    return <UpscaleStudio onBack={() => setActiveModule(null)} />;
+    return <UpscaleStudio onBack={closeModule} />;
   }
 
   const processUploadedFiles = (files: FileList | File[]) => {
@@ -65,7 +74,7 @@ export default function CurateStudioMain() {
     if (newItems.length > 0) {
       actions.selectItem(newItems[0].id);
     }
-    setActiveModule("carousel");
+    openModule("carousel");
   };
 
   const handleFileDrop = (e: React.DragEvent) => {
@@ -188,7 +197,7 @@ export default function CurateStudioMain() {
           
           {/* KART 1: Carousel Dump (4:5) */}
           <div
-            onClick={() => setActiveModule("carousel")}
+            onClick={() => openModule("carousel")}
             className="group relative p-6 rounded-2xl bg-[#0f0f11] hover:bg-[#141418] border border-white/10 hover:border-[#f5a623]/50 transition-all duration-300 cursor-pointer shadow-xl flex flex-col justify-between gap-6"
           >
             <div className="flex items-start justify-between">
@@ -215,7 +224,7 @@ export default function CurateStudioMain() {
 
           {/* KART 2: Story Dump (9:16) */}
           <div
-            onClick={() => setActiveModule("story")}
+            onClick={() => openModule("story")}
             className="group relative p-6 rounded-2xl bg-[#0f0f11] hover:bg-[#141418] border border-white/10 hover:border-[#f5a623]/50 transition-all duration-300 cursor-pointer shadow-xl flex flex-col justify-between gap-6"
           >
             <div className="flex items-start justify-between">
@@ -242,7 +251,7 @@ export default function CurateStudioMain() {
 
           {/* KART 3: Minimal Çerçeve */}
           <div
-            onClick={() => setActiveModule("frame")}
+            onClick={() => openModule("frame")}
             className="group relative p-6 rounded-2xl bg-[#0f0f11] hover:bg-[#141418] border border-white/10 hover:border-[#f5a623]/50 transition-all duration-300 cursor-pointer shadow-xl flex flex-col justify-between gap-6"
           >
             <div className="flex items-start justify-between">
@@ -269,7 +278,7 @@ export default function CurateStudioMain() {
 
           {/* KART 4: Kayıpsız Upscale */}
           <div
-            onClick={() => setActiveModule("upscale")}
+            onClick={() => openModule("upscale")}
             className="group relative p-6 rounded-2xl bg-[#0f0f11] hover:bg-[#141418] border border-white/10 hover:border-[#f5a623]/50 transition-all duration-300 cursor-pointer shadow-xl flex flex-col justify-between gap-6"
           >
             <div className="flex items-start justify-between">

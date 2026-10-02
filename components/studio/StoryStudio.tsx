@@ -405,14 +405,14 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
             style={getBackgroundStyle()}
           >
             {/* Dynamic Island Safe-Area Çentiği */}
-            <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-30 w-24 h-6 rounded-full bg-black flex items-center justify-between px-2.5 shadow-md">
+            <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-30 w-24 h-6 rounded-full bg-black flex items-center justify-between px-2.5 shadow-md pointer-events-none">
               <div className="w-2.5 h-2.5 rounded-full bg-[#1c1c1e]" />
               <div className="w-2 h-2 rounded-full bg-[#0a192f]/80" />
             </div>
 
             {/* Platform Safe-Zone Katmanları */}
-            {previewMode === "instagram" && <InstagramOverlay type="story" isDarkBg={isDarkBg} />}
-            {previewMode === "tiktok" && <TikTokOverlay type="story" />}
+            {storyPhotos.length > 0 && previewMode === "instagram" && <InstagramOverlay type="story" isDarkBg={isDarkBg} />}
+            {storyPhotos.length > 0 && previewMode === "tiktok" && <TikTokOverlay type="story" />}
 
             {/* Akıllı Grid & Space Tuvali (Safe-Area ile Çentik Altından Başlar) */}
             {storyPhotos.length === 0 ? (
@@ -456,7 +456,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
                         className="w-full h-full object-cover pointer-events-none"
                       />
                       {isSelected && (
-                        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center pointer-events-none">
                           <span className="text-[10px] font-bold bg-[#f5a623] text-black px-2 py-0.5 rounded-full">
                             Takas İçin Seçildi
                           </span>

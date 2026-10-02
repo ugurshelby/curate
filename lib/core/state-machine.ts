@@ -91,9 +91,15 @@ class StudioStateMachine {
         ...item,
         order: idx,
       }));
+      const hasValidSelection =
+        prev.selectedItemId !== null &&
+        items.some((i) => i.id === prev.selectedItemId);
+
       return {
         items,
-        selectedItemId: prev.selectedItemId || (items.length > 0 ? items[0].id : null),
+        selectedItemId: hasValidSelection
+          ? prev.selectedItemId
+          : (items.length > 0 ? items[0].id : null),
       };
     });
   }
@@ -232,3 +238,31 @@ class StudioStateMachine {
 }
 
 export const studioStore = new StudioStateMachine();
+
+/**
+ * Pure function providing single source of truth for photo presence and selection
+ */
+export function getStudioSelection(
+  items: StudioItem[],
+  selectedItemId: string | null
+): {
+  hasPhoto: boolean;
+  selectedItem: StudioItem | null;
+  photoUrl: string | null;
+} {
+  if (!items || items.length === 0) {
+    return { hasPhoto: false, selectedItem: null, photoUrl: null };
+  }
+  const selectedItem =
+    (selectedItemId ? items.find((i) => i.id === selectedItemId) : null) ||
+    items[0] ||
+    null;
+  const photoUrl = selectedItem
+    ? selectedItem.originalUrl || selectedItem.proxyUrl || null
+    : null;
+  return {
+    hasPhoto: selectedItem !== null && !!photoUrl,
+    selectedItem,
+    photoUrl,
+  };
+}

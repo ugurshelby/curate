@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { 
   useStudio, 
+  getStudioSelection,
   CURATE_PRESETS, 
   extractColorMetrics, 
   applyHarmonizeSync, 
@@ -30,14 +31,13 @@ import {
   CubeLUT,
   PLATFORM_SPECS, 
   calculateAspectCrop,
-  ColorMetrics
+  ColorMetrics,
+  StudioItem
 } from "@/lib";
 import { InstagramOverlay } from "./InstagramOverlay";
 import { TikTokOverlay } from "./TikTokOverlay";
 import { ResettableSlider } from "./ResettableSlider";
 import { QuickExportSheet } from "./QuickExportSheet";
-
-import { StudioItem } from "@/lib";
 
 interface CarouselStudioProps {
   onBack: () => void;
@@ -45,9 +45,9 @@ interface CarouselStudioProps {
 
 export function CarouselStudio({ onBack }: CarouselStudioProps) {
   const { state, actions } = useStudio();
+  const { hasPhoto, selectedItem: activePhoto } = getStudioSelection(state.items, state.selectedItemId);
   const photos = state.items;
-  const activePhotoId = state.selectedItemId || (photos.length > 0 ? photos[0].id : null);
-  const activePhoto = photos.find((p) => p.id === activePhotoId) || photos[0];
+  const activePhotoId = activePhoto?.id || null;
 
   const [fitMode, setFitMode] = useState<"fill" | "fit">("fill");
   const [previewMode, setPreviewMode] = useState<"none" | "instagram" | "tiktok">("none");
@@ -447,7 +447,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
           }`}
         >
           {/* Canlı Çizilen Canvas veya Boş Durum */}
-          {activePhoto ? (
+          {hasPhoto && activePhoto ? (
             <canvas
               ref={canvasRef}
               style={{
@@ -472,19 +472,21 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
             </div>
           )}
 
-          {/* Platform Safe-Zone Overlays */}
-          {previewMode === "instagram" && <InstagramOverlay type="post" />}
-          {previewMode === "tiktok" && <TikTokOverlay type="post" />}
+          {/* Platform Safe-Zone Overlays (Yalnızca görsel varken aktif) */}
+          {hasPhoto && previewMode === "instagram" && <InstagramOverlay type="post" />}
+          {hasPhoto && previewMode === "tiktok" && <TikTokOverlay type="post" />}
 
-          {/* Sol Alt: Fill / Fit Toggle (Instagram Kaydet butonuyla çakışmaz) */}
-          <button
-            onClick={() => setFitMode(fitMode === "fill" ? "fit" : "fill")}
-            className="absolute bottom-3 left-3 z-30 px-2.5 py-1.5 rounded-md glass-panel text-[11px] font-mono text-white/90 hover:text-white flex items-center gap-1.5 transition-all border border-white/10 shadow-lg"
-            title="Fill / Fit Değiştir"
-          >
-            {fitMode === "fill" ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
-            <span className="uppercase font-semibold">{fitMode}</span>
-          </button>
+          {/* Sol Alt: Fill / Fit Toggle (Yalnızca görsel varken aktif) */}
+          {hasPhoto && (
+            <button
+              onClick={() => setFitMode(fitMode === "fill" ? "fit" : "fill")}
+              className="absolute bottom-3 left-3 z-30 px-2.5 py-1.5 rounded-md glass-panel text-[11px] font-mono text-white/90 hover:text-white flex items-center gap-1.5 transition-all border border-white/10 shadow-lg"
+              title="Fill / Fit Değiştir"
+            >
+              {fitMode === "fill" ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+              <span className="uppercase font-semibold">{fitMode}</span>
+            </button>
+          )}
         </div>
       </main>
 

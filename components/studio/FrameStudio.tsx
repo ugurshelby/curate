@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Download, Calendar, Plus, Crop } from "lucide-react";
 import { ResettableSlider } from "./ResettableSlider";
 import { QuickExportSheet } from "./QuickExportSheet";
-import { extractAdaptiveGradient, AdaptiveGradientResult, useStudio, StudioItem } from "@/lib";
+import { extractAdaptiveGradient, AdaptiveGradientResult, useStudio, StudioItem, getStudioSelection } from "@/lib";
 
 interface FrameStudioProps {
   onBack: () => void;
@@ -12,8 +12,7 @@ interface FrameStudioProps {
 
 export function FrameStudio({ onBack }: FrameStudioProps) {
   const { state, actions } = useStudio();
-  const activeItem = state.items.find((i) => i.id === state.selectedItemId) || state.items[0];
-  const photoPath = activeItem ? (activeItem.originalUrl || activeItem.proxyUrl) : "";
+  const { hasPhoto, selectedItem: activeItem, photoUrl: photoPath } = getStudioSelection(state.items, state.selectedItemId);
 
   const { frameType, borderWidth, borderRadius, showTimestamp } = state.frameConfig;
   const [adaptiveGradient, setAdaptiveGradient] = useState<AdaptiveGradientResult | null>(null);
@@ -114,6 +113,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
     canvas.height = H;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Context failed");
+    if (!photoPath) throw new Error("No photo to export");
 
     // 1. Çerçeve Zemini Çiz
     if (frameType === "gradient" && adaptiveGradient) {
@@ -274,7 +274,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
         >
           {/* İç Fotoğraf veya Boş Durum */}
           <div className="relative w-full h-full rounded-sm overflow-hidden shadow-inner flex items-center justify-center bg-black">
-            {photoPath ? (
+            {hasPhoto && photoPath ? (
               <img
                 src={photoPath}
                 alt="frame photo"
@@ -294,8 +294,8 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
             )}
           </div>
 
-          {/* Analog Turuncu Tarih Damgası */}
-          {showTimestamp && (
+          {/* Analog Turuncu Tarih Damgası (Yalnızca görsel varken aktif) */}
+          {hasPhoto && showTimestamp && (
             <div 
               className={`absolute bottom-3 right-4 font-mono font-bold tracking-widest text-xs select-none ${
                 frameType === "polaroid" ? "text-[#d96b27]" : "text-[#f5a623]"
