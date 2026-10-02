@@ -2,7 +2,7 @@
 
 **Project:** Curate Studio (`curate-studio`)
 **Document role:** Canonical living reference of what the repository actually contains. Analysis and recorded facts only.
-**HEAD inspected:** `f73fa6b` on `main`, working on `agent/pilot-setup` (`https://github.com/ugurshelby/curate.git`). Repo visibility is public. [VERIFIED] `gh repo view`.
+**HEAD inspected:** Development, testing, and release unified directly on `main` (`https://github.com/ugurshelby/curate.git`). Repo visibility is public. [VERIFIED] `gh repo view`.
 **Evidence tags:** [VERIFIED] read or executed here. [INFERRED] reasoned from that evidence. [UNVERIFIED] not checked, with the reason.
 
 This document does not choose between conflicting written statements. Conflicts are recorded. Unstated goals and unresolved conflicts are in section 13.
@@ -145,7 +145,7 @@ Last verified: 2026-10-02
 | Auth | None | [VERIFIED] |
 | Persistence | None. No `localStorage` usage. Refresh drops uploads | [VERIFIED] |
 | Env files | None in the tree | [VERIFIED] |
-| Branch | Base `main` at `f73fa6b`. Agent development on `agent/*` branches | [VERIFIED] |
+| Branch | Single-branch model: direct commit and push to `main`; side branches eliminated | [VERIFIED] |
 | GitHub Actions | Added in Phase 5 via `.github/workflows/ci.yml` | [VERIFIED] |
 | GitHub Pages | None | [VERIFIED] |
 | Vercel | `.gitignore` ignores `.vercel`. No `vercel.json`. Commit `79d4cc4` mentions zero-config Vercel | [VERIFIED] |

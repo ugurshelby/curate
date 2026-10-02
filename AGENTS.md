@@ -11,8 +11,8 @@ Curate Studio is a personal browser darkroom for Uğur to edit architectural, si
 Design authority is `design/CURATE_DESIGN_SYSTEM.md`.
 
 ## 2. Permission Model
-- You may create and delete your own branches named `agent/<short-task>`, and commit and push to them freely.
-- Never merge, push, or force-push to `main`. Never open or merge a pull request into `main`. The owner does that. Vercel may deploy `main` automatically.
+- All development, commits, and pushes happen directly on `main`. No side or agent branches.
+- Whenever changes are committed or pushed, always commit and push directly to `main`.
 - This project has no database, no server, and no secrets. Do not add one. Never print or commit secret values; names only.
 - Do not decide owner questions (see `docs/reference/curate-reference.md` section 13). List them in reports.
 - If a browser is unavailable to you, mark every visual or interaction check as "not verified" instead of inferring it from code.

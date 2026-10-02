@@ -14,7 +14,7 @@ Every procedure run must conclude with these steps in exact order:
    - `npm run lint` (must exit 0)
    - `npm test` (must exit 0)
    - `npm run build` (must exit 0)
-4. **Git Commit & Push:** Commit to the working `agent/<short-task>` branch and push. Never commit to `main`.
+4. **Git Commit & Push:** Commit and push directly to `main`. Do not use side/agent branches.
 5. **Plan Cleanup:** If any plan/task file's final step is now done, delete it after the log entry and commit.
 6. **Report:** Deliver concise report to the owner listing measured results, changes, browser status, and open questions.
 
@@ -132,24 +132,24 @@ Every procedure run must conclude with these steps in exact order:
 
 ---
 
-## 7. Merge Readiness
-
+## 7. Pre-Push & Release Readiness
+ 
 - **Trigger Phrases:**
-  - Turkish: `"main'e hazır mı"`, `"merge öncesi kontrol"`
-  - English: `"ready for main"`, `"pre-merge check"`
-- **Scope:** Branch validation prior to owner merge into `main`.
+  - Turkish: `"main'e hazır mı"`, `"push öncesi kontrol"`, `"yayın öncesi kontrol"`
+  - English: `"ready for main"`, `"pre-push check"`, `"release check"`
+- **Scope:** Validation of `main` branch prior to pushing or release.
 - **Steps:**
-  1. Verify working branch is `agent/<task>` and clean.
+  1. Verify working branch is `main` and working tree is clean.
   2. Run `npx tsc --noEmit` (must exit 0).
   3. Run `npm run lint` (must exit 0).
   4. Run `npm test` (must exit 0).
   5. Run `npm run build` (must exit 0).
-  6. Generate git diff summary against `origin/main`.
+  6. Generate git status and diff summary.
   7. Compile list of residual risks and unverified browser interactions.
 - **May Change:** Nothing (read-only audit).
-- **Must Only Report:** Go/No-Go recommendation, diff summary, and risk assessment. NEVER merge to `main`.
+- **Must Only Report:** Go/No-Go push recommendation, diff summary, and risk assessment.
 - **Docs Updated:** `logs/YYYY-MM-DD.md`.
-- **Output:** Readiness report with all gate outputs and explicit recommendation.
+- **Output:** Readiness report with all gate outputs and explicit push recommendation.
 
 ---
 
