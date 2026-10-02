@@ -8,95 +8,99 @@ import { PresetProfile, CubeLUT } from '../core/types';
 
 export const CURATE_PRESETS: PresetProfile[] = [
   {
-    id: 'clean_contrast',
-    name: 'Clean Contrast',
-    category: 'social',
-    description: 'Crisp blacks, natural white highlights, subtle punch for modern editorial feeds.',
+    id: 'moody_teal',
+    name: 'Moody Teal',
+    category: 'editorial',
+    description: 'Yüksek kontrast, derin mimari gölgeler, doygun teal gökyüzü ve sıcak-soğuk renk dengesi.',
+    adjustments: {
+      exposure: 2,
+      contrast: 18,
+      temperature: -10,
+      tint: -4,
+      highlights: -12,
+      shadows: -14,
+      saturation: 12,
+    },
+  },
+  {
+    id: 'warm_silhouette',
+    name: 'Warm Silhouette',
+    category: 'silhouette',
+    description: 'Derin shadow crush, sıcak turuncu-kırmızı tonlar ve ters ışıkta jilet gibi keskin siluet ayrımı.',
+    adjustments: {
+      exposure: -2,
+      contrast: 24,
+      temperature: 22,
+      tint: 6,
+      highlights: 8,
+      shadows: -28,
+      saturation: 16,
+      fade: 0,
+    },
+  },
+  {
+    id: 'night_cinematic',
+    name: 'Night Cinematic',
+    category: 'cinematic',
+    description: 'Düşük anahtar atmosfer, cyan-teal gölgeler, sıcak neon vurgusu ve parlak noktalarda optik halation halesi.',
+    adjustments: {
+      exposure: -4,
+      contrast: 16,
+      temperature: -6,
+      tint: 4,
+      highlights: 14,
+      shadows: -16,
+      saturation: 14,
+      halation: 28,
+    },
+  },
+  {
+    id: 'muted_coastal',
+    name: 'Muted Coastal',
+    category: 'coastal',
+    description: 'Düşük kontrast, pastel ve yumuşak geçişler, kremamsı mat zemin (crush yok), ferah kıyı hissi.',
+    adjustments: {
+      exposure: 4,
+      contrast: -8,
+      temperature: -2,
+      tint: 2,
+      highlights: -14,
+      shadows: 18,
+      saturation: -18,
+      fade: 16,
+    },
+  },
+  {
+    id: 'amber_grain',
+    name: 'Amber Grain',
+    category: 'film',
+    description: 'Sıcak amber ton eğrisi, dokunsal 35mm analog film greni ve otantik sokak yansıması.',
     adjustments: {
       exposure: 2,
       contrast: 10,
-      temperature: -1,
-      tint: 0,
-      highlights: -6,
-      shadows: 4,
-      saturation: 2,
-    },
-  },
-  {
-    id: 'warm_neutral',
-    name: 'Warm Neutral',
-    category: 'social',
-    description: 'Soft amber undertone, softened highlights, balanced warm street photography look.',
-    adjustments: {
-      exposure: 1,
-      contrast: 6,
-      temperature: 8,
-      tint: -2,
+      temperature: 18,
+      tint: 4,
       highlights: -8,
-      shadows: 6,
-      saturation: -2,
+      shadows: 8,
+      saturation: 8,
+      fade: 8,
+      grain: 22,
     },
   },
   {
-    id: 'muted_editorial',
-    name: 'Muted Editorial',
-    category: 'social',
-    description: 'Subdued saturation, matte shadow floor, minimalist portrait aesthetic.',
+    id: 'monochrome_noir',
+    name: 'Monochrome Noir',
+    category: 'monochrome',
+    description: 'Yüksek kontrast siyah-beyaz, derin ezilmiş koyular, gümüşi orta tonlar ve grafik siluet kompozisyonu.',
     adjustments: {
       exposure: 0,
-      contrast: -2,
-      temperature: 2,
-      tint: 2,
-      highlights: -10,
-      shadows: 10,
-      saturation: -12,
-      fade: 8,
-    },
-  },
-  {
-    id: 'golden_hour',
-    name: 'Golden Hour',
-    category: 'social',
-    description: 'Rich golden sunlight warmth, lifted shadows and gentle sunset tones.',
-    adjustments: {
-      exposure: 3,
-      contrast: 8,
-      temperature: 14,
-      tint: -4,
-      highlights: -6,
-      shadows: 8,
-      saturation: 6,
-    },
-  },
-  {
-    id: 'film_35mm_subtle',
-    name: '35mm Subtle',
-    category: 'film',
-    description: 'Analog contact sheet nostalgia, balanced emulsion tones and gentle highlight roll-off.',
-    adjustments: {
-      exposure: 1,
-      contrast: 5,
-      temperature: 4,
-      tint: 2,
-      highlights: -10,
-      shadows: 8,
-      saturation: -4,
-      fade: 6,
-    },
-  },
-  {
-    id: 'bw_minimal',
-    name: 'B&W Minimal',
-    category: 'monochrome',
-    description: 'Pristine panchromatic monochrome with balanced shadows and silver mids.',
-    adjustments: {
-      exposure: 1,
-      contrast: 14,
+      contrast: 28,
       temperature: 0,
       tint: 0,
-      highlights: -4,
-      shadows: 4,
+      highlights: 6,
+      shadows: -22,
       saturation: -100,
+      fade: 0,
     },
   },
 ];
@@ -277,6 +281,8 @@ export function applyPresetToImageData(
   const effShadows = lerp(0, adj.shadows, t);
   const effSat = lerp(0, adj.saturation, t);
   const effFade = adj.fade ? lerp(0, adj.fade, t) : 0;
+  const effGrain = adj.grain ? lerp(0, adj.grain, t) : 0;
+  const effHalation = adj.halation ? lerp(0, adj.halation, t) : 0;
 
   // Pre-calculate factors
   const exposureMul = 1 + effExposure / 100;
@@ -340,6 +346,23 @@ export function applyPresetToImageData(
       r = gray + (r - gray) * satMul;
       g = gray + (g - gray) * satMul;
       b = gray + (b - gray) * satMul;
+    }
+
+    // 7. Optical Halation (warm red/amber highlight bloom for Night Cinematic)
+    if (effHalation > 0 && lum > 165) {
+      const hFactor = ((lum - 165) / 90) * (effHalation / 100);
+      r += 32 * hFactor;
+      g += 10 * hFactor;
+      b -= 14 * hFactor;
+    }
+
+    // 8. 35mm Analog Film Grain (organic silver halide noise for Amber Grain)
+    if (effGrain > 0) {
+      const hash = ((i * 1664525 + 1013904223) >>> 16) / 65535;
+      const gNoise = (hash - 0.5) * (effGrain * 0.40);
+      r += gNoise;
+      g += gNoise;
+      b += gNoise;
     }
 
     // Clamp

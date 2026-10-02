@@ -63,23 +63,22 @@ Letterbox math in the daily log matches the formula in `getExportBlob`: a 1920×
 
 1. **Library starts empty on fresh load.** `INITIAL_ITEMS` initialized to `[]` and `selectedItemId` to `null`. Hub upload selects the first uploaded item, and clear action is exposed in UI calling `clearItems()` with URL revocation. Reference images remain tracked under `public/reference-images/` per owner policy. [VERIFIED]
 2. **Thirteen reference photos tracked under `public/reference-images/`.** [VERIFIED] `git ls-files`.
-3. **Upload metadata is minimal.** New items set dimensions and proxyDimensions to 1080×1350 and set proxyUrl equal to originalUrl. `generateProxyImage` is defined in `lib/engine/proxy.ts` but never called. [VERIFIED]
+3. **Upload metadata and proxy pipeline are active.** Uploading through hub or studio modules invokes `createStudioItem`, which sets initial state and begins asynchronous `generateProxyImage` to update natural image dimensions and high-performance proxy URLs. [VERIFIED]
 4. **Upscale preview does not claim Lanczos.** Label updated to "Önizleme Kontrast ({scaleFactor}x)" to match the CSS filter simulation; export remains mathematical 2-pass Lanczos-3 convolution. [VERIFIED]
-5. **Web Worker is constructed and never tasked.** `workerBridge` is created at module load and re-exported from `lib/index.ts`. No component calls `workerBridge` methods. [VERIFIED]
-6. **Per-item presets are dead.** `setItemPreset` has no callers. Carousel preview and preset buttons use `state.globalPreset` only. [VERIFIED]
+5. **Web Worker is connected and active.** `UpscaleStudio` offloads 2-pass Lanczos-3 convolution during export to `workerBridge.upscaleLanczos` with in-thread fallback. [VERIFIED]
+6. **Unified render parity is enforced.** `drawCarouselFrame` serves as single source of truth for both live canvas preview and 1080×1350 JPEG/PNG export. [VERIFIED]
 7. **Store module field is synchronized.** `setModule` is called on hub navigation and stays in sync with `activeModule`. [VERIFIED]
 8. **README long-press (~450ms) is not what the code does.** Carousel uses desktop `contextmenu` and a 320ms double-tap. [VERIFIED] `CarouselStudio.tsx`.
 9. **Filmstrip does not hide in edit mode.** The edit sheet is conditional; the filmstrip bar under it always renders. [VERIFIED] `CarouselStudio.tsx` footer.
 10. **Story and Frame do not run the color pipeline.** Their exports draw the source image only. [VERIFIED]
-11. **Tailwind classes `w-13` and `h-15` are not in the default scale or `tailwind.config.ts`.** Filmstrip thumbnails use them. [VERIFIED]
-12. **`runPipelineVerification` converted to automated tests.** Replaced by Vitest suite `tests/pipeline.test.ts` covering crop math, Lanczos dimensions, zip extensions, harmonize bounds, and letterbox math; unwired runner deleted. [VERIFIED]
+11. **Filmstrip thumbnail dimensions standardized.** Updated from non-standard `w-13 h-15` to standard `w-14 h-16 rounded-xl` with smooth border transitions. [VERIFIED]
+12. **`runPipelineVerification` converted to automated tests.** Replaced by Vitest suite `tests/pipeline.test.ts` covering crop math, Lanczos dimensions, zip extensions, harmonize bounds, letterbox math, and 6 editorial presets; unwired runner deleted. [VERIFIED]
 
-### What is half-built
-
-- Proxy pipeline, worker bridge, per-item preset API, `activeModule`, `clearItems`, `resetAll`: present, unwired. [VERIFIED]
-- Design tokens file `design/tokens.curate.json` is not imported by app code. Colors are duplicated in `tailwind.config.ts` and `app/globals.css`. [VERIFIED]
+### What is completed from roadmap
+- Proxy pipeline and worker bridge offload are active. [VERIFIED]
+- Target 6 editorial preset families (`moody_teal`, `warm_silhouette`, `night_cinematic`, `muted_coastal`, `amber_grain`, `monochrome_noir`) are implemented in `lib/engine/presets.ts` with optical halation for Night Cinematic and 35mm grain for Amber Grain, bound to Apple-design bento grid cards and progressive disclosure intensity sliders. [VERIFIED]
+- Design tokens file `design/tokens.curate.json` is not imported by app code; colors are active in `tailwind.config.ts` and `app/globals.css`. [VERIFIED]
 - `puppeteer-core` is a devDependency. No script references it. [VERIFIED]
-- Personal preset families in the spec (Moody Teal, Warm Silhouette, Night Cinematic, Muted Coastal, Amber Grain, Monochrome Noir) are not the six profiles in `lib/engine/presets.ts`. [VERIFIED]
 
 ---
 
@@ -194,7 +193,7 @@ Last verified: 2026-10-02
 | `npx tsc --noEmit` | Required by rules | Pass, exit 0 [VERIFIED] |
 | `npm run lint` | `"lint": "next lint"` | Pass, no warnings [VERIFIED] |
 | `npm run build` | `"build": "next build"` | Pass, exit 0 [VERIFIED] |
-| `npm test` | Added in Phase 5 via Vitest | Pass, exit 0, 19 tests pass (core pipeline + viewer bugs) [VERIFIED] |
+| `npm test` | Added in Phase 5 via Vitest | Pass, exit 0, 24 tests pass (core pipeline, upscale, selection, 6 editorial presets, proxy items) [VERIFIED] |
 | CI | Added in Phase 5 (.github/workflows/ci.yml) | Active on PR: Node 22 (tsc, lint, test, build) [VERIFIED] |
 | Visual / mobile viewport check | Required after UI changes | Marked not verified when no browser [VERIFIED] |
 
@@ -203,7 +202,7 @@ Last verified: 2026-10-02
 ## 7. Conventions and working systems (patterns, rules and processes)
 Last verified: 2026-10-02
 
-1. **Scope lock written as forbidden features:** No halation, grain, light leak, vignette, panorama, AI inpainting/outpainting. [VERIFIED]
+1. **Scope lock written as forbidden features:** Optical highlight halation (Night Cinematic) and tactile 35mm analog grain (Amber Grain) allowed per owner decision; light leak, vignette, panorama splitting, server image uploads, and AI inpainting/outpainting remain forbidden. [VERIFIED]
 2. **Platform sizes as data:** `PLATFORM_SPECS` holds 1080×1350 @ 0.92 and 1080×1920 @ 0.92. [VERIFIED]
 3. **Headless store plus `useSyncExternalStore`:** Module-level state machine subscribed via React. [VERIFIED]
 4. **Non-destructive export:** Operations execute on new canvas / ImageData copies. [VERIFIED]

@@ -30,7 +30,7 @@ export interface HarmonizeSettings {
 export interface PresetProfile {
   id: string;
   name: string;
-  category: 'social' | 'film' | 'monochrome';
+  category: 'editorial' | 'silhouette' | 'cinematic' | 'coastal' | 'film' | 'monochrome' | 'social';
   description: string;
   adjustments: {
     exposure: number;     // -100 to 100
@@ -41,6 +41,8 @@ export interface PresetProfile {
     shadows: number;      // -100 to 100
     saturation: number;   // -100 to 100
     fade?: number;        // 0 to 100 (matte black lift)
+    grain?: number;       // 0 to 100 (analog film grain)
+    halation?: number;    // 0 to 100 (optical highlight bloom/halation)
   };
 }
 

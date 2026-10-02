@@ -7,8 +7,8 @@
  * 4. Lossless Upscale (Lanczos-3)
  */
 
-import { StudioItem, StudioModule, StudioState, ActivePreset, CubeLUT, ColorMetrics } from './types';
-import { revokeUrl, cleanupAllUrls } from '../engine/proxy';
+import { StudioItem, StudioModule, StudioState, ActivePreset, CubeLUT, ColorMetrics, ImageDimensions } from './types';
+import { revokeUrl, cleanupAllUrls, generateProxyImage, registerUrl } from '../engine/proxy';
 
 const DEFAULT_REFERENCE_PHOTOS = [
   { id: "p1", name: "01-Kapak.jpg", path: "/reference-images/ic-mekan-bar.jfif" },
@@ -139,6 +139,12 @@ class StudioStateMachine {
     });
   }
 
+  public updateItem(id: string, patch: Partial<StudioItem>) {
+    this.setState((prev) => ({
+      items: prev.items.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+    }));
+  }
+
   public setGlobalPreset(preset: ActivePreset | null) {
     this.setState({ globalPreset: preset });
   }
@@ -266,3 +272,51 @@ export function getStudioSelection(
     photoUrl,
   };
 }
+
+/**
+ * Creates a StudioItem from File with immediate reactivity and async proxy generation
+ */
+export function createStudioItem(file: File, index: number = 0): StudioItem {
+  const url = registerUrl(URL.createObjectURL(file));
+  const id = `photo_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 6)}`;
+  const item: StudioItem = {
+    id,
+    file,
+    name: file.name,
+    originalUrl: url,
+    proxyUrl: url,
+    dimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
+    proxyDimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
+    preset: null,
+    harmonize: { enabled: false, referenceItemId: null, strength: 0.2 },
+    order: index,
+    createdAt: Date.now() + index,
+  };
+
+  // Inspect natural dimensions and generate high-efficiency proxy asynchronously
+  if (typeof window !== 'undefined') {
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = async () => {
+      try {
+        const origDim: ImageDimensions = {
+          width: img.naturalWidth || 1080,
+          height: img.naturalHeight || 1350,
+          aspectRatio: (img.naturalWidth || 1080) / (img.naturalHeight || 1350),
+        };
+        const proxyRes = await generateProxyImage(img, origDim);
+        studioStore.updateItem(id, {
+          dimensions: origDim,
+          proxyUrl: proxyRes.proxyUrl,
+          proxyDimensions: proxyRes.proxyDimensions,
+        });
+      } catch (e) {
+        // Fallback: keep original URL as proxy
+      }
+    };
+    img.src = url;
+  }
+
+  return item;
+}
+

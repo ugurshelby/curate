@@ -4,7 +4,8 @@ import { calculateAspectCrop, calculateLetterboxFit, PLATFORM_SPECS } from '../l
 import { upscaleLanczos3 } from '../lib/engine/upscale-lanczos';
 import { extractColorMetrics, applyHarmonizeSync } from '../lib/engine/harmonize';
 import { packageDumpZip } from '../lib/export/zip-packager';
-import { studioStore } from '../lib/core/state-machine';
+import { studioStore, createStudioItem } from '../lib/core/state-machine';
+import { CURATE_PRESETS, applyPresetToImageData } from '../lib/engine/presets';
 
 function createSyntheticImageData(width: number, height: number): ImageData {
   const buffer = new Uint8ClampedArray(width * height * 4);
@@ -174,6 +175,86 @@ describe('Core Pipeline & Export Math Verification', () => {
       expect(fit.dh).toBe(1350);
       expect(fit.dx).toBe(0);
       expect(fit.dy).toBe(0);
+    });
+  });
+
+  // 6. Editorial Presets & Aesthetic Math Verification
+  describe('Editorial Presets (CURATE_PRESETS)', () => {
+    it('defines exactly the 6 target editorial preset families', () => {
+      expect(CURATE_PRESETS).toHaveLength(6);
+      const ids = CURATE_PRESETS.map((p) => p.id);
+      expect(ids).toEqual([
+        'moody_teal',
+        'warm_silhouette',
+        'night_cinematic',
+        'muted_coastal',
+        'amber_grain',
+        'monochrome_noir',
+      ]);
+    });
+
+    it('applies monochrome_noir with R === G === B and preserved alpha', () => {
+      const src = createSyntheticImageData(30, 30);
+      const noir = CURATE_PRESETS.find((p) => p.id === 'monochrome_noir')!;
+      const processed = applyPresetToImageData(src, noir, 1.0);
+
+      for (let i = 0; i < processed.data.length; i += 4) {
+        const r = processed.data[i];
+        const g = processed.data[i + 1];
+        const b = processed.data[i + 2];
+        const a = processed.data[i + 3];
+        expect(r).toBe(g);
+        expect(g).toBe(b);
+        expect(a).toBe(255);
+      }
+    });
+
+    it('applies night_cinematic optical halation bloom on bright highlights', () => {
+      // Create an image with a bright highlight (e.g. 240, 240, 240) and darker background
+      const src = createSyntheticImageData(20, 20);
+      for (let i = 0; i < src.data.length; i += 4) {
+        src.data[i] = 240;
+        src.data[i + 1] = 240;
+        src.data[i + 2] = 240;
+      }
+      const night = CURATE_PRESETS.find((p) => p.id === 'night_cinematic')!;
+      expect(night.adjustments.halation).toBeGreaterThan(0);
+
+      const processed = applyPresetToImageData(src, night, 1.0);
+      // Halation boosts red channel more than blue channel on highlights
+      let totalR = 0;
+      let totalB = 0;
+      for (let i = 0; i < processed.data.length; i += 4) {
+        totalR += processed.data[i];
+        totalB += processed.data[i + 2];
+      }
+      expect(totalR).toBeGreaterThanOrEqual(totalB);
+    });
+
+    it('applies amber_grain with 35mm grain enabled', () => {
+      const amber = CURATE_PRESETS.find((p) => p.id === 'amber_grain')!;
+      expect(amber.adjustments.grain).toBeGreaterThan(0);
+
+      const src = createSyntheticImageData(30, 30);
+      const processed = applyPresetToImageData(src, amber, 1.0);
+      expect(processed.data.length).toBe(30 * 30 * 4);
+    });
+  });
+
+  // 7. Studio Item Creation & Pipeline Order
+  describe('Studio item creation (createStudioItem)', () => {
+    it('creates a valid StudioItem with synchronous mock file and order', () => {
+      const mockFile = new File(['mock_bytes'], 'test_photo.jpg', { type: 'image/jpeg' });
+      // In Node test environment, URL.createObjectURL might not be present; createStudioItem handles this gracefully
+      if (typeof URL.createObjectURL === 'undefined') {
+        URL.createObjectURL = () => 'blob:mock-url';
+      }
+
+      const item = createStudioItem(mockFile, 3);
+      expect(item.id).toBeDefined();
+      expect(item.name).toBe('test_photo.jpg');
+      expect(item.order).toBe(3);
+      expect(item.dimensions.aspectRatio).toBeCloseTo(4 / 5, 2);
     });
   });
 });

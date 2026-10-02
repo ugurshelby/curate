@@ -23,7 +23,8 @@ import {
   extractAdaptiveGradient, 
   AdaptiveGradientResult, 
   useStudio, 
-  StudioItem 
+  StudioItem,
+  createStudioItem 
 } from "@/lib";
 
 interface StoryStudioProps {
@@ -73,22 +74,9 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
     const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
     if (validFiles.length === 0) return;
 
-    const newItems: StudioItem[] = validFiles.map((file, idx) => {
-      const url = URL.createObjectURL(file);
-      return {
-        id: `story_photo_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
-        file,
-        name: file.name,
-        originalUrl: url,
-        proxyUrl: url,
-        dimensions: { width: 1080, height: 1920, aspectRatio: 9 / 16 },
-        proxyDimensions: { width: 1080, height: 1920, aspectRatio: 9 / 16 },
-        preset: null,
-        harmonize: { enabled: false, referenceItemId: null, strength: 0.2 },
-        order: storyPhotos.length + idx,
-        createdAt: Date.now() + idx,
-      };
-    });
+    const newItems: StudioItem[] = validFiles.map((file, idx) =>
+      createStudioItem(file, storyPhotos.length + idx)
+    );
 
     actions.addItems(newItems);
     e.target.value = "";

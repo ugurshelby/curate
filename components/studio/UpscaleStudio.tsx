@@ -8,7 +8,9 @@ import {
   StudioItem, 
   getStudioSelection, 
   calculateUpscaleSplitPos, 
-  stepUpscaleSplitPos 
+  stepUpscaleSplitPos,
+  createStudioItem,
+  workerBridge
 } from "@/lib";
 import { QuickExportSheet } from "./QuickExportSheet";
 
@@ -32,21 +34,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const url = URL.createObjectURL(file);
-    const newItem: StudioItem = {
-      id: `upscale_photo_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      file,
-      name: file.name,
-      originalUrl: url,
-      proxyUrl: url,
-      dimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
-      proxyDimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
-      preset: null,
-      harmonize: { enabled: false, referenceItemId: null, strength: 0.2 },
-      order: state.items.length,
-      createdAt: Date.now(),
-    };
-
+    const newItem = createStudioItem(file, state.items.length);
     actions.addItems([newItem]);
     actions.selectItem(newItem.id);
     e.target.value = "";
@@ -99,7 +87,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
   const getExportBlob = async (format: "jpeg" | "png" = "jpeg"): Promise<Blob> => {
     if (!photoPath) throw new Error("No photo to export");
     const img = new window.Image();
-    if (!photoPath.startsWith("data:")) {
+    if (!photoPath.startsWith("data:") && !photoPath.startsWith("blob:")) {
       img.crossOrigin = "anonymous";
     }
     img.src = photoPath;
@@ -112,7 +100,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     ctx.drawImage(img, 0, 0);
 
     const srcData = ctx.getImageData(0, 0, c.width, c.height);
-    const upscaledData = upscaleLanczos3(srcData, scaleFactor);
+    const upscaledData = await workerBridge.upscaleLanczos(srcData, scaleFactor);
 
     const outC = document.createElement("canvas");
     outC.width = upscaledData.width;

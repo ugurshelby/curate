@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Download, Calendar, Plus, Crop } from "lucide-react";
 import { ResettableSlider } from "./ResettableSlider";
 import { QuickExportSheet } from "./QuickExportSheet";
-import { extractAdaptiveGradient, AdaptiveGradientResult, useStudio, StudioItem, getStudioSelection } from "@/lib";
+import { extractAdaptiveGradient, AdaptiveGradientResult, useStudio, StudioItem, getStudioSelection, createStudioItem } from "@/lib";
 
 interface FrameStudioProps {
   onBack: () => void;
@@ -29,26 +29,12 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
     return `'${yy} ${mm} ${dd}`;
   };
 
-  // Fotoğraf Yükleme
+  // Fotoğraf Yükleme — Otomatik Proxy Pipeline ile
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const url = URL.createObjectURL(file);
-    const newItem: StudioItem = {
-      id: `frame_photo_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      file,
-      name: file.name,
-      originalUrl: url,
-      proxyUrl: url,
-      dimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
-      proxyDimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
-      preset: null,
-      harmonize: { enabled: false, referenceItemId: null, strength: 0.2 },
-      order: state.items.length,
-      createdAt: Date.now(),
-    };
-
+    const newItem = createStudioItem(file, state.items.length);
     actions.addItems([newItem]);
     actions.selectItem(newItem.id);
     e.target.value = "";

@@ -17,27 +17,35 @@ import {
   Upload,
   FileCode,
   Smartphone,
-  Layers
+  Layers,
+  Sparkles
 } from "lucide-react";
 import { 
   useStudio, 
   getStudioSelection,
   CURATE_PRESETS, 
   extractColorMetrics, 
-  applyHarmonizeSync, 
-  applyPresetToImageData, 
-  applyCubeLutToImageData,
   parseCubeLUT,
   CubeLUT,
   PLATFORM_SPECS, 
-  calculateAspectCrop,
   ColorMetrics,
-  StudioItem
+  StudioItem,
+  drawCarouselFrame,
+  createStudioItem
 } from "@/lib";
 import { InstagramOverlay } from "./InstagramOverlay";
 import { TikTokOverlay } from "./TikTokOverlay";
 import { ResettableSlider } from "./ResettableSlider";
 import { QuickExportSheet } from "./QuickExportSheet";
+
+const PRESET_SWATCHES: Record<string, { gradient: string; tag: string }> = {
+  moody_teal: { gradient: "from-teal-600/40 via-cyan-950/40 to-zinc-900", tag: "Mimari & Teal" },
+  warm_silhouette: { gradient: "from-orange-500/40 via-amber-800/40 to-zinc-900", tag: "Siluet & Ters Işık" },
+  night_cinematic: { gradient: "from-cyan-400/30 via-rose-950/40 to-black", tag: "Neon & Halation" },
+  muted_coastal: { gradient: "from-sky-300/30 via-stone-500/20 to-zinc-900", tag: "Pastel & Ferah" },
+  amber_grain: { gradient: "from-amber-400/40 via-yellow-900/30 to-zinc-900", tag: "35mm Analog Gren" },
+  monochrome_noir: { gradient: "from-zinc-200/30 via-zinc-800/60 to-black", tag: "Grafik B&W" },
+};
 
 interface CarouselStudioProps {
   onBack: () => void;
@@ -70,7 +78,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   const selectedPresetId = state.globalPreset?.id ?? null;
   const itemIntensity = Math.round((state.globalPreset?.intensity ?? 1.0) * 100);
 
-  // Aktif görseli canvas üzerinde çiz ve filtreleri uygula
+  // Aktif görseli canvas üzerinde çiz ve filtreleri uygula (Tekil Render Çekirdeği)
   useEffect(() => {
     if (!activePhoto) return;
     const img = new window.Image();
@@ -87,28 +95,15 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
 
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
-      ctx.drawImage(img, 0, 0);
 
-      let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-      // 1. Hero harmonize varsa uygula (%20)
-      if (state.heroColorMetrics) {
-        imgData = applyHarmonizeSync(imgData, state.heroColorMetrics, 0.20);
-      }
-
-      // 2. Custom 3D LUT (.CUBE) varsa uygula
-      if (state.customLut && selectedPresetId === "custom_lut") {
-        imgData = applyCubeLutToImageData(imgData, state.customLut, itemIntensity / 100);
-      }
-      // 3. Standart Preset varsa uygula
-      else if (selectedPresetId && selectedPresetId !== "custom_lut") {
-        const preset = CURATE_PRESETS.find((p) => p.id === selectedPresetId);
-        if (preset) {
-          imgData = applyPresetToImageData(imgData, preset, itemIntensity / 100);
-        }
-      }
-
-      ctx.putImageData(imgData, 0, 0);
+      // Hem önizleme hem export aynı tekil çizim fonksiyonunu çağırır (Single Draw Call Parity)
+      drawCarouselFrame(ctx, img, canvas.width, canvas.height, {
+        fitMode: "fill",
+        heroColorMetrics: state.heroColorMetrics,
+        customLut: state.customLut,
+        presetId: selectedPresetId,
+        presetIntensity: itemIntensity / 100,
+      });
     };
   }, [activePhoto, selectedPresetId, state.customLut, itemIntensity, state.heroColorMetrics]);
 
@@ -118,29 +113,16 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
     setZoomScale((prev) => Math.min(3, Math.max(1, prev + (e.deltaY < 0 ? 0.15 : -0.15))));
   };
 
-  // Fotoğraf Yükleme (Dosya Seçici & Drop)
+  // Fotoğraf Yükleme (Dosya Seçici & Drop) — Otomatik Proxy Pipeline ile
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
     if (validFiles.length === 0) return;
 
-    const newItems: StudioItem[] = validFiles.map((file, idx) => {
-      const url = URL.createObjectURL(file);
-      return {
-        id: `photo_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
-        file,
-        name: file.name,
-        originalUrl: url,
-        proxyUrl: url,
-        dimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
-        proxyDimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
-        preset: null,
-        harmonize: { enabled: false, referenceItemId: null, strength: 0.2 },
-        order: photos.length + idx,
-        createdAt: Date.now() + idx,
-      };
-    });
+    const newItems: StudioItem[] = validFiles.map((file, idx) =>
+      createStudioItem(file, photos.length + idx)
+    );
 
     actions.addItems(newItems);
     e.target.value = "";
@@ -226,7 +208,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
     setContextMenu(null);
   };
 
-  // Export için Blob oluşturucu — Yüksek Çözünürlüklü ve Filtreleri İşlenmiş Çıktı
+  // Export için Blob oluşturucu — Yüksek Çözünürlüklü ve Filtreleri İşlenmiş Çıktı (Single Render Parity)
   const getExportBlob = async (item: StudioItem, format: "jpeg" | "png" = "jpeg"): Promise<Blob> => {
     const targetW = PLATFORM_SPECS.ig_post_4_5.width; // 1080
     const targetH = PLATFORM_SPECS.ig_post_4_5.height; // 1350
@@ -248,87 +230,25 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
       img.onerror = () => rej(new Error(`Failed to load ${item.name}`));
     });
 
-    let targetX = 0;
-    let targetY = 0;
-    let targetDrawW = targetW;
-    let targetDrawH = targetH;
+    const activePresetId = item.preset?.id ?? state.globalPreset?.id ?? null;
+    const activeIntensity = item.preset?.intensity ?? state.globalPreset?.intensity ?? 1.0;
 
-    if (fitMode === "fit") {
-      // Önizlemedeki bg-[#0a0a0c] zemin rengiyle eşle
-      ctx.fillStyle = "#0a0a0c";
-      ctx.fillRect(0, 0, targetW, targetH);
-
-      const targetRatio = targetW / targetH;
-      const imgRatio = img.naturalWidth / img.naturalHeight;
-
-      if (imgRatio > targetRatio) {
-        // Yatay görsel -> üst ve altta letterbox
-        targetDrawW = targetW;
-        targetDrawH = Math.round(targetW / imgRatio);
-        targetX = 0;
-        targetY = Math.round((targetH - targetDrawH) / 2);
-      } else {
-        // Dikey görsel -> sol ve sağda pillarbox
-        targetDrawH = targetH;
-        targetDrawW = Math.round(targetH * imgRatio);
-        targetX = Math.round((targetW - targetDrawW) / 2);
-        targetY = 0;
-      }
-
-      ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, targetX, targetY, targetDrawW, targetDrawH);
-    } else {
-      // Fill modu -> 4:5 tam dolgu cover kırpma
-      const crop = calculateAspectCrop(
-        img.naturalWidth,
-        img.naturalHeight,
-        targetW,
-        targetH
-      );
-
-      ctx.drawImage(
-        img,
-        crop.sx,
-        crop.sy,
-        crop.sw,
-        crop.sh,
-        0,
-        0,
-        targetW,
-        targetH
-      );
-    }
-
-    // Ekranda görülen canlı filtrelerin birebir aynısını yalnızca fotoğraf piksellerine uygula
-    let imgData = ctx.getImageData(targetX, targetY, targetDrawW, targetDrawH);
-
-    // 1. Hero harmonize varsa uygula (%20)
-    if (state.heroColorMetrics) {
-      imgData = applyHarmonizeSync(imgData, state.heroColorMetrics, 0.20);
-    }
-
-    // 2. Custom 3D LUT (.CUBE) varsa uygula
-    if (state.customLut && (item.preset?.id === "custom_lut" || (!item.preset && state.globalPreset?.id === "custom_lut"))) {
-      const intensity = item.preset?.intensity ?? state.globalPreset?.intensity ?? 1.0;
-      imgData = applyCubeLutToImageData(imgData, state.customLut, intensity);
-    }
-    // 3. Standart Preset varsa uygula
-    else {
-      const activePresetId = item.preset?.id ?? state.globalPreset?.id;
-      if (activePresetId && activePresetId !== "custom_lut") {
-        const preset = CURATE_PRESETS.find((p) => p.id === activePresetId);
-        if (preset) {
-          const intensity = item.preset?.intensity ?? state.globalPreset?.intensity ?? 1.0;
-          imgData = applyPresetToImageData(imgData, preset, intensity);
-        }
-      }
-    }
-
-    ctx.putImageData(imgData, targetX, targetY);
+    // Tekil render fonksiyonu preview ile birebir aynı matematik ve filtreleri yürütür
+    drawCarouselFrame(ctx, img, targetW, targetH, {
+      fitMode,
+      heroColorMetrics: state.heroColorMetrics,
+      customLut: state.customLut,
+      presetId: activePresetId,
+      presetIntensity: activeIntensity,
+    });
 
     const mimeType = format === "png" ? "image/png" : "image/jpeg";
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       expCanvas.toBlob(
-        (b) => resolve(b!),
+        (b) => {
+          if (b) resolve(b);
+          else reject(new Error("Blob generation failed"));
+        },
         mimeType,
         mimeType === "image/jpeg" ? 0.92 : undefined
       );
@@ -496,84 +416,142 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         {/* Düzenleme Modu (Edit Sheet) */}
         {isEditSheetOpen && (
           <div className="w-full mb-3 p-4 rounded-2xl glass-panel animate-sheet-slide-up border border-white/10 flex flex-col gap-4 shadow-2xl">
-            <div className="flex items-center justify-between pb-2 border-b border-white/10">
+            {/* 1. Başlık & Kapatma */}
+            <div className="flex items-center justify-between pb-2.5 border-b border-white/10">
               <div className="flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-[#f5a623]" />
-                <span className="text-xs font-semibold text-[#f5f5f7]">Seri & Kare Düzenleme</span>
+                <Sparkles className="w-4 h-4 text-[#f5a623]" />
+                <span className="text-xs font-semibold tracking-tight text-[#f5f5f7]">Editoryal Karakter & Atmosfer</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-400 font-mono">
+                  6 Kürasyon
+                </span>
               </div>
               <button 
                 onClick={() => setIsEditSheetOpen(false)}
-                className="p-1.5 rounded-full text-[#71717a] hover:text-white hover:bg-white/10 transition-colors"
+                className="p-1.5 rounded-full text-[#71717a] hover:text-white hover:bg-white/10 active:scale-90 transition-all"
                 title="Paneli Kapat"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Global Preset & .CUBE LUT Seçici */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-[#a1a1aa]">Global Preset & 3D LUT (Tüm Seriye):</span>
+            {/* 2. Apple Bento Izgarası: Ham + 6 Editoryal Preset Kartı */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+              {/* RAW / Doğal Ham Kart */}
+              <button
+                type="button"
+                onClick={() => { actions.setGlobalPreset(null); actions.setCustomLut(null); }}
+                className={`relative flex flex-col justify-between p-2.5 rounded-xl border text-left min-h-[58px] active:scale-[0.96] transition-all cursor-pointer ${
+                  selectedPresetId === null && !state.customLut
+                    ? "border-[#f5a623] bg-[#f5a623]/15 shadow-[0_0_16px_rgba(245,166,35,0.25)] ring-1 ring-[#f5a623]/50"
+                    : "border-white/10 bg-zinc-900/50 hover:border-white/20 hover:bg-zinc-800/50"
+                }`}
+              >
+                <span className="text-xs font-medium text-white">Doğal (Ham)</span>
+                <span className="text-[9px] text-zinc-400 font-normal">Orijinal Renk</span>
+              </button>
+
+              {/* 6 Editoryal Karakter */}
+              {CURATE_PRESETS.map((p) => {
+                const swatch = PRESET_SWATCHES[p.id];
+                const isActive = selectedPresetId === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => actions.setGlobalPreset({ id: p.id, intensity: itemIntensity / 100 })}
+                    className={`relative flex flex-col justify-between p-2.5 rounded-xl border text-left min-h-[58px] bg-gradient-to-br active:scale-[0.96] transition-all cursor-pointer ${
+                      swatch?.gradient ?? "from-zinc-800 to-zinc-900"
+                    } ${
+                      isActive
+                        ? "border-[#f5a623] shadow-[0_0_16px_rgba(245,166,35,0.3)] ring-1 ring-[#f5a623]"
+                        : "border-white/10 hover:border-white/25 hover:brightness-110"
+                    }`}
+                  >
+                    <span className="text-xs font-semibold text-white leading-tight">{p.name}</span>
+                    <span className="text-[9px] text-zinc-300/80 font-medium tracking-tight">
+                      {swatch?.tag ?? p.category}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 3. Katmanlı İfşa (Progressive Disclosure): Preset veya LUT seçiliyse İnce Ayar Slider'ı */}
+            {selectedPresetId && (
+              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 flex flex-col gap-2 transition-all animate-scale-in">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-zinc-300 font-medium">Yoğunluk Derecesi</span>
+                  {selectedPresetId === "night_cinematic" && (
+                    <span className="text-[9px] font-mono text-[#f5a623] bg-[#f5a623]/10 px-2 py-0.5 rounded-full border border-[#f5a623]/20">
+                      Optik Halation Aktif
+                    </span>
+                  )}
+                  {selectedPresetId === "amber_grain" && (
+                    <span className="text-[9px] font-mono text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+                      35mm Gümüş Gren Aktif
+                    </span>
+                  )}
+                </div>
+                <ResettableSlider
+                  label="Preset & LUT Yoğunluğu"
+                  value={itemIntensity}
+                  min={0}
+                  max={100}
+                  defaultValue={100}
+                  unit="%"
+                  onChange={(val) => {
+                    if (selectedPresetId) {
+                      actions.setGlobalPreset({ id: selectedPresetId, intensity: val / 100 });
+                    }
+                  }}
+                />
+              </div>
+            )}
+
+            {/* 4. İkincil Araç Çubuğu: .CUBE LUT & Hero Harmonize */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/5">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => lutInputRef.current?.click()}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-all ${
+                    state.customLut
+                      ? "border-[#f5a623] bg-[#f5a623]/15 text-[#f5a623]"
+                      : "border-white/15 bg-white/5 text-zinc-300 hover:text-white hover:bg-white/10"
+                  }`}
+                  title="Dışarıdan 3D LUT (.cube) dosyası içe aktar"
+                >
+                  <FileCode className="w-3.5 h-3.5 text-[#f5a623]" />
+                  <span>{state.customLut ? `LUT: ${state.customLut.title}` : "3D LUT (.CUBE) Yükle"}</span>
+                </button>
+
                 {state.customLut && (
-                  <span className="text-[10px] text-[#f5a623] font-mono truncate max-w-[150px]">
-                    LUT: {state.customLut.title}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => actions.setCustomLut(null)}
+                    className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                    title="Yüklü LUT'u kaldır"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 )}
               </div>
 
-              <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+              {activePhoto && (
                 <button
-                  onClick={() => { actions.setGlobalPreset(null); actions.setCustomLut(null); }}
-                  className={`p-1.5 rounded-md text-[11px] border text-center transition-all ${
-                    selectedPresetId === null ? "border-[#f5a623] bg-[#f5a623]/10 text-white font-medium" : "border-white/5 bg-[#18181b]/60 text-[#a1a1aa]"
+                  type="button"
+                  onClick={() => handleHeroHarmonize(activePhoto.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-all ${
+                    state.heroColorMetrics
+                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                      : "border-white/15 bg-white/5 text-zinc-300 hover:text-white hover:bg-white/10"
                   }`}
+                  title="Seçili karenin renk tonlarını tüm seriye referans olarak bağla"
                 >
-                  Ham
+                  <Palette className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{state.heroColorMetrics ? "Hero Uyum Aktif (%20)" : "Kareden Hero Renk Al"}</span>
                 </button>
-
-                {CURATE_PRESETS.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => actions.setGlobalPreset({ id: p.id, intensity: itemIntensity / 100 })}
-                    className={`p-1.5 rounded-md text-[11px] border text-center transition-all truncate ${
-                      selectedPresetId === p.id ? "border-[#f5a623] bg-[#f5a623]/10 text-white font-medium" : "border-white/5 bg-[#18181b]/60 text-[#a1a1aa]"
-                    }`}
-                  >
-                    {p.name.split(" ")[0]}
-                  </button>
-                ))}
-
-                {/* [+ LUT / Preset Yükle] Butonu */}
-                <button
-                  onClick={() => lutInputRef.current?.click()}
-                  className={`p-1.5 rounded-md text-[11px] border text-center transition-all flex items-center justify-center gap-1 ${
-                    selectedPresetId === "custom_lut"
-                      ? "border-[#f5a623] bg-[#f5a623]/20 text-[#f5a623] font-semibold"
-                      : "border-dashed border-white/20 bg-white/5 text-[#a1a1aa] hover:text-white"
-                  }`}
-                  title="Dışarıdan .cube dosyası yükle"
-                >
-                  <FileCode className="w-3 h-3 shrink-0 text-[#f5a623]" />
-                  <span className="truncate">.CUBE</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Seçili Kare İnce Ayar Slider'ı */}
-            <div className="pt-1 border-t border-white/5">
-              <ResettableSlider
-                label="Preset & LUT Yoğunluğu"
-                value={itemIntensity}
-                min={0}
-                max={100}
-                defaultValue={100}
-                unit="%"
-                onChange={(val) => {
-                  if (selectedPresetId) {
-                    actions.setGlobalPreset({ id: selectedPresetId, intensity: val / 100 });
-                  }
-                }}
-              />
+              )}
             </div>
           </div>
         )}
@@ -592,7 +570,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
                 onDrop={() => handleDrop(index)}
                 onClick={() => handleCardClick(photo.id)}
                 onContextMenu={(e) => handleContextMenu(photo.id, e)}
-                className={`relative group w-13 h-15 rounded-lg overflow-hidden shrink-0 cursor-grab active:cursor-grabbing border transition-all ${
+                className={`relative group w-14 h-16 rounded-xl overflow-hidden shrink-0 cursor-grab active:cursor-grabbing border transition-all ${
                   activePhotoId === photo.id
                     ? "border-[#f5a623] scale-105 shadow-[0_0_14px_rgba(245,166,35,0.4)]"
                     : "border-white/15 opacity-75 hover:opacity-100"
@@ -624,7 +602,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
             {/* Filmstrip İçinde Hızlı Ekle Kartı */}
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-13 h-15 rounded-lg border border-dashed border-white/20 hover:border-[#f5a623]/60 bg-white/5 hover:bg-white/10 shrink-0 flex flex-col items-center justify-center gap-1 text-[#a1a1aa] hover:text-white transition-all"
+              className="w-14 h-16 rounded-xl border border-dashed border-white/20 hover:border-[#f5a623]/60 bg-white/5 hover:bg-white/10 shrink-0 flex flex-col items-center justify-center gap-1 text-[#a1a1aa] hover:text-white transition-all"
               title="Yeni Fotoğraf Ekle"
             >
               <Plus className="w-4 h-4 text-[#f5a623]" />
@@ -634,7 +612,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
 
           <div className="w-[1px] h-6 bg-white/10 shrink-0" />
 
-          {/* Düzenle Butonu (Gereksiz Kapat butonu kaldırıldı) */}
+          {/* Düzenle Butonu */}
           <button
             onClick={() => setIsEditSheetOpen(!isEditSheetOpen)}
             className={`touch-target px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 ${
