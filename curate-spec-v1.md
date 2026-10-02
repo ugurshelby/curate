@@ -20,7 +20,7 @@ Curate bu ihtiyaca cevap vermek için başladı: **tek tık, kişiye özel prese
 
 - **Tek kullanıcı:** Uğur. Çok kullanıcılı/paylaşımlı bir ürün değil, kişisel araç.
 - **Geliştirme şekli:** Yalnızca Antigravity (Gemini 3.8 Flash) ile, prompt tabanlı, agent'ın geniş inisiyatif aldığı bir süreçle geliştiriliyor. Uğur kod yazmıyor, agent'ın çıktısını değerlendirip yönlendiriyor.
-- **Kullanım bağlamı:** Muhtemelen mobilde (telefonda), bir çekim/gezi sonrası elindeki dump'ı hızlıca işleyip paylaşıma hazırlamak için. Masaüstü kullanımı da olası ama öncelik mobil hız ve pratiklik.
+- **Kullanım bağlamı:** Birincil kullanım **mobil** (sahip kararı, 2026-10-02); referans viewport 390×844. Bir çekim/gezi sonrası elindeki dump'ı telefonda hızlıca işleyip paylaşıma hazırlamak için. Masaüstü ikincildir. Hedef kitle: yalnızca Uğur (kişisel araç); `README.md` ve `AGENTS.md` bu tanıma hizalandı.
 - **Temel kullanıcı davranışı:** Fotoğrafları yükle → ruh haline uyan preset'e tek tık → gerekirse seriye yay (Batch Sync) → platforma uygun boyutta indir. Hiçbir adımda ince ayar/slider zorunlu değil.
 
 ---
@@ -64,8 +64,8 @@ curate/
 
 Aşağıdaki çelişkiler açıkta olup agent'lar tarafından karara bağlanamaz:
 1. **Panorama Çelişkisi:** Bu spec Faz 4'te panoramayı ikincil katmana taşımayı planlarken, `AGENTS.md` panorama bölücüyü kesinlikle kapsam dışı bırakmış ve koda yeniden eklenmesini yasaklamıştır.
-2. **Night Cinematic / Halation Çelişkisi:** Spec Bölüm 5.1'deki "Night Cinematic" preset ailesi güçlü halation gerektirirken, `AGENTS.md` anayasası halation efektini açıkça yasaklamıştır.
-3. **Hedef Kitle Çelişkisi:** Bu spec (Bölüm 2) aracı yalnızca Uğur için tek kullanıcılık kişisel bir stüdyo olarak tanımlarken, `AGENTS.md` "amatör fotoğrafçılar", `README.md` ise "amatör ve profesyonel fotoğrafçılar" ifadesini kullanmaktadır.
+2. ~~Night Cinematic / Halation Çelişkisi~~ **KAPANDI:** Sahip kararıyla optik halation (Night Cinematic) ve 35mm gren (Amber Grain) serbest; ışık sızıntısı, vinyet ve panorama yasak kalır (`AGENTS.md` §3).
+3. ~~Hedef Kitle Çelişkisi~~ **KAPANDI (2026-10-02, sahip kararı):** Tek kişilik, kişisel araç; birincil kullanım mobil.
 4. **Eksik Kaynak Dokümanlar:** Bu spec'in referans verdiği `curate-preset-spec.md`, `referans-gorsel-yonergesi.md`, `fotografcilik_karakterim.md` ve `curate-camera-app.md` dosyaları git reposunda mevcut değildir.
 
 
@@ -73,10 +73,18 @@ Aşağıdaki çelişkiler açıkta olup agent'lar tarafından karara bağlanamaz
 
 | # | Eksik | Etki |
 |---|---|---|
-| 5 | Web Worker köprüsü (`worker-bridge.ts`) hiç çağrılmıyor | Ağır işlemler (Lanczos, LUT) main thread'de — mobilde donma riski |
-| 6 | UpscaleStudio canlı önizlemesi CSS illüzyonu, gerçek Lanczos değil | Önizleme ile export farklı sonuç verebilir |
-| 7 | Proxy motoru (`proxy.ts`) kullanılmıyor, tüm görsel base64 DataURL olarak belleğe alınıyor | Çoklu yüksek çözünürlüklü görsellerde mobil tarayıcı bellek şişmesi |
-| 8 | QuickExportSheet'te PNG seçimi etkisiz, her zaman JPEG çıkıyor | Kullanıcıya yanlış seçenek sunuluyor |
+| 5 | Worker yalnız Upscale export'unda kullanılıyor (`workerBridge.upscaleLanczos`). Preset/harmonize/metrik/gradyan köprü metotları hiçbir yerden çağrılmıyor; Carousel önizleme ve export ana thread'de | Carousel preset değişiminde ana thread kilidi: 12MP fotoğrafta preset başına 500–728ms uzun görev (masaüstü tarayıcı, 2026-10-02 ölçümü) |
+| 6 | UpscaleStudio önizlemesi CSS filtresi (etiket artık Lanczos demiyor); export gerçek Lanczos-3 | Önizleme ile export farklıdır; etiket dürüst, kusur bilinen sınırdır |
+| 7 | Proxy (≤1080 px) üretiliyor ama yalnız filmstrip küçük resimlerinde kullanılıyor; önizleme ve export tam çözünürlüklü `originalUrl` yüklüyor | Önizleme 4000×3000 tuvalde işleniyor; bellek ve CPU maliyeti |
+| 8 | ~~PNG seçimi etkisiz~~ **KAPANDI** (`f73fa6b`): PNG gerçek PNG üretir | — |
+
+### 4.3 — Açık Hatalar (2026-10-02 ölçümü; faz yeri sahip kararıdır)
+
+| # | Hata | Kanıt |
+|---|---|---|
+| 9 | **Mobil düzenleme paneli görseli kapatıyor.** 390×844'te panel açık + preset seçili: sahne y=107–501, panel y=186–730; görselin ≈%80'i panelin altında. Panel preset yokken bile görselin ≈%53'ünü örter | `docs/reports/2026-10-02-audit.md` §1 |
+| 10 | Mobil header tek satıra sığmıyor (95px, 4 satıra kırılan başlık, Export düğmesi sağ kenarı 444px'e taşıyor, ekran 390) | aynı rapor |
+| 11 | Canlı önizleme tam çözünürlükte işleniyor; önizleme ve export aynı fonksiyonu **farklı parametrelerle** çağırıyor (önizleme `fitMode:"fill"` sabit ve tam boyutlu tuval; export 1080×1350). Gren/halation çözünürlüğe bağlı olduğundan eşitlik garanti değil | aynı rapor |
 
 **Kural:** P0 hataları kapanmadan P1'e geçilmez. P1 kapanmadan yeni özellik (preset genişletme, UI değişikliği vb.) eklenmez — mevcut temel sağlamlaşmadan üzerine inşa etmek, önceki preset kalibrasyon çalışmasında da görüldüğü gibi (koda hiç yansımadı), emeği boşa harcar.
 
@@ -99,7 +107,7 @@ Aşağıdaki çelişkiler açıkta olup agent'lar tarafından karara bağlanamaz
 
 **Kalibrasyon yöntemi:** Her preset, kullanıcının gerçek referans görsellerinden (Pinterest değil, kendi seçtiği/çektiği kareler) Reinhard CIELAB renk eşleştirme motoruyla türetilir — sabit/tahmini sayılar değil, gerçek görsellerden çıkarılmış Lab istatistikleri kullanılır. Detaylı metodoloji: `referans-gorsel-yonergesi.md`.
 
-**Önemli not:** Mevcut kodda (`lib/engine/presets.ts`) şu an **6 farklı isimli ton profili** var (Clean Contrast, Warm Neutral, Muted Editorial, Golden Hour, 35mm Subtle, B&W Minimal) — bunlar bu spec'teki 6 preset ailesiyle **isim ve değer olarak örtüşmüyor**. Bu iki seti birleştirmek/değiştirmek ayrı, açık bir karar gerektirir (bkz. Açık Sorular, madde 1).
+**Durum (2026-10-02):** `lib/engine/presets.ts` artık bu 6 ailenin kodunu içeriyor (`moody_teal`, `warm_silhouette`, `night_cinematic`, `muted_coastal`, `amber_grain`, `monochrome_noir`); eski 6 genel profil kodda yok. Değerlerin gerçek referans görsellerden Reinhard ile türetilip türetilmediği doğrulanmadı (kaynak dokümanlar repoda yok, bkz. çelişki 4).
 
 ### 5.2 — Arayüz Gereksinimi
 - Preset kartları büyük, görsel önizlemeli, "Preset/Renk" hapının en üstünde.
@@ -160,8 +168,8 @@ Buna göre her faz için prompt şöyle yazılır:
 
 ## 10. Açık Sorular
 
-1. **(Engineering/Uğur)** Mevcut kod tabanındaki 6 ton profili (Clean Contrast vb.) ile hedef 6 preset ailesi (Moody Teal vb.) nasıl birleştirilecek — biri diğerinin yerini mi alacak, yoksa ikisi de mi kalacak (12 preset)? Faz 3 başlamadan karara bağlanmalı.
-2. **(Uğur)** Mobil kullanım önceliği ne kadar kesin? Faz 2'deki worker/proxy çalışmasının kapsamını (ne kadar agresif optimize edileceğini) belirler.
+1. **(Uğur)** Hedef 6 preset ailesi kodda uygulandı, eski 6 profil kaldırıldı. Bu değişimin kalıcı karar olarak onaylanıp onaylanmadığı ve değerlerin referans görsellerden kalibrasyonu (Faz 3) sahibin teyidini bekliyor.
+2. ~~Mobil kullanım önceliği~~ **KAPANDI (2026-10-02):** Birincil kullanım mobil. Worker/proxy/render hattı kapsamı `docs/reports/2026-10-02-audit.md` §2'deki seçeneklerden sahip tarafından seçilir.
 3. **(Uğur)** `.CUBE` 3D LUT yükleme özelliği (mevcut kodda var) spec'in felsefesiyle (Bölüm 3, "zahmetsizlik") çelişiyor mu, yoksa "gelişmiş kullanıcı" katmanına mı taşınacak?
 
 ---

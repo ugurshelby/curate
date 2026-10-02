@@ -1,6 +1,6 @@
 # CURATE STUDIO — AGENT DEVELOPMENT CONSTITUTION
 
-Curate Studio is a personal browser darkroom for Uğur to edit architectural, silhouette, and reflection dumps from a mobile workflow without required sliders. Note: the binding audience definition (personal tool vs. amateur vs. pro) is an open owner question.
+Curate Studio is a personal browser darkroom for Uğur to edit architectural, silhouette, and reflection dumps without required sliders. Audience (owner decision, 2026-10-02): single user, personal tool. Primary runtime: mobile (390×844 reference viewport); desktop is secondary.
 
 ## 1. Authority Order
 1. Code (what actually executes)
@@ -8,7 +8,7 @@ Curate Studio is a personal browser darkroom for Uğur to edit architectural, si
 3. `AGENTS.md` (this constitutional rule file)
 4. `docs/reference/curate-reference.md` (canonical living reference)
 5. Everything else
-Design authority is `design/CURATE_DESIGN_SYSTEM.md`.
+Design authority is `design/CURATE_DESIGN_SYSTEM.md`; UI rule order is in `.agents/rules/ui-ux-design-hierarchy.md`. Design skills live in `design/skills/` (`apple-design` §18 and its light-theme `DESIGN.md`/tokens are not Curate's).
 
 ## 2. Permission Model
 - All development, commits, and pushes happen directly on `main`. No side or agent branches.
@@ -27,9 +27,10 @@ Design authority is `design/CURATE_DESIGN_SYSTEM.md`.
 - Preview and export must call the same draw function.
 
 ## 4. Verification Rule
-- "Done" means measured facts: `npx tsc --noEmit`, `npm run lint`, `npm run build`, and `npm test` (once it exists) must all pass with zero errors.
+- "Done" means measured facts: `npx tsc --noEmit`, `npm run lint`, `npm run build`, and `npm test` must all pass with zero errors.
 - For export or state changes, state explicitly which flows were exercised in a browser and which were not.
 - A clean build is not evidence that an image looks right.
+- UI changes: measure at 390×844 with the edit panel open (see `design/CURATE_DESIGN_SYSTEM.md` §6). The photo must never sit under the header, edit panel, or filmstrip.
 
 ## 5. Git Hygiene & Security
 - When a new file type or folder appears, check `.gitignore`.
@@ -57,5 +58,5 @@ Procedures are detailed in `docs/procedures.md`.
 | 4. Privacy and repo hygiene | "gizlilik taraması", "repo hijyen kontrolü" | "privacy scan", "repo hygiene check" |
 | 5. Docs freshness sweep | "doküman taraması", "bayat dokümanları temizle" | "docs sweep", "clean stale docs" |
 | 6. Bug triage from live testing | "şu hatayı düzelt: ...", "canlıda şunu gördüm: ..." | "fix bug: ...", "observed live: ..." |
-| 7. Merge readiness | "main'e hazır mı", "merge öncesi kontrol" | "ready for main", "pre-merge check" |
+| 7. Pre-push & release readiness | "main'e hazır mı", "push öncesi kontrol", "yayın öncesi kontrol" | "ready for main", "pre-push check", "release check" |
 | 8. Routine session | "rutin kontrol", "bakım oturumu" | "routine check", "maintenance session" |

@@ -1,6 +1,6 @@
 # Curate Studio — Minimalist Editorial Photo Darkroom (v0.1.0)
 
-Curate Studio; amatör ve profesyonel fotoğrafçıların Instagram ve TikTok için hızlı, rafine ve tutarlı **Carousel Dump** ve **Story Dump** üretmesini sağlayan hafif, tamamen istemci taraflı (Client-Side / HTML5 Canvas & Web Worker) bir fotoğraf stüdyosudur.
+Curate Studio; Uğur'un kişisel, tek kullanıcılı ve **mobil öncelikli** aracıdır: Instagram ve TikTok için hızlı, rafine ve tutarlı **Carousel Dump** ve **Story Dump** üretmek için hafif, tamamen istemci taraflı (Client-Side / HTML5 Canvas & Web Worker) bir fotoğraf stüdyosudur.
 
 Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı aksiyon & koyu tema kontrastı) ve VSCO (minimalist galeri & filmstrip) felsefesinin sentezidir.
 
@@ -13,7 +13,7 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 - **Platform Safe-Zone:** Yarı saydam göz ikonuyla Instagram Post arayüz (profil başlığı, kaydetme/beğeni butonları) katmanı.
 - **Filmstrip & İşlem Menüsü:** Kart üzerinde masaüstünde sağ tık, mobilde çift dokunma (`double-tap` ~320ms) ile `01 Kapak Yap`, `Seriyi Bu Renge Eşitle (Hero Harmonize)` ve `Seriden Çıkar` seçenekleri.
 - **Hero Renk Eşitleme:** Seçili karenin renk ve pozlama dengesini tüm seriye nazikçe (%20) işler; asla aşırı deformasyon yapmaz.
-- **Kutsal Viewport Kuralı:** Düzenleme paneli açıldığında görsel sahnesi yukarı çekilir ve hafifçe küçülür (`scale(0.88)`), görsel asla panelin arkasında kaybolmaz.
+- **Kutsal Viewport Kuralı (hedef):** Görsel, düzenleme panelinin/header'ın/filmstrip'in altında kalmaz (`design/CURATE_DESIGN_SYSTEM.md` §6). **Güncel durum:** 390×844'te panel açıkken ihlal ediliyor (2026-10-02 ölçümü, `docs/reports/2026-10-02-audit.md` §1); düzeltme bekliyor.
 
 ### 2. Story Dump (9:16)
 - **iPhone Mockup Sahnesi:** Dynamic Island ve yuvarlatılmış kasa sınırlarıyla gerçekçi dikey iPhone ekranı.

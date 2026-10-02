@@ -27,6 +27,8 @@ Stated product behavior that appears in more than one of those files:
 - Export targets: Instagram post **1080×1350** JPEG quality **0.92**; story **1080×1920**; sequenced `dump_01.jpg` names inside a zip; EXIF/GPS stripped at export. [VERIFIED] `README.md`, `AGENTS.md` §3.4, `lib/export/platform-specs.ts`.
 - Carousel harmonize transfers only about 15–25% (README says 20%) of exposure/color, and presets must not copy crop. [VERIFIED] `AGENTS.md` §3.3; `README.md`.
 
+**Owner decision (2026-10-02):** Curate is a single-user personal tool for Uğur; primary runtime is mobile (390×844 reference viewport). README, AGENTS.md and the spec were aligned to this sentence. [VERIFIED] by editing those files in the same commit.
+
 No file states a business model, a launch date, or a hosting target beyond one historical commit message (section 4).
 
 ---
@@ -40,9 +42,10 @@ Measured on 2026-10-02 in this workspace (Node `v22.18.0`, npm `10.9.3`, `node_m
 |---|---|---|
 | `npx tsc --noEmit` | Exit 0 | [VERIFIED] |
 | `npm run lint` (`next lint`) | Exit 0, "No ESLint warnings or errors" | [VERIFIED] |
-| `npm run build` (`next build`, Next.js 14.2.35) | Exit 0. Compiled, typecheck during build passed. Route table: `○ /` 58.2 kB (first load 146 kB) and `○ /_not-found` 873 B. Both static. Log line `Generating static pages (4/4)` is Next's internal counter, not four app routes. | [VERIFIED] |
-| `npm test` | Exit 1. `package.json` has no `test` script prior to Phase 5. | [VERIFIED] |
-| Browser click-through of upload, preset, or export | Not run | [UNVERIFIED] no browser session in this analysis |
+| `npm run build` (`next build`, Next.js 14.2.35) | Exit 0. Compiled, typecheck during build passed. Route table (2026-10-02, after Session 4): `○ /` 60.3 kB (first load 148 kB) and `○ /_not-found` 873 B. Both static. Log line `Generating static pages (4/4)` is Next's internal counter, not four app routes. | [VERIFIED] |
+| `npm test` | Exit 0 (`vitest run`, 24 tests; see §6) | [VERIFIED] |
+| Browser, 390×844, Carousel: upload 4 photos, open edit panel, select preset, measure layout and main-thread long tasks | Run 2026-10-02 against `npm run dev` (Next 14.2.35, in-app browser, desktop CPU) | [VERIFIED] see `docs/reports/2026-10-02-audit.md` |
+| Browser: export download, Story/Frame/Upscale flows, real phone | Not run | [UNVERIFIED] |
 
 ### What the current code implements
 
@@ -73,6 +76,10 @@ Letterbox math in the daily log matches the formula in `getExportBlob`: a 1920×
 10. **Story and Frame do not run the color pipeline.** Their exports draw the source image only. [VERIFIED]
 11. **Filmstrip thumbnail dimensions standardized.** Updated from non-standard `w-13 h-15` to standard `w-14 h-16 rounded-xl` with smooth border transitions. [VERIFIED]
 12. **`runPipelineVerification` converted to automated tests.** Replaced by Vitest suite `tests/pipeline.test.ts` covering crop math, Lanczos dimensions, zip extensions, harmonize bounds, letterbox math, and 6 editorial presets; unwired runner deleted. [VERIFIED]
+13. **Mobile edit panel covers the photo (measured).** At 390×844 with the panel open and a preset selected: stage y=107–501, panel y=186–730 (545px tall), so about 80% of the stage is under the panel; with no preset the panel is 436px and covers about 53%. `.canvas-viewport-sheet-open` pads a fixed 280px regardless of panel height, and `scale-[0.88]` does not compensate. Header is 95px (title wraps to four lines) and its Export button right edge is at x=444 on a 390px screen. [VERIFIED] 2026-10-02, `components/studio/CarouselStudio.tsx`, `app/globals.css`.
+14. **Live preview runs the full color pipeline on the full-resolution original on the main thread.** Preview draws `originalUrl` into a canvas of natural size (4000×3000 in the test), then `getImageData`/preset/`putImageData`. Measured long tasks per preset switch on a 12 MP image: 500 ms (Warm Silhouette), 728 ms (Night Cinematic), 579 ms (Amber Grain), desktop CPU. Phone timings not measured. [VERIFIED] 2026-10-02.
+15. **Preview and export call `drawCarouselFrame` with different arguments.** Preview: `fitMode:"fill"` hardcoded, canvas at natural size, crop done by CSS `object-cover`. Export: real `fitMode`, 1080×1350 canvas, crop in canvas. Grain and halation depend on pixel resolution, and harmonize metrics are taken over different pixel sets. "Same function" is true, "same result" is not guaranteed. [VERIFIED] code read; pixel equality not rendered. [UNVERIFIED]
+16. **Hero Harmonize reads metrics from the preview canvas after the preset was applied** (`handleHeroHarmonize` calls `getImageData` on the already filtered canvas). [VERIFIED] code read.
 
 ### What is completed from roadmap
 - Proxy pipeline and worker bridge offload are active. [VERIFIED]
@@ -104,14 +111,16 @@ app/                  layout.tsx, page.tsx, globals.css     — sole route
 components/studio/    Carousel, Story, Frame, Upscale,
                       InstagramOverlay, TikTokOverlay,
                       QuickExportSheet, ResettableSlider
-lib/core/             types, state-machine, use-studio,
-                      worker-bridge, pipeline-test
-lib/engine/           presets, harmonize, proxy,
-                      adaptive-gradient, upscale-lanczos
+lib/core/             types, state-machine, use-studio, worker-bridge
+lib/engine/           presets, harmonize, proxy, carousel-render,
+                      adaptive-gradient, upscale-lanczos, upscale-slider
 lib/export/           platform-specs, exif-sanitizer, zip-packager
 lib/workers/          image-processor.worker.ts
 public/               icon.svg, manifest.json, reference-images/*.jfif
-design/               CURATE_DESIGN_SYSTEM.md, tokens.curate.json
+design/               CURATE_DESIGN_SYSTEM.md, tokens.curate.json,
+                      skills/ (apple-design, animate, improve-animations,
+                      redesign-existing-projects)
+tests/                pipeline, upscale-slider, viewer-selection
 ```
 
 No `app/api`, no `middleware`, no `prisma`, no `supabase`. [VERIFIED] `git ls-files`.
@@ -124,12 +133,24 @@ Largest application files: `CarouselStudio.tsx` 674 lines, `StoryStudio.tsx` 549
 
 1. Hub or a studio creates `StudioItem`s with `URL.createObjectURL`, dimensions, and `preset: null`.
 2. `studioStore.addItems` updates store items and notifies subscribers.
-3. Carousel preview draws the selected image onto a canvas and applies global harmonize (strength `0.20`), then LUT or preset. CSS `object-cover` / `object-contain` handles fit/fill on screen.
-4. Export builds a new 1080×1350 or 1080×1920 canvas, reapplies filters (carousel), and `toBlob`s.
+3. Carousel preview loads `originalUrl`, sizes the canvas to the natural image size, and calls `drawCarouselFrame` with `fitMode:"fill"`; CSS `object-cover` / `object-contain` handles crop on screen.
+4. Carousel export builds a new 1080×1350 canvas, calls `drawCarouselFrame` with the real fit mode, and `toBlob`s. Story, Frame and Upscale have their own draw code.
 5. `QuickExportSheet` sanitizes each blob, then `packageDumpZip` sanitizes again, writes `dump_NN.jpg|png`, and triggers download.
 6. Switching modules shares `state.items`.
 
-Preview and export are separate code paths. Fit-mode background color is `#0a0a0c`. Story/frame/upscale preview do not share a single render function with export. [INFERRED] from implementations.
+Carousel preview and export share `drawCarouselFrame` but not its arguments (see §2 item 15). Story, Frame and Upscale preview do not share a render function with export. Fit-mode background color is `#0a0a0c`. [VERIFIED] code read.
+
+### Worker, proxy, OffscreenCanvas — single status table
+Last verified: 2026-10-02
+
+| Piece | What exists | Who uses it | Tag |
+|---|---|---|---|
+| Web Worker (`lib/workers/image-processor.worker.ts`, `lib/core/worker-bridge.ts`) | Tasks: upscale, preset, harmonize, metrics, gradient; in-thread fallback | **Only** `UpscaleStudio` export calls `workerBridge.upscaleLanczos`. `applyPreset`, `harmonizeSync`, `extractMetrics`, `extractGradient` have no caller. | [VERIFIED] grep |
+| Proxy (`lib/engine/proxy.ts`, `createStudioItem` in `state-machine.ts`) | ≤1080 px JPEG 0.88 proxy generated asynchronously on upload, `proxyUrl` stored | Filmstrip thumbnails only. Carousel preview and export load `originalUrl`. | [VERIFIED] code read |
+| OffscreenCanvas | Used inside `generateProxyImage` (when available) and the Lanczos output path | Not used for any preview or export render | [VERIFIED] grep |
+| Preview/export color pipeline | CPU loops in `lib/engine/presets.ts`, `harmonize.ts` | Main thread, Carousel only | [VERIFIED] |
+
+Earlier statements in this file that "worker and proxy are unwired" (§10 item 4) or "connected and active" (§2) were each half true; this table is the reference.
 
 ---
 
@@ -194,8 +215,8 @@ Last verified: 2026-10-02
 | `npm run lint` | `"lint": "next lint"` | Pass, no warnings [VERIFIED] |
 | `npm run build` | `"build": "next build"` | Pass, exit 0 [VERIFIED] |
 | `npm test` | Added in Phase 5 via Vitest | Pass, exit 0, 24 tests pass (core pipeline, upscale, selection, 6 editorial presets, proxy items) [VERIFIED] |
-| CI | Added in Phase 5 (.github/workflows/ci.yml) | Active on PR: Node 22 (tsc, lint, test, build) [VERIFIED] |
-| Visual / mobile viewport check | Required after UI changes | Marked not verified when no browser [VERIFIED] |
+| CI | `.github/workflows/ci.yml` | Triggers: push to `main`, pull request to `main`, manual. Node 22: tsc, lint, test, build [VERIFIED] file read; run results not checked [UNVERIFIED] |
+| Visual / mobile viewport check | Required after UI changes (AGENTS.md §4, CDS §6.5) | Run once on 2026-10-02 (Carousel, 390×844): FAILS the "photo never under panel" rule (§2 item 13) [VERIFIED] |
 
 ---
 
@@ -240,9 +261,11 @@ Last verified: 2026-10-02
 | `curate-spec-v1.md` | Product spec and owner intent | Updated in Phase 4 (defects closed) | Conflicts noted |
 | `docs/reference/curate-reference.md` | Living canonical reference | Active (this document) | None |
 | `docs/procedures.md` | Reusable procedure runbooks | Added in Phase 3 | None |
-| `design/CURATE_DESIGN_SYSTEM.md` | CDS v1.0.0 design authority | Authority for UI | Monospace nuance |
+| `design/CURATE_DESIGN_SYSTEM.md` | CDS v2.0.0 design authority (rewritten 2026-10-02) | Current | Code deviates from §6 (see audit report) |
+| `design/skills/*` | apple-design, animate, improve-animations, redesign-existing-projects | Added by owner 2026-10-02 | `apple-design` §18 and `DESIGN.md`/tokens are not Curate's (CDS §0) |
+| `docs/reports/2026-10-02-audit.md` | Audit and design cleanup report | Current | None |
 | `design/tokens.curate.json` | DTCG tokens duplicate | Maintained as token reference | Not imported by code |
-| `.agents/rules/ui-ux-design-hierarchy.md` | Legacy agent rule file | Unused skill paths (owner decision) | Does not match installed pkgs |
+| `.agents/rules/ui-ux-design-hierarchy.md` | UI rule order, rewritten 2026-10-02 to reference only existing files | Current | None |
 
 ---
 
@@ -252,15 +275,15 @@ Last verified: 2026-10-02
 1. **Starting library state:** Starting with seed photos rather than empty library. [Addressed in Phase 5 Roadmap 2]
 2. **Docs consistency:** Spec §4.1 previously listed fixed defects. [Addressed in Phase 4]
 3. **Preview vs Export draw paths:** Upscale preview filter vs Lanczos export. [Addressed in Phase 5 Roadmap 4]
-4. **Unwired architecture:** Worker and proxy are unwired. [Owner decision]
-5. **Audience and preset targets:** Unresolved in-repo. [Owner decision]
-6. **Mobile stage lock:** Carousel uses scale; full dvh and filmstrip hide behavior need verification.
+4. **Worker and proxy cover only Upscale export and thumbnails:** Carousel preview/export stay on the main thread at full resolution (§3 table). Mobile is primary, so this is now a performance defect, not a roadmap item. [Audit report §2]
+5. **Audience:** Resolved 2026-10-02 (single user, mobile primary). **Preset targets:** code now holds the 6 target presets; owner confirmation pending.
+6. **Mobile stage lock is violated:** measured 2026-10-02 (§2 item 13). Root cause: absolute-positioned footer over a stage padded by a fixed 280px; root height `h-screen` (100vh).
 7. **README inaccuracies:** Interaction details and versioning. [Addressed in Phase 4]
 8. **Automated tests:** Missing test runner. [Addressed in Phase 5 Roadmap 6]
 9. **Reference photos in public repo:** 13 files tracked. [Owner decision]
-10. **Design rule file skills:** Missing skill files. [Owner decision]
+10. **Design rule file skills:** Resolved 2026-10-02: rule file and CDS rewritten against existing `design/skills/`.
 11. **Dead store methods:** Preserved for future wiring or cleanup. [Owner decision]
-12. **Language tags:** `lang="en"` with Turkish UI. [Owner decision]
+12. **Language tag:** Fixed: `<html lang="tr">` in `app/layout.tsx`.
 
 ---
 
@@ -271,7 +294,7 @@ Last verified: 2026-10-02
 2. **Start from an empty library:** Implemented in Phase 5.
 3. **One render path per module for preview and export:** Future phase.
 4. **Upscale preview label corrected:** Implemented in Phase 5.
-5. **Wire or delete proxy and worker:** Deferred to owner decision.
+5. **Render pipeline for preview:** options and recommendation in `docs/reports/2026-10-02-audit.md` §2; owner picks.
 6. **Turn pipeline-test into test suite:** Implemented in Phase 5 with Vitest.
 7. **Preset decision:** Deferred to owner decision.
 8. **Viewport pass:** Procedure 2 in `docs/procedures.md`.
@@ -289,15 +312,15 @@ Incorporated into `AGENTS.md` (see Phase 2).
 ## 13. Open questions for owner
 Last verified: 2026-10-02
 
-1. Which audience sentence is binding: amateur photographers (`AGENTS.md`), amateur and professional (`README.md`), or only Uğur as a personal tool (`curate-spec-v1.md` §2)?
+1. ~~Which audience sentence is binding?~~ **Resolved 2026-10-02:** single-user personal tool.
 2. Do the six shipping profiles replace Moody Teal / Warm Silhouette / Night Cinematic / Muted Coastal / Amber Grain / Monochrome Noir, sit beside them, or get replaced by them?
-3. Night Cinematic in the spec asks for halation, and `AGENTS.md` forbids halation. Which instruction wins?
+3. ~~Night Cinematic halation vs AGENTS.md~~ **Resolved:** owner allowed halation and grain (AGENTS.md §3).
 4. Phase 4 of the spec relocates panorama; `AGENTS.md` says panorama stays deleted. Which instruction wins?
 5. Is `.cube` LUT upload staying in the main carousel sheet?
 6. Should the 13 reference photos in `public/reference-images/` remain in a public GitHub repo?
-7. Is mobile the primary runtime, and how aggressive should worker/proxy work be?
+7. ~~Is mobile primary?~~ **Resolved 2026-10-02:** yes. Still open: which preview render option (audit report §2) to adopt.
 8. Was zero-config Vercel connected, and should it deploy `main`?
-9. The `.agents/rules/ui-ux-design-hierarchy.md` file points to missing skills (`skills/apple-design`) and uninstalled libraries. Should it be rewritten or deleted?
-10. `layout.tsx` language is English and the interface is Turkish. Should `lang` be updated to `"tr"`?
+9. ~~Rewrite or delete the UI rule file?~~ **Resolved 2026-10-02:** rewritten against existing files.
+10. ~~`layout.tsx` language~~ **Resolved:** now `lang="tr"`.
 11. Frame export is hardcoded to 1080×1350. Is 4:5 the intended aspect ratio for Frame?
 12. Where are `curate-preset-spec.md`, `referans-gorsel-yonergesi.md`, `fotografcilik_karakterim.md`, and `curate-camera-app.md` located?

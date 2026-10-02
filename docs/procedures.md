@@ -46,11 +46,25 @@ Every procedure run must conclude with these steps in exact order:
   - English: `"mobile audit"`, `"check viewport"`
 - **Scope:** Responsive UI adherence to `design/CURATE_DESIGN_SYSTEM.md` and `AGENTS.md` at narrow widths (375px–430px).
 - **Steps:**
-  1. Check mobile stage lock: verify edit sheets scale/shift stage rather than obscuring photos.
-  2. Check filmstrip behavior during sheet open/close.
-  3. Audit touch target dimensions (minimum 44×44px on interactive controls).
-  4. Check safe-area paddings (Dynamic Island, navigation bars, Instagram/TikTok overlays).
+  1. Open the app at 390×844 (also 360×740, 430×932, 844×390), load at least 2 photos, open the edit panel and select a preset. Run the invariant script below. Required result: `overlap` is `false`, `hScroll` is `false`, `smallTargets` and `tinyText` are empty (limits from `design/CURATE_DESIGN_SYSTEM.md` §6).
+  2. Check filmstrip behavior during sheet open/close (it must fit the bottom stack budget, CDS §6.2).
+  3. Audit touch target dimensions (minimum 44×44px on interactive controls) and text size (minimum 11px).
+  4. Check safe-area paddings (Dynamic Island, navigation bars, Instagram/TikTok overlays) and root height unit (`dvh`, not `vh`).
   5. Audit typography and copy for Turkish UI consistency and absence of typewriter monospace fonts in UI copy.
+
+  Invariant script (browser console or `javascript_tool`; first load, stage = the 4:5 photo box, header/bottom stack = first `header` and `footer`):
+  ```js
+  const R = e => e.getBoundingClientRect();
+  const stage = R(document.querySelector('main > div')), hd = R(document.querySelector('header'));
+  const panel = document.querySelector('.animate-sheet-slide-up'), fs = R(document.querySelector('footer'));
+  const bottomTop = panel ? Math.min(R(panel).top, fs.top) : fs.top;
+  ({ overlap: stage.top < hd.bottom || stage.bottom > bottomTop,
+     stage: [Math.round(stage.top), Math.round(stage.bottom)], headerBottom: Math.round(hd.bottom), bottomStackTop: Math.round(bottomTop),
+     hScroll: document.documentElement.scrollWidth > innerWidth,
+     smallTargets: [...document.querySelectorAll('button')].filter(b => { const r = R(b); return r.width && (r.width < 44 || r.height < 44); }).map(b => b.innerText.trim() || b.title),
+     tinyText: [...document.querySelectorAll('body *')].filter(e => !e.children.length && e.textContent.trim() && parseFloat(getComputedStyle(e).fontSize) < 11).length });
+  ```
+  Notes: wait for the sheet animation (≈400 ms) before measuring; in the in-app browser, transitions only advance while the pane is rendered, so take a screenshot first (measured 2026-10-02: without it the panel still read y=730); `footer` top includes the panel when the panel is rendered inside it (current layout).
 - **May Change:** CSS classes, layout padding, responsive flex/grid wrappers.
 - **Must Only Report:** Visual rendering status (mark as "not verified" if browser unavailable).
 - **Docs Updated:** `docs/reference/curate-reference.md` (§2, §7), `logs/YYYY-MM-DD.md`.
