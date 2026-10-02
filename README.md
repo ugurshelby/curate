@@ -1,4 +1,4 @@
-# Curate Studio — Minimalist Editorial Photo Darkroom (v2.0)
+# Curate Studio — Minimalist Editorial Photo Darkroom (v0.1.0)
 
 Curate Studio; amatör ve profesyonel fotoğrafçıların Instagram ve TikTok için hızlı, rafine ve tutarlı **Carousel Dump** ve **Story Dump** üretmesini sağlayan hafif, tamamen istemci taraflı (Client-Side / HTML5 Canvas & Web Worker) bir fotoğraf stüdyosudur.
 
@@ -11,7 +11,7 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 ### 1. Carousel Dump (4:5)
 - **Sahne Mimarisi:** Varsayılan 4:5 Fill modu, tek tıkla Fit/Fill geçişi, izole wheel zoom.
 - **Platform Safe-Zone:** Yarı saydam göz ikonuyla Instagram Post arayüz (profil başlığı, kaydetme/beğeni butonları) katmanı.
-- **Filmstrip & Long-Press Menüsü:** Kart üzerinde uzun basıldığında (`long-press` ~450ms) `01 Kapak Yap`, `Seriyi Bu Renge Eşitle (Hero Harmonize)` ve `Seriden Çıkar` seçenekleri.
+- **Filmstrip & İşlem Menüsü:** Kart üzerinde masaüstünde sağ tık, mobilde çift dokunma (`double-tap` ~320ms) ile `01 Kapak Yap`, `Seriyi Bu Renge Eşitle (Hero Harmonize)` ve `Seriden Çıkar` seçenekleri.
 - **Hero Renk Eşitleme:** Seçili karenin renk ve pozlama dengesini tüm seriye nazikçe (%20) işler; asla aşırı deformasyon yapmaz.
 - **Kutsal Viewport Kuralı:** Düzenleme paneli açıldığında görsel sahnesi yukarı çekilir ve hafifçe küçülür (`scale(0.88)`), görsel asla panelin arkasında kaybolmaz.
 
@@ -28,8 +28,8 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 - Günün tarihini taşıyan analog turuncu dijital tarih damgası toggle'ı.
 
 ### 4. Kayıpsız Upscale (Lanczos-3)
-- Matematiksel $L(x) = \text{sinc}(x) \cdot \text{sinc}(x/3)$ 2-pass Lanczos konvolüsyon motoru (2x ve 4x büyütme).
-- Kaydırılabilir Before/After Split View çizgisiyle canlı keskinlik analizi.
+- Matematiksel $L(x) = \text{sinc}(x) \cdot \text{sinc}(x/3)$ 2-pass Lanczos konvolüsyon motoru (dışa aktarmada gerçek kayıpsız 2x ve 4x büyütme).
+- Kaydırılabilir Before/After Split View çizgisiyle keskinlik önizlemesi (önizleme hızlı kontrast simülasyonu, export anında tam Lanczos-3 render).
 
 ---
 
@@ -38,6 +38,7 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 - **Instagram Post:** Tam **1080 × 1350 px** (`4:5`), %92 optimize JPEG.
 - **Instagram Story:** Tam **1080 × 1920 px** (`9:16`).
 - **Gizlilik:** GPS, cihaz seri numaraları ve özel EXIF verileri dışa aktarma anında otomatik soyutlanır.
+- **Format Desteği:** JPEG, PNG, WEBP; HEIC desteği cihazın yerel tarayıcı desteğine bağlıdır (harici JS decoder paketi bulunmamaktadır).
 - **JSZip:** Tüm seri `dump_01.jpg`, `dump_02.jpg` şeklinde sıralı isimlendirilerek tek tıkla `.zip` olarak indirilir.
 
 ---
@@ -48,6 +49,7 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 - **Liquid Glass:** `backdrop-blur-xl`, `border-white/10`, rim light yansıması `inset 0 1px 0 rgba(255,255,255,0.12)`.
 - **Tipografi:** Yalnızca Apple HIG standart sans-serif (`-apple-system, BlinkMacSystemFont, SF Pro, Inter`). Asla rastgele monospace font kullanılmaz.
 - **Ergonomi:** Minimum 44×44px dokunma hedefleri (`touch-target`).
+- **Renk Kaynağı:** Renk paletinin koddaki mutlak tek kaynağı `tailwind.config.ts` ve `app/globals.css` dosyalarıdır. `design/tokens.curate.json` referans amaçlıdır.
 
 ---
 
@@ -60,7 +62,14 @@ npm install
 # Geliştirme sunucusunu başlatın
 npm run dev
 
-# Tip kontrolü ve üretim derlemesi
+# Mantık testlerini çalıştırın (Vitest)
+npm test
+
+# Tip kontrolü, lint ve üretim derlemesi
 npx tsc --noEmit
+npm run lint
 npm run build
 ```
+
+- **CI/CD:** GitHub Actions iş akışı (`.github/workflows/ci.yml`) pull request aşamasında `tsc`, `lint`, `test` ve `build` kontrollerini otomatik çalıştırır.
+

@@ -53,14 +53,21 @@ curate/
 
 **Tasarım dili:** CDS v1.0 — OLED siyah zemin, `backdrop-blur` camsı paneller, ince `border-white/10` konturlar, Apple HIG uyumlu tipografi (SF Pro/Inter), daktilo fontları arayüzden arındırılmış.
 
-### 4.1 — Bilinen Kritik Hatalar (P0, çözülmeden başka hiçbir şeye öncelik verilmez)
+### 4.1 — Bilinen Kritik Hatalar (P0 Durumu)
 
-| # | Hata | Dosya | Etki |
-|---|---|---|---|
-| 1 | CarouselStudio export'u preset/LUT/harmonize filtrelerini uygulamıyor | `CarouselStudio.tsx` (`getExportBlob`) | Kullanıcı hangi preset'i seçerse seçsin, ham/işlenmemiş görsel iniyor |
-| 2 | StoryStudio export'u grid fotoğraflarını hiç çizmiyor | `StoryStudio.tsx` (`getStoryExportBlob`) | İndirilen dosya boş renk/gradyan kare |
-| 3 | FrameStudio export'u fotoğrafı ve tarih damgasını çizmiyor | `FrameStudio.tsx` (`getExportBlob`) | İndirilen dosya sadece çerçeve zemini |
-| 4 | Merkezi state-machine hiçbir bileşene bağlı değil | `lib/core/state-machine.ts`, tüm `studio/*` | Modüller birbirinden kopuk, Hub'dan yüklenen foto hiçbir modüle ulaşmıyor |
+- **Hata 1 (CarouselStudio export'u preset/LUT/harmonize filtrelerini uygulamıyor):** [KAPATILDI - 2026-10-01, commit `f73fa6b`] `components/studio/CarouselStudio.tsx` içerisindeki `getExportBlob` fonksiyonu optimize edilerek; harmonize (%20), .CUBE LUT ve aktif preset filtreleri export tuvalindeki fotoğraf alanına birebir yansıtılmıştır.
+- **Hata 2 (StoryStudio export'u grid fotoğraflarını hiç çizmiyor):** [KAPATILDI - 2026-10-01, commit `f73fa6b`] `components/studio/StoryStudio.tsx` export motoru 2–6'lı grid hücrelerinin tamamını `drawRoundedRect` kırpması ile tuvale basmaktadır; 5'li grid düzeninde 3. satır tam genişlik geometrisi önizleme ile 100% eşitlenmiştir.
+- **Hata 3 (FrameStudio export'u fotoğrafı ve tarih damgasını çizmiyor):** [KAPATILDI - 2026-10-01, commit `f73fa6b`] `FrameStudio.tsx` içerisindeki `getExportBlob` fonksiyonu fotoğrafı, polaroid/mat/gradyan çerçeveyi ve seçiliyse analog turuncu tarih damgasını 1080×1350 tuval üzerine başarıyla çizmektedir.
+- **Hata 4 (Merkezi state-machine hiçbir bileşene bağlı değil):** [KAPATILDI - 2026-10-01, commit `f73fa6b`] `lib/core/use-studio.ts` köprüsü üzerinden `useSyncExternalStore` ile tüm 4 stüdyo modülü (`CarouselStudio`, `StoryStudio`, `FrameStudio`, `UpscaleStudio`) merkezi reaktif store'a bağlanmıştır.
+
+### Conflicts Needing Owner Decisions (Sahip Kararı Gerektiren Çelişkiler)
+
+Aşağıdaki çelişkiler açıkta olup agent'lar tarafından karara bağlanamaz:
+1. **Panorama Çelişkisi:** Bu spec Faz 4'te panoramayı ikincil katmana taşımayı planlarken, `AGENTS.md` panorama bölücüyü kesinlikle kapsam dışı bırakmış ve koda yeniden eklenmesini yasaklamıştır.
+2. **Night Cinematic / Halation Çelişkisi:** Spec Bölüm 5.1'deki "Night Cinematic" preset ailesi güçlü halation gerektirirken, `AGENTS.md` anayasası halation efektini açıkça yasaklamıştır.
+3. **Hedef Kitle Çelişkisi:** Bu spec (Bölüm 2) aracı yalnızca Uğur için tek kullanıcılık kişisel bir stüdyo olarak tanımlarken, `AGENTS.md` "amatör fotoğrafçılar", `README.md` ise "amatör ve profesyonel fotoğrafçılar" ifadesini kullanmaktadır.
+4. **Eksik Kaynak Dokümanlar:** Bu spec'in referans verdiği `curate-preset-spec.md`, `referans-gorsel-yonergesi.md`, `fotografcilik_karakterim.md` ve `curate-camera-app.md` dosyaları git reposunda mevcut değildir.
+
 
 ### 4.2 — Bilinen Mimari Eksikler (P1 — işlevsel ama performans/ölçeklenebilirlik riski)
 

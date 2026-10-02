@@ -44,6 +44,8 @@ Curate arayüzü katı bir **60:30:10** kuralıyla yönetilir:
 | **%30 Yüzey (Elevated)** | `surface-elevated` (`#0f0f11`)<br>`surface-overlay` (`#18181b`) | Kartlar, bento grid modülleri, floating toolbar, alt paneller (bottom sheets) | %60 zeminden 1px `border-white/8` ile ayrılan, derinliği oluşturan nötr koyu yüzeyler. |
 | **%10 Vurgu (Accent)** | `accent-warm-white` (`#f5f5f7`)<br>`accent-amber` (`#f5a623`) | Aktif seçimler, kritik butonlar, durum noktaları, slider kulakçıkları | Tekil ve seyrek kullanılır. Her yerde renk kullanımı arayüzün ciddiyetini bozar. Amber, tekil işlem durumlarını belirtir. |
 
+> **Kod Tabanı Doğruluk Kaynağı:** Renk tanımlarının aktif koddaki mutlak tek kaynağı `tailwind.config.ts` ve `app/globals.css` dosyalarıdır. `design/tokens.curate.json` referans amaçlıdır ve kod tarafından doğrudan import edilmez.
+
 ### Metin Renk Hiyerarşisi
 - **Primary Text (`#f5f5f7`):** Apple Warm White — başlıklar, aktif etiketler, yüksek kontrastlı ana veri.
 - **Secondary Text (`#a1a1aa`):** Neutral 400 — açıklama metinleri, standart buton etiketleri.
