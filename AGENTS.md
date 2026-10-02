@@ -1,77 +1,60 @@
-# CURATE STUDIO — AGENT DEVELOPMENT DIRECTIVE & OPERATING CONSTITUTION
+# CURATE STUDIO — AGENT DEVELOPMENT CONSTITUTION
 
-Bu belge, Curate Studio kod tabanında çalışan tüm yapay zeka agent'ları (Cursor, Windsurf, Claude Code, Antigravity vb.) için bağlayıcı ana anayasadır. 
-Herhangi bir geliştirme, refactor veya hata düzeltme işlemine başlamadan önce bu belgedeki kuralların okunması ve uygulanması zorunludur.
+Curate Studio is a personal browser darkroom for Uğur to edit architectural, silhouette, and reflection dumps from a mobile workflow without required sliders. Note: the binding audience definition (personal tool vs. amateur vs. pro) is an open owner question.
 
----
+## 1. Authority Order
+1. Code (what actually executes)
+2. `curate-spec-v1.md` (owner's statement of intent)
+3. `AGENTS.md` (this constitutional rule file)
+4. `docs/reference/curate-reference.md` (canonical living reference)
+5. Everything else
+Design authority is `design/CURATE_DESIGN_SYSTEM.md`.
 
-## 1. ÜRÜN VİZYONU & DEĞİŞMEZ KAPSAM (SCOPE LOCK)
+## 2. Permission Model
+- You may create and delete your own branches named `agent/<short-task>`, and commit and push to them freely.
+- Never merge, push, or force-push to `main`. Never open or merge a pull request into `main`. The owner does that. Vercel may deploy `main` automatically.
+- This project has no database, no server, and no secrets. Do not add one. Never print or commit secret values; names only.
+- Do not decide owner questions (see `docs/reference/curate-reference.md` section 13). List them in reports.
+- If a browser is unavailable to you, mark every visual or interaction check as "not verified" instead of inferring it from code.
 
-Curate Studio; amatör fotoğrafçıların Instagram ve TikTok için hızlı, rafine ve tutarlı **Carousel Dump** ve **Story Dump** üretmesini sağlayan hafif, istemci taraflı (client-side) bir stüdyodur.
+## 3. Scope Lock
+- Strictly forbidden: halation, procedural grain, light leak, vignette, panorama splitting, AI inpainting/outpainting, accounts, server-side image upload.
+- If the spec asks for any of these, stop and ask. Do not reintroduce removed features from git history.
+- No new dependency that sends pixels off-device.
+- No default or seed photos, mock EXIF strings, or debug labels (`Acik`, `Kapali`, proxy dimensions) in the UI.
+- Do not label a CSS filter as Lanczos.
+- Preview and export must call the same draw function.
 
-### Kesinlikle Kapsam Dışı Olanlar (YAPILMAYACAK):
-- Halation (ışık haresi), prosedürel film greni, analog ışık sızıntısı (light leak), vinyet katmanları KODLANMAYACAKTIR.
-- Kesintisiz Panorama Bölücü kaldırılmıştır; eklenmeyecektir.
-- AI Inpainting / Outpainting bu fazda yoktur; Faz 2'ye kadar ertelenmiştir.
-- Ağır piksel işleme filtreleri ve akordeon ayar labirentleri YASAKTIR.
+## 4. Verification Rule
+- "Done" means measured facts: `npx tsc --noEmit`, `npm run lint`, `npm run build`, and `npm test` (once it exists) must all pass with zero errors.
+- For export or state changes, state explicitly which flows were exercised in a browser and which were not.
+- A clean build is not evidence that an image looks right.
 
-### Temel 4 Modül Mimarisi:
-Uygulama ana sayfada yalnızca 4 bağımsız stüdyo modülüne ayrılır:
-1. **Carousel Dump (4:5):** Sıralanabilir filmstrip, Instagram/TikTok preview, nazik seri renk eşitleme (harmonize), global preset.
-2. **Story Dump (9:16):** Gerçekçi iPhone ekranı kabuğu, Instagram Story overlay, 2–6'lı akıllı grid, tekil "Space" slider'ı, akıllı gradyan ve Polaroid çerçeve.
-3. **Minimal Çerçeve:** Tek görsel için Polaroid, Matte ve Akıllı Gradyan çerçeve, isteğe bağlı günün analog tarih damgası.
-4. **Kayıpsız Upscale:** Lanczos-3 matematiksel büyütme (2x/4x) ve Split View karşılaştırma.
+## 5. Git Hygiene & Security
+- When a new file type or folder appears, check `.gitignore`.
+- Never commit `.env*`, screenshots, personal photos, or dumps.
+- If an environment variable ever appears, add its name to `.env.example` with an empty value.
 
----
+## 6. Documentation Self-Maintenance
+- A change that makes any doc false (including `curate-spec-v1.md` or `README.md`) must update that document in the same commit.
+- Update "Last verified: YYYY-MM-DD" in touched sections of `docs/reference/curate-reference.md`.
+- Never leave fixed bugs listed as open defects in the spec.
 
-## 2. ARAYÜZ VE TASARIM SİSTEMİ PROTOKOLÜ (CDS)
+## 7. Logging Rule
+- Every session/procedure writes measured facts to `logs/YYYY-MM-DD.md` (commands, results, counts, sizes).
+- No intentions or unverified claims.
+- Delete log files older than 15 days.
 
-Tasarım sistemi otoritesi `design/CURATE_DESIGN_SYSTEM.md` belgesidir[cite: 28, 29]. Apple HIG, Raycast ve VSCO füzyonudur[cite: 28].
+## 8. Procedure Trigger Table
+Procedures are detailed in `docs/procedures.md`.
 
-### Kutsal Viewport Kuralı (Mobile Stage Lock):
-- Görsel sahnesi KUTSALDIR. Hiçbir panel, modal veya toolbar fotoğrafın üzerine binemez (`floating overlay over image` kesinlikle yasaktır).
-- Mobilde (`sm:` altı) ekran `h-dvh` dikey flex alanına ayrılır. Alttaki düzenleme paneli açıldığında üstteki görsel sahnesi orantılı olarak küçülür (`transform: translateY(-8px) scale(0.88)` / `object-contain`), görsel engelsiz görünür kalır.
-- Düzenleme moduna girildiğinde en alttaki Filmstrip dikey alan kazanmak için yumuşakça gizlenir; panel kapatıldığında geri gelir.
-
-### Tipografi ve Renk Kuralları:
-- **Font:** Sadece `-apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif`. Arayüz metinlerinde, başlıklarda veya butonlarda **asla daktilo tipi monospace font KULLANILAMAZ**[cite: 27, 28].
-- **Renk Oranı:** %60 OLED Siyah (`#000000`), %30 Derin Yüzey (`#0f0f11`, `#18181b`), %10 Nötr Vurgu (Apple Sıcak Beyaz / Minimal Amber).
-- Mor, sarı, yeşil gibi dağınık renk cümbüşleri YASAKTIR[cite: 28, 31]. Bütün buton ve aktif durumlar tekil aksan rengine bağlı kalacaktır[cite: 28, 30, 31].
-- Debug amaçlı string kalıntıları (`Acik`, `Kapali`, `Proxy 864x1080` vb.) arayüze basılamaz[cite: 29, 30, 31].
-
----
-
-## 3. RENDER, PERFORMANS VE İŞ AKIŞI PRENSİPLERİ
-
-1. **60 FPS Reaktif Render:**
-   - Slider etkileşimlerinde layout thrashing ve DOM reflow YASAKTIR.
-   - Panel açılış/kapanışları yalnızca GPU dostu `transform: translate3d` ve `will-change: transform` ile yönetilir.
-   - Slider sürüklenirken ağır hesaplamalar `requestAnimationFrame` (rAF) ile sınırlandırılır.
-
-2. **Non-Destructive & Proxy İş Akışı:**
-   - Ekranda gösterilen önizleme 1080p proxy görseldir; dışa aktarılırken Lanczos-3 orijinal tam piksellere uygulanır.
-   - Her modül bağımsız katmanlı state tutar: Orijinal piksele asla yıkıcı (destructive) gömme yapılmaz.
-
-3. **Akıllı Sıfırlama ve Eşitleme Mantığı:**
-   - Bir preset seçildiğinde önceki preset'in üstüne binmez; görsel sıfırlanıp yeni preset uygulanır.
-   - Seriden bir kare seçilip "Tüm Seriyi Bu Kareye Eşitle" dendiğinde sadece %15–%25 oranında nazik pozlama/renk sıcaklığı aktarılır. Başka kare seçilirse önceki eşitleme temizlenir.
-   - Presetler veya renk eşitlemeleri ASLA kırpma (crop/ratio) değerlerini kopyalayamaz.
-
-4. **Zero-Waste Export (Platform Standardı):**
-   - Instagram Post: Tam **1080 × 1350 px** (`4:5`), %92 JPEG kalitesi.
-   - Instagram / TikTok Story: Tam **1080 × 1920 px** (`9:16`).
-   - Dışa aktarma anında EXIF/GPS verileri otomatik soyutlanır; dosyalar sıralı isimlendirilir (`dump_01.jpg`, `dump_02.jpg`).
-
----
-
-## 4. AGENT ÇALIŞMA PROTOKOLÜ (MANDATORY VERIFICATION)
-
-Herhangi bir agent kod yazdıktan veya değişiklik yaptıktan sonra şu adımları sırayla tamamlamadan görevi bitti sayamaz:
-
-1. **Tip ve Derleme Kontrolü:**
-   - `npx tsc --noEmit` çalıştırılmalı ve 0 hata vermelidir.
-   - `npm run build` hatasız tamamlanmalıdır.
-2. **Viewport Kontrolü:**
-   - Yapılan değişikliğin mobil dikey görünümde görselin üstünü kapatmadığı kod düzeyinde doğrulanmalıdır.
-3. **Temiz Diff:**
-   - İlgisiz dosyalarda boşluk/biçimlendirme değişiklikleri yapılmamalı, commit mesajları `feat:`, `fix:`, `refactor:` standartlarına uymalıdır.
+| Procedure | Turkish Trigger | English Trigger |
+|---|---|---|
+| 1. Export parity check | "export kontrolü", "önizleme export eşleşiyor mu" | "check export parity", "export matches preview" |
+| 2. Mobile and viewport audit | "mobil denetim turu", "arayüzü denetle" | "mobile audit", "check viewport" |
+| 3. Performance and memory audit | "performans denetimi", "bellek kontrolü" | "performance audit", "memory audit" |
+| 4. Privacy and repo hygiene | "gizlilik taraması", "repo hijyen kontrolü" | "privacy scan", "repo hygiene check" |
+| 5. Docs freshness sweep | "doküman taraması", "bayat dokümanları temizle" | "docs sweep", "clean stale docs" |
+| 6. Bug triage from live testing | "şu hatayı düzelt: ...", "canlıda şunu gördüm: ..." | "fix bug: ...", "observed live: ..." |
+| 7. Merge readiness | "main'e hazır mı", "merge öncesi kontrol" | "ready for main", "pre-merge check" |
+| 8. Routine session | "rutin kontrol", "bakım oturumu" | "routine check", "maintenance session" |
