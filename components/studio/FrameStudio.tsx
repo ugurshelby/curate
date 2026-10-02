@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Download, Calendar, Plus } from "lucide-react";
+import { ArrowLeft, Download, Calendar, Plus, Crop } from "lucide-react";
 import { ResettableSlider } from "./ResettableSlider";
 import { QuickExportSheet } from "./QuickExportSheet";
 import { extractAdaptiveGradient, AdaptiveGradientResult, useStudio, StudioItem } from "@/lib";
@@ -13,7 +13,7 @@ interface FrameStudioProps {
 export function FrameStudio({ onBack }: FrameStudioProps) {
   const { state, actions } = useStudio();
   const activeItem = state.items.find((i) => i.id === state.selectedItemId) || state.items[0];
-  const photoPath = activeItem ? (activeItem.originalUrl || activeItem.proxyUrl) : "/reference-images/kovboy.jfif";
+  const photoPath = activeItem ? (activeItem.originalUrl || activeItem.proxyUrl) : "";
 
   const { frameType, borderWidth, borderRadius, showTimestamp } = state.frameConfig;
   const [adaptiveGradient, setAdaptiveGradient] = useState<AdaptiveGradientResult | null>(null);
@@ -57,6 +57,10 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
 
   // Görsel yüklendiğinde gradyan çıkar
   useEffect(() => {
+    if (!photoPath) {
+      setAdaptiveGradient(null);
+      return;
+    }
     const img = new window.Image();
     if (!photoPath.startsWith("data:") && !photoPath.startsWith("blob:")) {
       img.crossOrigin = "anonymous";
@@ -268,13 +272,26 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
             border: frameType === "matte" ? "1px solid rgba(255,255,255,0.1)" : "none",
           }}
         >
-          {/* İç Fotoğraf */}
+          {/* İç Fotoğraf veya Boş Durum */}
           <div className="relative w-full h-full rounded-sm overflow-hidden shadow-inner flex items-center justify-center bg-black">
-            <img
-              src={photoPath}
-              alt="frame photo"
-              className="w-full h-full object-cover"
-            />
+            {photoPath ? (
+              <img
+                src={photoPath}
+                alt="frame photo"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center p-6 text-center text-[#71717a] gap-2">
+                <Crop className="w-8 h-8 text-[#3f3f46]" />
+                <span className="text-xs">Çerçeve için henüz fotoğraf yok</span>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs text-[#f5a623] hover:underline"
+                >
+                  Fotoğraf Yükle
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Analog Turuncu Tarih Damgası */}

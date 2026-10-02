@@ -20,23 +20,12 @@ const DEFAULT_REFERENCE_PHOTOS = [
   { id: "p7", name: "07-Kovboy.jpg", path: "/reference-images/kovboy.jfif" },
 ];
 
-const INITIAL_ITEMS: StudioItem[] = DEFAULT_REFERENCE_PHOTOS.map((p, idx) => ({
-  id: p.id,
-  name: p.name,
-  originalUrl: p.path,
-  proxyUrl: p.path,
-  dimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
-  proxyDimensions: { width: 1080, height: 1350, aspectRatio: 4 / 5 },
-  preset: null,
-  harmonize: { enabled: false, referenceItemId: null, strength: 0.2 },
-  order: idx,
-  createdAt: 1000 + idx,
-}));
+const INITIAL_ITEMS: StudioItem[] = [];
 
 const INITIAL_STATE: StudioState = {
   activeModule: 'carousel',
   items: INITIAL_ITEMS,
-  selectedItemId: 'p1',
+  selectedItemId: null,
   globalPreset: null,
   customLut: null,
   heroColorMetrics: null,

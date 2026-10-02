@@ -12,7 +12,7 @@ interface UpscaleStudioProps {
 export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
   const { state, actions } = useStudio();
   const activeItem = state.items.find((i) => i.id === state.selectedItemId) || state.items[0];
-  const photoPath = activeItem ? (activeItem.originalUrl || activeItem.proxyUrl) : "/reference-images/tren.jfif";
+  const photoPath = activeItem ? (activeItem.originalUrl || activeItem.proxyUrl) : "";
   const scaleFactor = state.upscaleConfig.scaleFactor;
 
   const [splitPos, setSplitPos] = useState<number>(50); // %0 - %100
@@ -153,49 +153,64 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
         <div 
           ref={containerRef}
           className="relative h-[68vh] aspect-[4/5] max-w-[90vw] rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-[#0f0f11] cursor-ew-resize select-none"
-          onPointerDown={handlePointerDown}
+          onPointerDown={photoPath ? handlePointerDown : undefined}
         >
-          {/* Alttaki Katman: Orijinal */}
-          <div className="absolute inset-0">
-            <img
-              src={photoPath}
-              alt="original"
-              className="w-full h-full object-cover filter blur-[0.5px]"
-            />
-            <span className="absolute bottom-3 left-3 text-[10px] font-mono bg-black/75 px-2 py-0.5 rounded text-[#a1a1aa] border border-white/10">
-              1x Orijinal
-            </span>
-          </div>
+          {photoPath ? (
+            <>
+              {/* Alttaki Katman: Orijinal */}
+              <div className="absolute inset-0">
+                <img
+                  src={photoPath}
+                  alt="original"
+                  className="w-full h-full object-cover filter blur-[0.5px]"
+                />
+                <span className="absolute bottom-3 left-3 text-[10px] font-mono bg-black/75 px-2 py-0.5 rounded text-[#a1a1aa] border border-white/10">
+                  1x Orijinal
+                </span>
+              </div>
 
-          {/* Üstteki Katman: Lanczos-3 Keskinleştirilmiş (Clip-Path ile Bölünmüş) */}
-          <div 
-            className="absolute inset-0 overflow-hidden"
-            style={{
-              clipPath: `polygon(${splitPos}% 0, 100% 0, 100% 100%, ${splitPos}% 100%)`,
-            }}
-          >
-            <img
-              src={photoPath}
-              alt="upscaled"
-              className="w-full h-full object-cover"
-              style={{
-                filter: "contrast(1.04) brightness(1.02)",
-              }}
-            />
-            <span className="absolute bottom-3 right-3 text-[10px] font-mono bg-black/75 px-2 py-0.5 rounded text-[#f5a623] border border-[#f5a623]/30">
-              Lanczos-3 ({scaleFactor}x Keskin)
-            </span>
-          </div>
+              {/* Üstteki Katman: Lanczos-3 Keskinleştirilmiş (Clip-Path ile Bölünmüş) */}
+              <div 
+                className="absolute inset-0 overflow-hidden"
+                style={{
+                  clipPath: `polygon(${splitPos}% 0, 100% 0, 100% 100%, ${splitPos}% 100%)`,
+                }}
+              >
+                <img
+                  src={photoPath}
+                  alt="upscaled"
+                  className="w-full h-full object-cover"
+                  style={{
+                    filter: "contrast(1.04) brightness(1.02)",
+                  }}
+                />
+                <span className="absolute bottom-3 right-3 text-[10px] font-mono bg-black/75 px-2 py-0.5 rounded text-[#f5a623] border border-[#f5a623]/30">
+                  Lanczos-3 ({scaleFactor}x Keskin)
+                </span>
+              </div>
 
-          {/* Bölücü Çizgi ve Kulakçık */}
-          <div 
-            className="absolute top-0 bottom-0 w-[2px] bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)] z-30 pointer-events-none"
-            style={{ left: `${splitPos}%` }}
-          >
-            <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white shadow-xl flex items-center justify-center text-black text-[9px] font-bold">
-              ↔
+              {/* Bölücü Çizgi ve Kulakçık */}
+              <div 
+                className="absolute top-0 bottom-0 w-[2px] bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)] z-30 pointer-events-none"
+                style={{ left: `${splitPos}%` }}
+              >
+                <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white shadow-xl flex items-center justify-center text-black text-[9px] font-bold">
+                  ↔
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center text-[#71717a] gap-2">
+              <ZoomIn className="w-8 h-8 text-[#3f3f46]" />
+              <span className="text-xs">Büyütülecek fotoğraf henüz seçilmedi</span>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs text-[#f5a623] hover:underline"
+              >
+                Fotoğraf Yükle
+              </button>
             </div>
-          </div>
+          )}
         </div>
       </main>
 

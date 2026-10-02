@@ -61,7 +61,7 @@ Letterbox math in the daily log matches the formula in `getExportBlob`: a 1920×
 
 ### What is broken or misleading relative to the written product
 
-1. **Seed photos are the starting library in `f73fa6b`.** `INITIAL_ITEMS` contained seven `/reference-images/*.jfif` paths. Hub upload appended and kept existing selection. Exposing clear action and starting empty is addressed in Roadmap 2. [VERIFIED]
+1. **Library starts empty on fresh load.** `INITIAL_ITEMS` initialized to `[]` and `selectedItemId` to `null`. Hub upload selects the first uploaded item, and clear action is exposed in UI calling `clearItems()` with URL revocation. Reference images remain tracked under `public/reference-images/` per owner policy. [VERIFIED]
 2. **Thirteen reference photos tracked under `public/reference-images/`.** [VERIFIED] `git ls-files`.
 3. **Upload metadata is minimal.** New items set dimensions and proxyDimensions to 1080×1350 and set proxyUrl equal to originalUrl. `generateProxyImage` is defined in `lib/engine/proxy.ts` but never called. [VERIFIED]
 4. **Upscale preview is not Lanczos.** The "after" half uses CSS `contrast(1.04) brightness(1.02)`. [VERIFIED] `UpscaleStudio.tsx`.

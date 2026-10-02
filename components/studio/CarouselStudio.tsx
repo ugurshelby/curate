@@ -379,6 +379,17 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
             <Plus className="w-3.5 h-3.5 text-[#f5a623]" />
             <span>Fotoğraf Yükle</span>
           </button>
+
+          {photos.length > 0 && (
+            <button
+              onClick={() => actions.clearItems()}
+              className="touch-target px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-rose-500/15 text-[#a1a1aa] hover:text-rose-400 text-xs font-medium flex items-center gap-1.5 transition-all border border-white/10"
+              title="Tüm Seriyi Temizle"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Temizle</span>
+            </button>
+          )}
         </div>
 
         {/* Başlık ve Platform Bilgisi */}
@@ -435,18 +446,31 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
             isEditSheetOpen ? "-translate-y-2 scale-[0.88]" : ""
           }`}
         >
-          {/* Canlı Çizilen Canvas */}
-          <canvas
-            ref={canvasRef}
-            style={{
-              transform: `scale(${zoomScale})`,
-              transformOrigin: "center center",
-              transition: "transform 0.1s ease-out",
-            }}
-            className={`max-w-full max-h-full ${
-              fitMode === "fill" ? "w-full h-full object-cover" : "w-full h-full object-contain"
-            }`}
-          />
+          {/* Canlı Çizilen Canvas veya Boş Durum */}
+          {activePhoto ? (
+            <canvas
+              ref={canvasRef}
+              style={{
+                transform: `scale(${zoomScale})`,
+                transformOrigin: "center center",
+                transition: "transform 0.1s ease-out",
+              }}
+              className={`max-w-full max-h-full ${
+                fitMode === "fill" ? "w-full h-full object-cover" : "w-full h-full object-contain"
+              }`}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center p-6 text-center text-[#71717a] gap-2">
+              <Layers className="w-8 h-8 text-[#3f3f46]" />
+              <span className="text-xs">Seride henüz fotoğraf yok</span>
+              <button 
+                onClick={() => fileInputRef.current?.click()} 
+                className="text-xs text-[#f5a623] hover:underline"
+              >
+                Fotoğraf Yükle
+              </button>
+            </div>
+          )}
 
           {/* Platform Safe-Zone Overlays */}
           {previewMode === "instagram" && <InstagramOverlay type="post" />}

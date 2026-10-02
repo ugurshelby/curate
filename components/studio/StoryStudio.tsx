@@ -415,45 +415,58 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
             {previewMode === "tiktok" && <TikTokOverlay type="story" />}
 
             {/* Akıllı Grid & Space Tuvali (Safe-Area ile Çentik Altından Başlar) */}
-            <div 
-              className={`w-full h-full grid ${getGridClasses()} transition-all duration-200 pt-10 pb-8 px-2`}
-              style={{
-                gap: `${spacing}px`,
-                paddingLeft: `${Math.max(8, spacing)}px`,
-                paddingRight: `${Math.max(8, spacing)}px`,
-              }}
-            >
-              {storyPhotos.slice(0, slotCount).map((photoItem, idx) => {
-                const isSelected = swapSelectedIdx === idx;
-                const photoSrc = photoItem.proxyUrl || photoItem.originalUrl;
-                return (
-                  <div
-                    key={photoItem.id || idx}
-                    onClick={() => handleCellClick(idx)}
-                    className={`relative rounded-xl overflow-hidden cursor-pointer transition-all duration-150 ${
-                      slotCount === 5 && idx === 4 ? "col-span-2" : ""
-                    } ${
-                      isSelected
-                        ? "ring-2 ring-[#f5a623] scale-[0.98] shadow-lg"
-                        : "hover:opacity-95 shadow-md"
-                    }`}
-                  >
-                    <img
-                      src={photoSrc}
-                      alt={`slot-${idx}`}
-                      className="w-full h-full object-cover pointer-events-none"
-                    />
-                    {isSelected && (
-                      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center">
-                        <span className="text-[10px] font-bold bg-[#f5a623] text-black px-2 py-0.5 rounded-full">
-                          Takas İçin Seçildi
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            {storyPhotos.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-[#71717a] gap-2">
+                <Smartphone className="w-8 h-8 text-[#3f3f46]" />
+                <span className="text-xs">Story için henüz fotoğraf yok</span>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs text-[#f5a623] hover:underline"
+                >
+                  Fotoğraf Yükle
+                </button>
+              </div>
+            ) : (
+              <div 
+                className={`w-full h-full grid ${getGridClasses()} transition-all duration-200 pt-10 pb-8 px-2`}
+                style={{
+                  gap: `${spacing}px`,
+                  paddingLeft: `${Math.max(8, spacing)}px`,
+                  paddingRight: `${Math.max(8, spacing)}px`,
+                }}
+              >
+                {storyPhotos.slice(0, slotCount).map((photoItem, idx) => {
+                  const isSelected = swapSelectedIdx === idx;
+                  const photoSrc = photoItem.proxyUrl || photoItem.originalUrl;
+                  return (
+                    <div
+                      key={photoItem.id || idx}
+                      onClick={() => handleCellClick(idx)}
+                      className={`relative rounded-xl overflow-hidden cursor-pointer transition-all duration-150 ${
+                        slotCount === 5 && idx === 4 ? "col-span-2" : ""
+                      } ${
+                        isSelected
+                          ? "ring-2 ring-[#f5a623] scale-[0.98] shadow-lg"
+                          : "hover:opacity-95 shadow-md"
+                      }`}
+                    >
+                      <img
+                        src={photoSrc}
+                        alt={`slot-${idx}`}
+                        className="w-full h-full object-cover pointer-events-none"
+                      />
+                      {isSelected && (
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center">
+                          <span className="text-[10px] font-bold bg-[#f5a623] text-black px-2 py-0.5 rounded-full">
+                            Takas İçin Seçildi
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </main>

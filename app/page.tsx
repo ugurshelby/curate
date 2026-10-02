@@ -11,15 +11,17 @@ import {
   ShieldCheck,
   Upload,
   Plus,
+  Trash2,
   Image as ImageIcon
 } from "lucide-react";
 import { CarouselStudio } from "@/components/studio/CarouselStudio";
 import { StoryStudio } from "@/components/studio/StoryStudio";
 import { FrameStudio } from "@/components/studio/FrameStudio";
 import { UpscaleStudio } from "@/components/studio/UpscaleStudio";
-import { StudioModule, studioStore, StudioItem } from "@/lib";
+import { StudioModule, studioStore, StudioItem, useStudio } from "@/lib";
 
 export default function CurateStudioMain() {
+  const { state, actions } = useStudio();
   const [activeModule, setActiveModule] = useState<StudioModule | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -59,7 +61,10 @@ export default function CurateStudioMain() {
       };
     });
 
-    studioStore.addItems(newItems);
+    actions.addItems(newItems);
+    if (newItems.length > 0) {
+      actions.selectItem(newItems[0].id);
+    }
     setActiveModule("carousel");
   };
 
@@ -103,6 +108,17 @@ export default function CurateStudioMain() {
         </div>
 
         <div className="flex items-center gap-3">
+          {state.items.length > 0 && (
+            <button
+              onClick={() => actions.clearItems()}
+              className="touch-target px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-medium flex items-center gap-1.5 transition-all border border-rose-500/20"
+              title="Kütüphanedeki tüm fotoğrafları temizle"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Temizle ({state.items.length})</span>
+            </button>
+          )}
+
           {/* Hızlı [+ Fotoğraf Yükle] Butonu */}
           <button
             onClick={() => fileInputRef.current?.click()}
