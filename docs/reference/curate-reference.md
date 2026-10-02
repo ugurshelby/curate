@@ -72,7 +72,7 @@ Letterbox math in the daily log matches the formula in `getExportBlob`: a 1920×
 9. **Filmstrip does not hide in edit mode.** The edit sheet is conditional; the filmstrip bar under it always renders. [VERIFIED] `CarouselStudio.tsx` footer.
 10. **Story and Frame do not run the color pipeline.** Their exports draw the source image only. [VERIFIED]
 11. **Tailwind classes `w-13` and `h-15` are not in the default scale or `tailwind.config.ts`.** Filmstrip thumbnails use them. [VERIFIED]
-12. **`runPipelineVerification` was an uninvoked function in `lib/core/pipeline-test.ts`.** [VERIFIED]
+12. **`runPipelineVerification` converted to automated tests.** Replaced by Vitest suite `tests/pipeline.test.ts` covering crop math, Lanczos dimensions, zip extensions, harmonize bounds, and letterbox math; unwired runner deleted. [VERIFIED]
 
 ### What is half-built
 
@@ -194,7 +194,7 @@ Last verified: 2026-10-02
 | `npx tsc --noEmit` | Required by rules | Pass, exit 0 [VERIFIED] |
 | `npm run lint` | `"lint": "next lint"` | Pass, no warnings [VERIFIED] |
 | `npm run build` | `"build": "next build"` | Pass, exit 0 [VERIFIED] |
-| `npm test` | Added in Phase 5 via Vitest | Target: Pass [VERIFIED in Phase 5] |
+| `npm test` | Added in Phase 5 via Vitest | Pass, exit 0, 11 tests pass [VERIFIED] |
 | CI | Added in Phase 5 (.github/workflows/ci.yml) | Target: Active on PR [VERIFIED in Phase 5] |
 | Visual / mobile viewport check | Required after UI changes | Marked not verified when no browser [VERIFIED] |
 

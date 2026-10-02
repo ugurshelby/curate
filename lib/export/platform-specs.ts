@@ -66,3 +66,36 @@ export function calculateAspectCrop(
     sh: Math.round(sh),
   };
 }
+
+/**
+ * Calculates letterbox/pillarbox destination dimensions and offsets for fit mode
+ */
+export function calculateLetterboxFit(
+  srcWidth: number,
+  srcHeight: number,
+  targetWidth: number,
+  targetHeight: number
+): { dx: number; dy: number; dw: number; dh: number } {
+  const targetAspect = targetWidth / targetHeight;
+  const imgAspect = srcWidth / srcHeight;
+
+  let dw = targetWidth;
+  let dh = targetHeight;
+  let dx = 0;
+  let dy = 0;
+
+  if (imgAspect > targetAspect) {
+    // Landscape relative to target -> letterbox (bars top/bottom)
+    dw = targetWidth;
+    dh = Math.round(targetWidth / imgAspect);
+    dy = Math.round((targetHeight - dh) / 2);
+  } else {
+    // Portrait narrower than target -> pillarbox (bars left/right)
+    dh = targetHeight;
+    dw = Math.round(targetHeight * imgAspect);
+    dx = Math.round((targetWidth - dw) / 2);
+  }
+
+  return { dx, dy, dw, dh };
+}
+

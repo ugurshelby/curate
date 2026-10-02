@@ -76,17 +76,30 @@ export function upscaleLanczos3(src: ImageData, scaleFactor: 2 | 4): ImageData {
   }
 
   // Pass 2: Vertical Resampling (dstW x srcH -> dstW x dstH)
-  const finalCanvas = typeof OffscreenCanvas !== 'undefined'
-    ? new OffscreenCanvas(dstW, dstH)
-    : document.createElement('canvas');
-  
-  if (!(finalCanvas instanceof OffscreenCanvas)) {
-    finalCanvas.width = dstW;
-    finalCanvas.height = dstH;
+  const outBuffer = new Uint8ClampedArray(dstW * dstH * 4);
+  let resultImageData: ImageData;
+
+  if (typeof ImageData !== 'undefined') {
+    resultImageData = new ImageData(outBuffer, dstW, dstH);
+  } else if (typeof OffscreenCanvas !== 'undefined') {
+    const oc = new OffscreenCanvas(dstW, dstH);
+    const ctx = oc.getContext('2d') as OffscreenCanvasRenderingContext2D;
+    resultImageData = ctx.createImageData(dstW, dstH);
+  } else if (typeof document !== 'undefined') {
+    const canvas = document.createElement('canvas');
+    canvas.width = dstW;
+    canvas.height = dstH;
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+    resultImageData = ctx.createImageData(dstW, dstH);
+  } else {
+    resultImageData = {
+      width: dstW,
+      height: dstH,
+      data: outBuffer,
+      colorSpace: 'srgb',
+    } as ImageData;
   }
-  
-  const ctx = finalCanvas.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-  const resultImageData = ctx.createImageData(dstW, dstH);
+
   const outData = resultImageData.data;
 
   const ratioY = srcH / dstH;
