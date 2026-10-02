@@ -18,11 +18,12 @@ Design authority is `design/CURATE_DESIGN_SYSTEM.md`; UI rule order is in `.agen
 - If a browser is unavailable to you, mark every visual or interaction check as "not verified" instead of inferring it from code.
 
 ## 3. Scope Lock
-- Strictly forbidden: panorama splitting, AI inpainting/outpainting, accounts, server-side image upload.
+- Strictly forbidden: panorama (permanently closed by owner, 2026-10-02), AI inpainting/outpainting, accounts, server-side image upload.
 - Allowed for editorial aesthetic (per owner decision): optical highlight halation for Night Cinematic, and tactile 35mm analog grain for Amber Grain. Light leak, vignette, and panorama splitting remain forbidden.
 - If the spec asks for any forbidden feature, stop and ask. Do not reintroduce removed features from git history.
 - No new dependency that sends pixels off-device.
-- No default or seed photos, mock EXIF strings, or debug labels (`Acik`, `Kapali`, proxy dimensions) in the UI.
+- No default or seed photos, mock EXIF strings, or debug labels (`Acik`, `Kapali`, proxy dimensions) in the UI. The library starts empty; the 13 owner-approved files in `public/reference-images/` enter it only through an explicit user action (same-origin fetch, never sent anywhere).
+- Export targets live as data in `lib/export/platform-specs.ts`. Owner decisions and their phases (K, M1, M2, S) are in `curate-spec-v1.md` §4.4.
 - Do not label a CSS filter as Lanczos.
 - Preview and export must call the same draw function.
 
@@ -34,7 +35,7 @@ Design authority is `design/CURATE_DESIGN_SYSTEM.md`; UI rule order is in `.agen
 
 ## 5. Git Hygiene & Security
 - When a new file type or folder appears, check `.gitignore`.
-- Never commit `.env*`, screenshots, personal photos, or dumps.
+- Never commit `.env*`, screenshots, personal photos, or dumps. Exception: the 13 tracked reference images in `public/reference-images/` (owner decision, 2026-10-02); do not add more.
 - If an environment variable ever appears, add its name to `.env.example` with an empty value.
 
 ## 6. Documentation Self-Maintenance

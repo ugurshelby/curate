@@ -17,7 +17,7 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 
 ### 2. Story Dump (9:16)
 - **iPhone Mockup Sahnesi:** Dynamic Island ve yuvarlatılmış kasa sınırlarıyla gerçekçi dikey iPhone ekranı.
-- **Akıllı Grid:** 2, 3, 4, 5 ve 6'lı otomatik kolaj şablonları.
+- **Grid:** 2, 3, 4, 5 ve 6'lı kolaj şablonları. Bugün grid sayısını kullanıcı seçiyor; **planlanan (Faz S):** grid sayısı fotoğraf sayısına eşit ve otomatik, Story en az 2 en fazla 6 fotoğraf alır.
 - **Tekil "Space" Kontrolü:** Tek bir slider ile fotoğrafların hem kendi aralarındaki hem telefon kenarlarındaki boşluklarını yönetme.
 - **Akıllı Gradyan:** Fotoğrafların kenar piksellerinden otomatik türetilen organik arka plan gradyanı; siyah, beyaz ve antrasit zemin seçenekleri.
 - **İki Tıkla Swap:** Fotoğraflara sırayla dokunarak hücreler arasında anında yer değiştirme.
@@ -37,9 +37,14 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 
 - **Instagram Post:** Tam **1080 × 1350 px** (`4:5`), %92 optimize JPEG.
 - **Instagram Story:** Tam **1080 × 1920 px** (`9:16`).
+- **Planlanan (Faz S, sahip kararı 2026-10-02):** Carousel'de Instagram/TikTok geçişi export hedefini de belirler. TikTok 1080 × 1920 (9:16, telefonda doğrulanmadı), dosya adı `tiktok_01.jpg`. Tek görsel doğrudan dosya olarak iner, zip yalnız çoklu Carousel serisinde. Varsayılan JPEG 0.97; PNG "Gelişmiş" altında.
 - **Gizlilik:** GPS, cihaz seri numaraları ve özel EXIF verileri dışa aktarma anında otomatik soyutlanır.
 - **Format Desteği:** JPEG, PNG, WEBP; HEIC desteği cihazın yerel tarayıcı desteğine bağlıdır (harici JS decoder paketi bulunmamaktadır).
 - **JSZip:** Tüm seri `dump_01.jpg`, `dump_02.jpg` şeklinde sıralı isimlendirilerek tek tıkla `.zip` olarak indirilir.
+
+## 🧪 Referans Görseller
+
+`public/reference-images/` altındaki 13 görsel sahip kararıyla repoda kalır. Kütüphane boş başlar. **Planlanan (Faz M1):** ana sayfada ve modül içi "+" menüsünde ikincil "Referans Görsel Yükle" eylemi; görseller aynı kökten yüklenir, hiçbir yere gönderilmez.
 
 ---
 

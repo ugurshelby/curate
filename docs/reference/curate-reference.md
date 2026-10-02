@@ -16,8 +16,8 @@ Three written descriptions exist. They do not say the same thing.
 
 | Source | What it states | Tag |
 |---|---|---|
-| `README.md` | A lightweight, fully client-side darkroom so amateur and professional photographers can produce Instagram and TikTok **Carousel Dump** and **Story Dump**. Synthesis of Apple HIG, Raycast, and VSCO. Four modules: Carousel 4:5, Story 9:16, Minimal Frame, Lanczos-3 upscale. | [VERIFIED] |
-| `AGENTS.md` | A lightweight client-side studio so **amateur** photographers can produce consistent Carousel Dump and Story Dump. Same four modules. Explicit non-goals: halation, procedural grain, light leak, vignette, the removed panorama splitter, AI inpainting/outpainting until a later phase, and heavy filter labyrinths. | [VERIFIED] |
+| `README.md` | Uğur's personal, single-user, mobile-first tool for Instagram/TikTok **Carousel Dump** and **Story Dump**. Four modules: Carousel 4:5, Story 9:16, Minimal Frame, Lanczos-3 upscale. Planned items are marked with their phase. | [VERIFIED] 2026-10-02 |
+| `AGENTS.md` | Personal single-user browser darkroom for Uğur, mobile primary (390×844). Scope lock: panorama permanently closed, AI inpainting/outpainting, accounts and server upload forbidden; halation (Night Cinematic) and 35mm grain (Amber Grain) allowed; light leak and vignette forbidden. | [VERIFIED] 2026-10-02 |
 | `curate-spec-v1.md` | A **personal, single-user** browser tool for **Uğur**, who edits architectural / silhouette / reflection dumps from a Redmi Note 12 Pro 5G + Old Roll workflow. One tap, personal presets, no required sliders. Not a multi-user product. No accounts, no cloud sync, no server-side processing. The spec says that if a prompt conflicts with the spec, the spec wins. | [VERIFIED] |
 
 Stated product behavior that appears in more than one of those files:
@@ -28,6 +28,8 @@ Stated product behavior that appears in more than one of those files:
 - Carousel harmonize transfers only about 15–25% (README says 20%) of exposure/color, and presets must not copy crop. [VERIFIED] `AGENTS.md` §3.3; `README.md`.
 
 **Owner decision (2026-10-02):** Curate is a single-user personal tool for Uğur; primary runtime is mobile (390×844 reference viewport). README, AGENTS.md and the spec were aligned to this sentence. [VERIFIED] by editing those files in the same commit.
+
+**Owner decisions (2026-10-02), recorded in `curate-spec-v1.md` §4.4 with phases:** TikTok as a separate Carousel export target, 1080×1920 assumed and not verified (Faz S); Story takes 2–6 photos with automatic grid (Faz S); reference images stay tracked and a user-triggered test loader is added (Faz M1); panorama permanently closed (Faz K, done); status colors amber/neutral (Faz M1); Frame stays 1080×1350; mobile panel redesign (Faz M1); preview render option A (Faz M2); export quality/download rules (Faz S). None of the Faz M1/M2/S items is implemented yet. [VERIFIED] doc edit; code unchanged.
 
 No file states a business model, a launch date, or a hosting target beyond one historical commit message (section 4).
 
@@ -241,7 +243,7 @@ Last verified: 2026-10-02
 
 ### Recurring themes
 
-- **Panorama deletion:** Added in `3777d20`, removed in v2 rewrite (`8b5eddf`). Forbidden by AGENTS.md. Spec phase 4 mentions it (conflict recorded).
+- **Panorama deletion:** Added in `3777d20`, removed in v2 rewrite (`8b5eddf`). Permanently closed by owner 2026-10-02; spec no longer mentions it; `grep -i panora` over app/components/lib/tests/public: 0 matches.
 - **Light leak and vignette deletion:** Added in `44916a7`, removed in `8b5eddf`. Forbidden by AGENTS.md.
 - **Mobile stage and sheets:** Managed by `.canvas-viewport`, stage scale `scale-[0.88]`, absolute toolbars.
 - **Preset calibration:** Shipping code uses 6 generic profiles; spec targets 6 personal families.
@@ -280,7 +282,7 @@ Last verified: 2026-10-02
 6. **Mobile stage lock is violated:** measured 2026-10-02 (§2 item 13). Root cause: absolute-positioned footer over a stage padded by a fixed 280px; root height `h-screen` (100vh).
 7. **README inaccuracies:** Interaction details and versioning. [Addressed in Phase 4]
 8. **Automated tests:** Missing test runner. [Addressed in Phase 5 Roadmap 6]
-9. **Reference photos in public repo:** 13 files tracked. [Owner decision]
+9. **Reference photos in public repo:** 13 files tracked; owner decision 2026-10-02: they stay.
 10. **Design rule file skills:** Resolved 2026-10-02: rule file and CDS rewritten against existing `design/skills/`.
 11. **Dead store methods:** Preserved for future wiring or cleanup. [Owner decision]
 12. **Language tag:** Fixed: `<html lang="tr">` in `app/layout.tsx`.
@@ -298,7 +300,7 @@ Last verified: 2026-10-02
 6. **Turn pipeline-test into test suite:** Implemented in Phase 5 with Vitest.
 7. **Preset decision:** Deferred to owner decision.
 8. **Viewport pass:** Procedure 2 in `docs/procedures.md`.
-9. **Public-asset decision:** Deferred to owner decision.
+9. **Public-asset decision:** Decided 2026-10-02: reference images stay; test loader in Faz M1.
 
 ---
 
@@ -315,12 +317,15 @@ Last verified: 2026-10-02
 1. ~~Which audience sentence is binding?~~ **Resolved 2026-10-02:** single-user personal tool.
 2. Do the six shipping profiles replace Moody Teal / Warm Silhouette / Night Cinematic / Muted Coastal / Amber Grain / Monochrome Noir, sit beside them, or get replaced by them?
 3. ~~Night Cinematic halation vs AGENTS.md~~ **Resolved:** owner allowed halation and grain (AGENTS.md §3).
-4. Phase 4 of the spec relocates panorama; `AGENTS.md` says panorama stays deleted. Which instruction wins?
-5. Is `.cube` LUT upload staying in the main carousel sheet?
-6. Should the 13 reference photos in `public/reference-images/` remain in a public GitHub repo?
+4. ~~Panorama~~ **Resolved 2026-10-02:** permanently closed.
+5. ~~`.cube` LUT placement~~ **Resolved 2026-10-02:** under a collapsed "Araçlar" section (Faz M1).
+6. ~~Reference photos~~ **Resolved 2026-10-02:** they stay.
 7. ~~Is mobile primary?~~ **Resolved 2026-10-02:** yes. Still open: which preview render option (audit report §2) to adopt.
 8. Was zero-config Vercel connected, and should it deploy `main`?
 9. ~~Rewrite or delete the UI rule file?~~ **Resolved 2026-10-02:** rewritten against existing files.
 10. ~~`layout.tsx` language~~ **Resolved:** now `lang="tr"`.
-11. Frame export is hardcoded to 1080×1350. Is 4:5 the intended aspect ratio for Frame?
+11. ~~Frame aspect~~ **Resolved 2026-10-02:** Frame stays 1080×1350.
 12. Where are `curate-preset-spec.md`, `referans-gorsel-yonergesi.md`, `fotografcilik_karakterim.md`, and `curate-camera-app.md` located?
+13. The "new Düzenle module" named in decision K2 does not exist in code or in the phase plan. What is it and which phase? (spec §10 q4)
+14. Carousel IG/TikTok toggle: does an "overlay off" state remain, and can the safe-area overlay be hidden? (spec §10 q5)
+15. TikTok 1080×1920 to be confirmed on phone. (spec §10 q6)

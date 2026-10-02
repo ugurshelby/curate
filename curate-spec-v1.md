@@ -30,7 +30,7 @@ Curate bu ihtiyaca cevap vermek için başladı: **tek tık, kişiye özel prese
 1. **Zahmetsizlik önce gelir.** Kullanıcı "profesyonelce ayar yapmak istemiyorum" demiştir — bu açık ve kalıcı bir kısıt. Yeni bir özellik, varsayılan akışa zorunlu bir karar/slider ekliyorsa yanlış tasarlanmıştır.
 2. **Preset'ler jenerik değil, kişisel olmalı.** Film simülasyonu isimleri (Portra, Velvia vb.) değil, kullanıcının kendi estetiğinden türetilmiş adlandırılmış preset'ler (Moody Teal, Warm Silhouette, vb. — bkz. Bölüm 5) öncelikli sunulur.
 3. **Önizleme = Export.** Kullanıcının ekranda gördüğü, indirdiği dosyayla birebir aynı olmalı. Bu ilke ihlal edildiğinde (şu an olduğu gibi) bu P0 bug sayılır, her şeyin önüne geçer.
-4. **Gelişmiş özellikler arka planda durur.** Reinhard referans seçimi, panorama ayırıcı, split view gibi niş araçlar ana akışı kalabalıklaştırmaz; "Araçlar" gibi ikincil bir katmanda yaşar.
+4. **Gelişmiş özellikler arka planda durur.** Reinhard referans seçimi, split view gibi niş araçlar ana akışı kalabalıklaştırmaz; "Araçlar" gibi ikincil bir katmanda yaşar.
 5. **İstemci taraflı, sunucusuz kalır.** Hiçbir görsel sunucuya yüklenmez; bu bir pazarlama sözü değil, mimari karar — her yeni özellik bu sınırın içinde tasarlanır.
 
 ---
@@ -63,8 +63,8 @@ curate/
 ### Conflicts Needing Owner Decisions (Sahip Kararı Gerektiren Çelişkiler)
 
 Aşağıdaki çelişkiler açıkta olup agent'lar tarafından karara bağlanamaz:
-1. **Panorama Çelişkisi:** Bu spec Faz 4'te panoramayı ikincil katmana taşımayı planlarken, `AGENTS.md` panorama bölücüyü kesinlikle kapsam dışı bırakmış ve koda yeniden eklenmesini yasaklamıştır.
-2. ~~Night Cinematic / Halation Çelişkisi~~ **KAPANDI:** Sahip kararıyla optik halation (Night Cinematic) ve 35mm gren (Amber Grain) serbest; ışık sızıntısı, vinyet ve panorama yasak kalır (`AGENTS.md` §3).
+1. ~~Panorama Çelişkisi~~ **KAPANDI (2026-10-02, sahip kararı):** Panorama kalıcı olarak kapsam dışı (`AGENTS.md` §3). Spec'teki tüm panorama ifadeleri çıkarıldı; kodda kalıntı yok (`grep -i panora` app/components/lib/tests: 0 eşleşme).
+2. ~~Night Cinematic / Halation Çelişkisi~~ **KAPANDI:** Sahip kararıyla optik halation (Night Cinematic) ve 35mm gren (Amber Grain) serbest; ışık sızıntısı ve vinyet yasak kalır (`AGENTS.md` §3).
 3. ~~Hedef Kitle Çelişkisi~~ **KAPANDI (2026-10-02, sahip kararı):** Tek kişilik, kişisel araç; birincil kullanım mobil.
 4. **Eksik Kaynak Dokümanlar:** Bu spec'in referans verdiği `curate-preset-spec.md`, `referans-gorsel-yonergesi.md`, `fotografcilik_karakterim.md` ve `curate-camera-app.md` dosyaları git reposunda mevcut değildir.
 
@@ -73,18 +73,36 @@ Aşağıdaki çelişkiler açıkta olup agent'lar tarafından karara bağlanamaz
 
 | # | Eksik | Etki |
 |---|---|---|
-| 5 | Worker yalnız Upscale export'unda kullanılıyor (`workerBridge.upscaleLanczos`). Preset/harmonize/metrik/gradyan köprü metotları hiçbir yerden çağrılmıyor; Carousel önizleme ve export ana thread'de | Carousel preset değişiminde ana thread kilidi: 12MP fotoğrafta preset başına 500–728ms uzun görev (masaüstü tarayıcı, 2026-10-02 ölçümü) |
+| 5 | **[Faz M2: seçenek A; worker bu fazda yok]** Worker yalnız Upscale export'unda kullanılıyor (`workerBridge.upscaleLanczos`). Preset/harmonize/metrik/gradyan köprü metotları hiçbir yerden çağrılmıyor; Carousel önizleme ve export ana thread'de | Carousel preset değişiminde ana thread kilidi: 12MP fotoğrafta preset başına 500–728ms uzun görev (masaüstü tarayıcı, 2026-10-02 ölçümü) |
 | 6 | UpscaleStudio önizlemesi CSS filtresi (etiket artık Lanczos demiyor); export gerçek Lanczos-3 | Önizleme ile export farklıdır; etiket dürüst, kusur bilinen sınırdır |
-| 7 | Proxy (≤1080 px) üretiliyor ama yalnız filmstrip küçük resimlerinde kullanılıyor; önizleme ve export tam çözünürlüklü `originalUrl` yüklüyor | Önizleme 4000×3000 tuvalde işleniyor; bellek ve CPU maliyeti |
+| 7 | **[Faz M2]** Proxy (≤1080 px) üretiliyor ama yalnız filmstrip küçük resimlerinde kullanılıyor; önizleme ve export tam çözünürlüklü `originalUrl` yüklüyor | Önizleme 4000×3000 tuvalde işleniyor; bellek ve CPU maliyeti |
 | 8 | ~~PNG seçimi etkisiz~~ **KAPANDI** (`f73fa6b`): PNG gerçek PNG üretir | — |
 
-### 4.3 — Açık Hatalar (2026-10-02 ölçümü; faz yeri sahip kararıdır)
+### 4.3 — Açık Hatalar (2026-10-02 ölçümü; faz bağlantısı §4.4)
 
 | # | Hata | Kanıt |
 |---|---|---|
-| 9 | **Mobil düzenleme paneli görseli kapatıyor.** 390×844'te panel açık + preset seçili: sahne y=107–501, panel y=186–730; görselin ≈%80'i panelin altında. Panel preset yokken bile görselin ≈%53'ünü örter | `docs/reports/2026-10-02-audit.md` §1 |
-| 10 | Mobil header tek satıra sığmıyor (95px, 4 satıra kırılan başlık, Export düğmesi sağ kenarı 444px'e taşıyor, ekran 390) | aynı rapor |
-| 11 | Canlı önizleme tam çözünürlükte işleniyor; önizleme ve export aynı fonksiyonu **farklı parametrelerle** çağırıyor (önizleme `fitMode:"fill"` sabit ve tam boyutlu tuval; export 1080×1350). Gren/halation çözünürlüğe bağlı olduğundan eşitlik garanti değil | aynı rapor |
+| 9 | **[Faz M1]** **Mobil düzenleme paneli görseli kapatıyor.** 390×844'te panel açık + preset seçili: sahne y=107–501, panel y=186–730; görselin ≈%80'i panelin altında. Panel preset yokken bile görselin ≈%53'ünü örter | `docs/reports/2026-10-02-audit.md` §1 |
+| 10 | **[Faz M1]** Mobil header tek satıra sığmıyor (95px, 4 satıra kırılan başlık, Export düğmesi sağ kenarı 444px'e taşıyor, ekran 390) | aynı rapor |
+| 11 | **[Faz M2]** Canlı önizleme tam çözünürlükte işleniyor; önizleme ve export aynı fonksiyonu **farklı parametrelerle** çağırıyor (önizleme `fitMode:"fill"` sabit ve tam boyutlu tuval; export 1080×1350). Gren/halation çözünürlüğe bağlı olduğundan eşitlik garanti değil | aynı rapor |
+
+### 4.4 — Sahip Kararları (2026-10-02) ve Faz Bağlantısı
+
+Faz sırası: **K** (bu kararların dokümana işlenmesi, ölü kod temizliği) → **M1** (mobil iskelet) → **M2** (render hattı, seçenek A) → **S** (Story ve Export). Bir faz, öncekinin kabul kriteri karşılanmadan başlamaz (§8 kuralı).
+
+| # | Karar | Faz | Durum |
+|---|---|---|---|
+| K1 | **TikTok ayrı export.** Carousel'deki Instagram/TikTok geçişi hem önizlemeyi hem export'u belirler. Instagram: 1080×1350 (4:5). TikTok: 1080×1920 (9:16) **[VARSAYIM — doğrulanmadı; sahip telefonda deneyip onaylayacak]**. Fit/Fill, preset, harmonize ve parite kuralları iki modda aynı. TikTok önizlemesi 9:16 sahnede çizilir; TikTok arayüz güvenli alanı (sağ buton sütunu, alt açıklama) önizlemede gösterilir, export'a yazılmaz. `lib/export/platform-specs.ts` iki hedefi veri olarak tutar. Dosya adı: `dump_01.jpg` (Instagram), `tiktok_01.jpg` (TikTok). | S | Kod yok |
+| K2 | **Story: en az 2, en fazla 6 fotoğraf.** Grid sayısı fotoğraf sayısına eşit ve otomatik; kullanıcı seçmez (grid seçici kalkar). 2'den az fotoğrafta Export pasif + kısa ipucu: "En az 2 fotoğraf ekle". 6 doluyken ekleme yolu kapanır, fazlası alınmaz, kısa uyarı verilir. Tek fotoğraflık Story bu modülün işi değildir; tek kare için Çerçeve (ve planlanan Düzenle modülü, bkz. §10 soru 4). | S | Kod yok (bugün grid sayısını kullanıcı seçiyor: `storyLayout.slotCount`) |
+| K3 | **Referans görseller kalır, test yükleme eklenir.** `public/reference-images/` altındaki 13 görsel repoda kalır. Ana sayfada ikincil görünümde "Referans Görsel Yükle": küçük önizleme ızgarası, çoklu seçim, "Hepsi" kısayolu; seçilenler kütüphaneye eklenir. Modül içinde de alt çubuktaki "+" menüsünde aynı eylem; modül sınırlarına uyar (Story 2–6, Çerçeve ve Upscale tek görsel). Yükleme aynı kökten `fetch` → `Blob` (`.jfif` için tür açıkça `image/jpeg`) → `createObjectURL`; görseller hiçbir yere gönderilmez. Kütüphane boş başlar; referanslar yalnız kullanıcı isteyince girer. | M1 | Kod yok |
+| K4 | **Panorama kalıcı olarak kapatıldı.** | K | Uygulandı (bu commit) |
+| K5 | Durum renkleri amber/nötr (yeşil "Hero aktif" ve TikTok kırmızısı kalkar). Frame export 1080×1350 kalır. | M1 (renk), — (Frame: değişiklik yok) | Kod yok |
+| M1-a | Mobil panel yeniden tasarımı onaylandı: preset'ler yatay kaydırmalı tek satır; `.cube` LUT ve Hero Harmonize "Araçlar" altında kapalı bölümde. | M1 | Kod yok |
+| M2-a | Önizleme render hattı: denetim raporu §2 seçenek **A** (CPU, doğru çözünürlük, export ile aynı fonksiyon ve parametre şeması). WebGL ve worker bu fazda yok. | M2 | Kod yok |
+| S-a | Story'de Instagram/TikTok geçişi kalkar; fotoğraflar story güvenli alanına (üst ilerleme çubuğu/hesap satırı, alt mesaj çubuğu) yerleşir ve export aynı geometriyi kullanır; hücre başına yer değiştirme, görsel değiştirme, sürükleyerek konumlandırma ve iki parmakla yakınlaştırma; konum/zoom export'a birebir yansır. | S | Kod yok |
+| S-b | Export: tek görsel her zaman doğrudan dosya iner, zip yalnız çoklu Carousel serisinde. Varsayılan en yüksek kalite: tam hedef boyut, sRGB, JPEG 0.97; dosya 8 MB'ı aşarsa kalite kademeli düşer ve kullanıcıya gösterilir. PNG ve format seçimi "Gelişmiş" altında. Export sayfasında jargon yok; hedef olarak gerçek boyut (örn. 1080×1350) yazılır. | S | Kod yok (bugün JPEG 0.92) |
+
+Geçersiz kılınan taslak satırlar: önceki Faz S taslağındaki "1 fotoğraf tam kadraj" ve "6'dan fazlasında ilk 6'sı" K2 ile geçersizdir; "TikTok seçiliyken dışa aktarım boyutu: sahip kararı bekliyor" K1 ile kapanmıştır (varsayım + telefonda doğrulama). Bu satırlar spec'e hiç işlenmemişti.
 
 **Kural:** P0 hataları kapanmadan P1'e geçilmez. P1 kapanmadan yeni özellik (preset genişletme, UI değişikliği vb.) eklenmez — mevcut temel sağlamlaşmadan üzerine inşa etmek, önceki preset kalibrasyon çalışmasında da görüldüğü gibi (koda hiç yansımadı), emeği boşa harcar.
 
@@ -146,7 +164,11 @@ Bunlar bilinçli olarak dışarıda bırakılıyor — "madem elimizdeyiz" diye 
 | **Faz 1 — Temel Onarım (P0)** | 4 kritik export/state bug'ı çözülür | Üç modülden de export alınır, ekrandaki önizlemeyle piksel düzeyinde tutarlı sonuç çıkar; Hub'dan yüklenen foto ilgili modülde görünür |
 | **Faz 2 — Mimari Sağlamlaştırma (P1)** | Worker entegrasyonu, proxy aktivasyonu, gerçek Lanczos önizleme, PNG export düzeltmesi | Yüksek çözünürlüklü 10+ görsellik seri, mobilde donma olmadan işlenir; PNG seçimi gerçek PNG üretir |
 | **Faz 3 — Preset Sistemi Birleştirme** | Mevcut 6 ton profili ile hedef 6 preset ailesi arasında karar + kalibrasyon + uygulama | Preset kartları üstte, büyük önizlemeli; her preset gerçek referans görselden türetilmiş değerlere sahip |
-| **Faz 4 — UI Sadeleştirme** | Gelişmiş özelliklerin (Reinhard referans, panorama, split view) ikincil katmana taşınması | Ana akışta sadece Preset hapı öne çıkıyor, diğerleri "Araçlar" altında |
+| **Faz 4 — UI Sadeleştirme** | Gelişmiş özelliklerin (Reinhard referans, split view, `.cube` LUT, Hero Harmonize) ikincil katmana taşınması (mobil kısmı Faz M1'e bağlandı) | Ana akışta sadece Preset hapı öne çıkıyor, diğerleri "Araçlar" altında |
+| **Faz K — Kararların işlenmesi** | §4.4 kararları dokümanlara, ölü kod temizliği | Spec/README/AGENTS/reference tutarlı; kalite kapıları geçer |
+| **Faz M1 — Mobil iskelet** | §4.3 #9–10, K3, K5, M1-a; CDS §6 sözleşmesi | Prosedür 2 betiği 360×740, 390×844, 430×932'de geçer |
+| **Faz M2 — Render hattı (A)** | §4.3 #11, §4.2 #5/#7, Hero metrik kaynağı | Önizleme ve export 1080×1350'de aynı çıktı (veya belgelenmiş tolerans) |
+| **Faz S — Story ve Export** | K1, K2, S-a, S-b | Export boyutları/MIME ve tek/çoklu indirme testlerle doğrulanır; parite korunur |
 | **Faz 5+ — Nice-to-have** | Otomatik preset önerisi, 9:16 dump kolajı iyileştirmeleri, vb. | Ayrı değerlendirilir, bu fazlar tamamlanmadan başlanmaz |
 
 **Kural:** Bir faz, önceki fazın kabul kriteri karşılanmadan başlamaz. Bu, "agent'a geniş inisiyatif ver ama küçük/sıralı görevler halinde" prensibinin somutlaşmış hali.
@@ -170,7 +192,10 @@ Buna göre her faz için prompt şöyle yazılır:
 
 1. **(Uğur)** Hedef 6 preset ailesi kodda uygulandı, eski 6 profil kaldırıldı. Bu değişimin kalıcı karar olarak onaylanıp onaylanmadığı ve değerlerin referans görsellerden kalibrasyonu (Faz 3) sahibin teyidini bekliyor.
 2. ~~Mobil kullanım önceliği~~ **KAPANDI (2026-10-02):** Birincil kullanım mobil. Worker/proxy/render hattı kapsamı `docs/reports/2026-10-02-audit.md` §2'deki seçeneklerden sahip tarafından seçilir.
-3. **(Uğur)** `.CUBE` 3D LUT yükleme özelliği (mevcut kodda var) spec'in felsefesiyle (Bölüm 3, "zahmetsizlik") çelişiyor mu, yoksa "gelişmiş kullanıcı" katmanına mı taşınacak?
+3. ~~`.CUBE` LUT yeri~~ **KAPANDI (2026-10-02):** "Araçlar" altında kapalı bölüm (M1-a).
+4. **(Uğur)** K2'de anılan **"yeni Düzenle modülü"** kodda ve faz planında yok. Kapsamı ve hangi faza girdiği belirlenmeli.
+5. **(Uğur)** K1: Carousel'de Instagram/TikTok geçişi export hedefini belirleyecek. Bugünkü "önizleme katmanı kapalı" (ne IG ne TikTok) durumu kalacak mı, yoksa her zaman iki hedeften biri mi seçili olacak? Güvenli alan katmanı gizlenebilir mi?
+6. **(Uğur)** K1: TikTok 1080×1920 boyutu telefonda doğrulanacak.
 
 ---
 
