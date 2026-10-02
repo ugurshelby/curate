@@ -67,7 +67,7 @@ Letterbox math in the daily log matches the formula in `getExportBlob`: a 1920×
 4. **Upscale preview does not claim Lanczos.** Label updated to "Önizleme Kontrast ({scaleFactor}x)" to match the CSS filter simulation; export remains mathematical 2-pass Lanczos-3 convolution. [VERIFIED]
 5. **Web Worker is constructed and never tasked.** `workerBridge` is created at module load and re-exported from `lib/index.ts`. No component calls `workerBridge` methods. [VERIFIED]
 6. **Per-item presets are dead.** `setItemPreset` has no callers. Carousel preview and preset buttons use `state.globalPreset` only. [VERIFIED]
-7. **Store module field is dead.** `setModule` has no callers. The hub uses `useState`. [VERIFIED]
+7. **Store module field is synchronized.** `setModule` is called on hub navigation and stays in sync with `activeModule`. [VERIFIED]
 8. **README long-press (~450ms) is not what the code does.** Carousel uses desktop `contextmenu` and a 320ms double-tap. [VERIFIED] `CarouselStudio.tsx`.
 9. **Filmstrip does not hide in edit mode.** The edit sheet is conditional; the filmstrip bar under it always renders. [VERIFIED] `CarouselStudio.tsx` footer.
 10. **Story and Frame do not run the color pipeline.** Their exports draw the source image only. [VERIFIED]
@@ -194,7 +194,7 @@ Last verified: 2026-10-02
 | `npx tsc --noEmit` | Required by rules | Pass, exit 0 [VERIFIED] |
 | `npm run lint` | `"lint": "next lint"` | Pass, no warnings [VERIFIED] |
 | `npm run build` | `"build": "next build"` | Pass, exit 0 [VERIFIED] |
-| `npm test` | Added in Phase 5 via Vitest | Pass, exit 0, 11 tests pass [VERIFIED] |
+| `npm test` | Added in Phase 5 via Vitest | Pass, exit 0, 19 tests pass (core pipeline + viewer bugs) [VERIFIED] |
 | CI | Added in Phase 5 (.github/workflows/ci.yml) | Active on PR: Node 22 (tsc, lint, test, build) [VERIFIED] |
 | Visual / mobile viewport check | Required after UI changes | Marked not verified when no browser [VERIFIED] |
 
