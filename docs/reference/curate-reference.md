@@ -195,7 +195,7 @@ Last verified: 2026-10-02
 | `npm run lint` | `"lint": "next lint"` | Pass, no warnings [VERIFIED] |
 | `npm run build` | `"build": "next build"` | Pass, exit 0 [VERIFIED] |
 | `npm test` | Added in Phase 5 via Vitest | Pass, exit 0, 11 tests pass [VERIFIED] |
-| CI | Added in Phase 5 (.github/workflows/ci.yml) | Target: Active on PR [VERIFIED in Phase 5] |
+| CI | Added in Phase 5 (.github/workflows/ci.yml) | Active on PR: Node 22 (tsc, lint, test, build) [VERIFIED] |
 | Visual / mobile viewport check | Required after UI changes | Marked not verified when no browser [VERIFIED] |
 
 ---
