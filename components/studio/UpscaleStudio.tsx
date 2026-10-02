@@ -185,7 +185,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
                   }}
                 />
                 <span className="absolute bottom-3 right-3 text-[10px] font-mono bg-black/75 px-2 py-0.5 rounded text-[#f5a623] border border-[#f5a623]/30">
-                  Lanczos-3 ({scaleFactor}x Keskin)
+                  Önizleme Kontrast ({scaleFactor}x)
                 </span>
               </div>
 

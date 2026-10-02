@@ -64,7 +64,7 @@ Letterbox math in the daily log matches the formula in `getExportBlob`: a 1920×
 1. **Library starts empty on fresh load.** `INITIAL_ITEMS` initialized to `[]` and `selectedItemId` to `null`. Hub upload selects the first uploaded item, and clear action is exposed in UI calling `clearItems()` with URL revocation. Reference images remain tracked under `public/reference-images/` per owner policy. [VERIFIED]
 2. **Thirteen reference photos tracked under `public/reference-images/`.** [VERIFIED] `git ls-files`.
 3. **Upload metadata is minimal.** New items set dimensions and proxyDimensions to 1080×1350 and set proxyUrl equal to originalUrl. `generateProxyImage` is defined in `lib/engine/proxy.ts` but never called. [VERIFIED]
-4. **Upscale preview is not Lanczos.** The "after" half uses CSS `contrast(1.04) brightness(1.02)`. [VERIFIED] `UpscaleStudio.tsx`.
+4. **Upscale preview does not claim Lanczos.** Label updated to "Önizleme Kontrast ({scaleFactor}x)" to match the CSS filter simulation; export remains mathematical 2-pass Lanczos-3 convolution. [VERIFIED]
 5. **Web Worker is constructed and never tasked.** `workerBridge` is created at module load and re-exported from `lib/index.ts`. No component calls `workerBridge` methods. [VERIFIED]
 6. **Per-item presets are dead.** `setItemPreset` has no callers. Carousel preview and preset buttons use `state.globalPreset` only. [VERIFIED]
 7. **Store module field is dead.** `setModule` has no callers. The hub uses `useState`. [VERIFIED]
