@@ -19,7 +19,8 @@ Design authority is `design/CURATE_DESIGN_SYSTEM.md`; UI rule order is in `.agen
 
 ## 3. Scope Lock
 - Strictly forbidden: panorama (permanently closed by owner, 2026-10-02), AI inpainting/outpainting, accounts, server-side image upload.
-- Allowed for editorial aesthetic (per owner decision): optical highlight halation for Night Cinematic, and tactile 35mm analog grain for Amber Grain. Light leak, vignette, and panorama splitting remain forbidden.
+- No manual color UI (curves, channels, split toning, HSL). Only exception: Düzenle's Düzeltme tab, one on/off and one strength slider per row (`curate-spec-v1.md` §4.5).
+- Allowed for editorial aesthetic (per owner decision): optical highlight halation for Night Cinematic, and tactile 35mm analog grain for Amber Grain. Light leak, vignette, and panorama splitting remain forbidden. The vignette ban covers ADDING an aesthetic vignette; CORRECTING lens-caused edge darkening (Düzenle → Düzeltme, "Kenar Renk Düzelt") is allowed.
 - If the spec asks for any forbidden feature, stop and ask. Do not reintroduce removed features from git history.
 - No new dependency that sends pixels off-device.
 - No default or seed photos, mock EXIF strings, or debug labels (`Acik`, `Kapali`, proxy dimensions) in the UI. The library starts empty; the 13 owner-approved files in `public/reference-images/` enter it only through an explicit user action (same-origin fetch, never sent anywhere).

@@ -330,7 +330,7 @@ Last verified: 2026-10-03
 10. ~~`layout.tsx` language~~ **Resolved:** now `lang="tr"`.
 11. ~~Frame aspect~~ **Resolved 2026-10-02:** Frame stays 1080×1350.
 12. Where are `curate-preset-spec.md`, `referans-gorsel-yonergesi.md`, `fotografcilik_karakterim.md`, and `curate-camera-app.md` located?
-13. The "new Düzenle module" named in decision K2 does not exist in code or in the phase plan. What is it and which phase? (spec §10 q4)
+13. ~~Düzenle module~~ **Defined 2026-10-03:** spec §4.5, phases D1 and D2 (not implemented yet).
 14. ~~Carousel overlay off state~~ **Resolved 2026-10-03:** one target always selected; overlay can be hidden with the eye toggle.
 15. TikTok 1080×1920 to be confirmed on phone. (spec §10 q6)
 16. ~~Story with more than 6 library photos~~ **Resolved 2026-10-03:** first 6 with a warning.

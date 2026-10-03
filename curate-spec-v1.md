@@ -104,6 +104,21 @@ Faz sırası: **K** (bu kararların dokümana işlenmesi, ölü kod temizliği) 
 
 Geçersiz kılınan taslak satırlar: önceki Faz S taslağındaki "1 fotoğraf tam kadraj" ve "6'dan fazlasında ilk 6'sı" K2 ile geçersizdir; "TikTok seçiliyken dışa aktarım boyutu: sahip kararı bekliyor" K1 ile kapanmıştır (varsayım + telefonda doğrulama). Bu satırlar spec'e hiç işlenmemişti.
 
+### 4.5 — Düzenle Modülü (Faz D1, D2; sahip onayı 2026-10-03)
+
+| # | Karar | Faz | Durum |
+|---|---|---|---|
+| E1 | Beşinci modül **"Düzenle"**: tek fotoğraf, Lightroom'un basit hâli. Sahip fotoğraf ve teknik terim bilmez; akış zahmetsiz olmalı. Sekmeler: Preset, Kırp (D1), Düzeltme (D2). | D1 | Kod yok |
+| E2 | Bölüm 7 madde 4 (manuel renk arayüzü yok) aynen geçerli: curve, kanal, ton ayrımı, HSL yok. **Tek istisna** D2'deki "Düzeltme" sekmesi: her satır tek açma/kapama ve tek şiddet kaydırıcısı. | D1, D2 | Kayıt |
+| E3 | Vinyet yasağı estetik vinyet **eklemeyi** kapsar. Lens kaynaklı kenar kararmasını **düzeltmek** yasak değildir (`AGENTS.md` §3). | D2 | Kayıt |
+| E4 | Düzenle export'u kırpılmış fotoğrafı kendi çözünürlüğünde verir, uzun kenar en çok 4096 px. Instagram/TikTok boyutu Carousel ve Story'nin işidir. **[VARSAYIM — sahip telefonda kullanıp onaylayacak]** | D1 | Kod yok |
+| E5 | Preset sekmesi: yatay preset satırı (fotoğrafın önizlemesiyle) + tek "Miktar" kaydırıcısı; Carousel'deki render adımlarıyla (M2 taban + görünüm). | D1 | Kod yok |
+| E6 | Kırp sekmesi: oranlar Serbest, Orijinal, 1:1, 4:5, 9:16, 16:9; çerçeve sahnede sabit, fotoğraf altında sürüklenir ve iki parmakla yakınlaşır (Story'deki pointer/rubber-band mantığı ortak); Serbest oranda çerçeve köşelerden boyutlanır; 90° döndürme, −10°…+10° ince açı, yatay çevirme. | D1 | Kod yok |
+| E7 | Sahneye basılı tutunca orijinal görünür, bırakınca düzenlenmiş hâl döner. | D1 | Kod yok |
+| E8 | Export: her zaman tek dosya, doğrudan iner, `duzenle_01.jpg`, JPEG 0.97, 8 MB'ı aşarsa basamaklı düşüş ve gösterim; PNG "Gelişmiş" altında. | D1 | Kod yok |
+| E9 | Yükleme: kütüphane boş başlar; "+" menüsünde Fotoğraf Yükle ve Referans Görsel Yükle (tek seçim); sınır 1 fotoğraf. Alt çubukta "Büyüt" mevcut Upscale modülünü bu fotoğrafla açar. | D1 | Kod yok |
+| E10 | Düzeltme sekmesi (Otomatik + Noise Azalt, Kenar Netliği, Kenar Renk Düzelt, Gölge Aç, Parlak Alan Kurtar, Pus Gider); yalnız iyileştirir, detay üretmez; AI tabanlı onarım yok. | D2 | Kod yok |
+
 **Kural:** P0 hataları kapanmadan P1'e geçilmez. P1 kapanmadan yeni özellik (preset genişletme, UI değişikliği vb.) eklenmez — mevcut temel sağlamlaşmadan üzerine inşa etmek, önceki preset kalibrasyon çalışmasında da görüldüğü gibi (koda hiç yansımadı), emeği boşa harcar.
 
 ---
@@ -152,7 +167,7 @@ Bunlar bilinçli olarak dışarıda bırakılıyor — "madem elimizdeyiz" diye 
 1. **Çok kullanıcılı/paylaşımlı özellikler** (hesap sistemi, bulut senkronu, paylaşılan preset kütüphanesi). Tek kullanıcılık araç.
 2. **Sunucu taraflı işleme.** Mimari karar, performans optimizasyonu bile olsa sunucuya görsel yükleme eklenmez.
 3. **AI destekli inpainting/outpainting.** Tanıtım dökümanında "Faz 2" olarak planlanmış ama bu spec'in kapsamında değil — P0/P1 sağlamlaşmadan konuşulmaz.
-4. **Gelişmiş manuel renk ayarı arayüzü** (curve editör, kanal bazlı ayrı kontroller). Felsefeyle (Bölüm 3, madde 1) doğrudan çelişir.
+4. **Gelişmiş manuel renk ayarı arayüzü** (curve editör, kanal bazlı ayrı kontroller, ton ayrımı, HSL). Tek istisna: Düzenle modülünün Düzeltme sekmesi, satır başına tek açma/kapama ve tek şiddet kaydırıcısı (§4.5 E2). Felsefeyle (Bölüm 3, madde 1) doğrudan çelişir.
 5. **Kamera/çekim asistanı özellikleri** (EV önerisi, shutter speed uyarısı vb.) — bu Curate'in değil, ayrı kamera uygulamasının işi.
 
 ---
@@ -169,6 +184,8 @@ Bunlar bilinçli olarak dışarıda bırakılıyor — "madem elimizdeyiz" diye 
 | **Faz M1 — Mobil iskelet** | §4.3 #9–10, K3, K5, M1-a; CDS §6 sözleşmesi | Prosedür 2 betiği 360×740, 390×844, 430×932'de geçer |
 | **Faz M2 — Render hattı (A)** | §4.3 #11, §4.2 #5/#7, Hero metrik kaynağı | Önizleme ve export 1080×1350'de aynı çıktı (veya belgelenmiş tolerans) |
 | **Faz S — Story ve Export** | K1, K2, S-a, S-b | Export boyutları/MIME ve tek/çoklu indirme testlerle doğrulanır; parite korunur |
+| **Faz D1 — Düzenle: iskelet, Preset, Kırp** | §4.5 E1, E4–E9 | Prosedür 2 Düzenle'de 360/390/430'da geçer; kırpma matematiği, export boyut/MIME ve parite testleri |
+| **Faz D2 — Düzenle: Düzeltme sekmesi** | §4.5 E3, E10 | Sentetik görsellerle ölçülebilir kabul (spec dışı prompt `prompt-D2.md`), parite testi |
 | **Faz 5+ — Nice-to-have** | Otomatik preset önerisi, 9:16 dump kolajı iyileştirmeleri, vb. | Ayrı değerlendirilir, bu fazlar tamamlanmadan başlanmaz |
 
 **Kural:** Bir faz, önceki fazın kabul kriteri karşılanmadan başlamaz. Bu, "agent'a geniş inisiyatif ver ama küçük/sıralı görevler halinde" prensibinin somutlaşmış hali.
@@ -193,7 +210,7 @@ Buna göre her faz için prompt şöyle yazılır:
 1. **(Uğur)** Hedef 6 preset ailesi kodda uygulandı, eski 6 profil kaldırıldı. Bu değişimin kalıcı karar olarak onaylanıp onaylanmadığı ve değerlerin referans görsellerden kalibrasyonu (Faz 3) sahibin teyidini bekliyor.
 2. ~~Mobil kullanım önceliği~~ **KAPANDI (2026-10-02):** Birincil kullanım mobil. Worker/proxy/render hattı kapsamı `docs/reports/2026-10-02-audit.md` §2'deki seçeneklerden sahip tarafından seçilir.
 3. ~~`.CUBE` LUT yeri~~ **KAPANDI (2026-10-02):** "Araçlar" altında kapalı bölüm (M1-a).
-4. **Ertelendi (sahip kararı 2026-10-03):** K2'de anılan "yeni Düzenle modülü" bu fazlardan (K, M1, M2, S) sonraya bırakıldı.
+4. ~~Düzenle modülü~~ **TANIMLANDI (2026-10-03):** §4.5, Faz D1 ve D2.
 5. ~~Carousel hedef geçişi~~ **KAPANDI (2026-10-03):** Her zaman bir hedef seçili, varsayılan Instagram. Arayüz katmanı sahne altındaki göz düğmesiyle gizlenebilir (varsayılan görünür; export'a hiçbir durumda yazılmaz).
 6. **(Uğur)** K1: TikTok 1080×1920 boyutu telefonda doğrulanacak.
 7. ~~Story ve 6'dan fazla fotoğraflı kütüphane~~ **KAPANDI (sahip onayı 2026-10-03):** Story ilk 6'sını kullanır ve bunu uyarıyla gösterir.
