@@ -9,94 +9,10 @@ import {
 import { extractColorMetrics } from '../lib/engine/harmonize';
 import { applyPresetToImageData, CURATE_PRESETS, parseCubeLUT } from '../lib/engine/presets';
 
-/**
- * Minimal deterministic 2D context (Node has no canvas): RGBA buffer, nearest-neighbour drawImage,
- * fillRect with hex colour, getImageData copy, putImageData write. Both preview and export run on it,
- * so any difference comes from the pipeline, not from the context.
- */
-function makeImageData(width: number, height: number, data?: Uint8ClampedArray): ImageData {
-  return { width, height, data: data ?? new Uint8ClampedArray(width * height * 4), colorSpace: 'srgb' } as ImageData;
-}
-
-class FakeContext {
-  fillStyle = '#000000';
-  readonly buf: Uint8ClampedArray;
-  constructor(public width: number, public height: number) {
-    this.buf = new Uint8ClampedArray(width * height * 4);
-  }
-  fillRect(x: number, y: number, w: number, h: number) {
-    const hex = String(this.fillStyle).replace('#', '');
-    const r = parseInt(hex.slice(0, 2), 16);
-    const g = parseInt(hex.slice(2, 4), 16);
-    const b = parseInt(hex.slice(4, 6), 16);
-    for (let yy = y; yy < y + h; yy++) {
-      for (let xx = x; xx < x + w; xx++) {
-        const i = (yy * this.width + xx) * 4;
-        this.buf[i] = r;
-        this.buf[i + 1] = g;
-        this.buf[i + 2] = b;
-        this.buf[i + 3] = 255;
-      }
-    }
-  }
-  drawImage(img: FakeImage, sx: number, sy: number, sw: number, sh: number, dx: number, dy: number, dw: number, dh: number) {
-    for (let yy = 0; yy < dh; yy++) {
-      for (let xx = 0; xx < dw; xx++) {
-        const srcX = Math.min(img.width - 1, Math.floor(sx + ((xx + 0.5) * sw) / dw));
-        const srcY = Math.min(img.height - 1, Math.floor(sy + ((yy + 0.5) * sh) / dh));
-        const si = (srcY * img.width + srcX) * 4;
-        const di = ((dy + yy) * this.width + (dx + xx)) * 4;
-        this.buf[di] = img.data[si];
-        this.buf[di + 1] = img.data[si + 1];
-        this.buf[di + 2] = img.data[si + 2];
-        this.buf[di + 3] = 255;
-      }
-    }
-  }
-  getImageData(x: number, y: number, w: number, h: number): ImageData {
-    const out = new Uint8ClampedArray(w * h * 4);
-    for (let yy = 0; yy < h; yy++) {
-      const start = ((y + yy) * this.width + x) * 4;
-      out.set(this.buf.subarray(start, start + w * 4), yy * w * 4);
-    }
-    return makeImageData(w, h, out);
-  }
-  putImageData(d: ImageData, x: number, y: number) {
-    for (let yy = 0; yy < d.height; yy++) {
-      const start = ((y + yy) * this.width + x) * 4;
-      this.buf.set(d.data.subarray(yy * d.width * 4, (yy + 1) * d.width * 4), start);
-    }
-  }
-}
-
-interface FakeImage {
-  width: number;
-  height: number;
-  naturalWidth: number;
-  naturalHeight: number;
-  data: Uint8ClampedArray;
-}
-
-/** Synthetic photo: gradients plus bright patches (halation) and a dark band (shadows). */
-function makePhoto(width: number, height: number): FakeImage {
-  const data = new Uint8ClampedArray(width * height * 4);
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const i = (y * width + x) * 4;
-      const bright = (x % 37 < 6 && y % 29 < 5) ? 250 : 0;
-      data[i] = Math.max(bright, Math.round((x / width) * 220));
-      data[i + 1] = Math.max(bright, Math.round((y / height) * 200));
-      data[i + 2] = Math.max(bright, y > height * 0.8 ? 20 : 140);
-      data[i + 3] = 255;
-    }
-  }
-  return { width, height, naturalWidth: width, naturalHeight: height, data };
-}
+import { FakeContext, FakeImage, makeImageData, makePhoto, asCtx, asImg, countDiff } from './helpers/fake-canvas';
 
 const W = 1080;
 const H = 1350;
-const asCtx = (c: FakeContext) => c as unknown as CanvasRenderingContext2D;
-const asImg = (i: FakeImage) => i as unknown as HTMLImageElement;
 
 function exportPixels(img: FakeImage, opts: CarouselRenderOptions): Uint8ClampedArray {
   const ctx = new FakeContext(W, H);
@@ -104,11 +20,6 @@ function exportPixels(img: FakeImage, opts: CarouselRenderOptions): Uint8Clamped
   return ctx.buf;
 }
 
-function countDiff(a: Uint8ClampedArray, b: Uint8ClampedArray): number {
-  let n = 0;
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) n++;
-  return n;
-}
 
 const hero = { luminance: 140, temperature: 10, tint: -3, avgR: 150, avgG: 135, avgB: 110 };
 

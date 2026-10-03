@@ -31,10 +31,18 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 - Günün tarihini taşıyan analog turuncu dijital tarih damgası toggle'ı.
 
 ### 4. Kayıpsız Upscale (Lanczos-3)
+- Güvenli sınır: çıktının uzun kenarı en çok 8192 px (varsayım); aşan çarpan kapanır ve "Bu boyut için çok büyük" yazar.
 - Matematiksel $L(x) = \text{sinc}(x) \cdot \text{sinc}(x/3)$ 2-pass Lanczos konvolüsyon motoru (dışa aktarmada gerçek kayıpsız 2x ve 4x büyütme).
 - Kaydırılabilir Before/After Split View çizgisiyle keskinlik önizlemesi (önizleme hızlı kontrast simülasyonu, export anında tam Lanczos-3 render).
 
 ---
+### 5. Düzenle (tek fotoğraf)
+- **Preset:** Yatay preset satırı (fotoğrafın kendi önizlemesiyle) ve tek "Miktar" kaydırıcısı. Carousel ile aynı render adımları.
+- **Kırp:** Serbest, Orijinal, 1:1, 4:5, 9:16, 16:9; çerçeve sabit, fotoğraf altında sürüklenir ve iki parmakla yakınlaşır (Story ile ortak hareket kodu, kenarda rubber-band); Serbest oranda köşeden boyutlanır; 90° döndürme, −10°…+10° ufuk düzeltme, yatay çevirme.
+- **Önce/sonra:** Preset sekmesinde sahneye basılı tut → kırpılmamış, preset'siz orijinal.
+- **Export:** Tek dosya `duzenle_01.jpg`, kırpımın kendi çözünürlüğünde (uzun kenar en çok 4096 px, varsayım), JPEG %97, 8 MB üstünde basamaklı düşüş.
+- **Büyüt:** Düzenlenmiş hâli yeni fotoğraf olarak ekleyip Upscale'i onunla açar.
+- Düzeltme sekmesi (Faz D2) henüz yok.
 
 ## 🚀 Dışa Aktarma
 
@@ -44,7 +52,7 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 - **Kalite:** Varsayılan sRGB JPEG %97. Dosya 8 MB'ı aşarsa kalite kademeli düşer (%94, %91, …) ve export sayfasında gösterilir. PNG "Gelişmiş" altındadır. Upscale platform hedefi olmadığı için 8 MB sınırı uygulanmaz.
 - **Gizlilik:** GPS, cihaz seri numaraları ve özel EXIF verileri dışa aktarma anında otomatik soyutlanır.
 - **Format Desteği:** JPEG, PNG, WEBP; HEIC desteği cihazın yerel tarayıcı desteğine bağlıdır (harici JS decoder paketi bulunmamaktadır).
-- **İndirme:** Tek görsel her zaman doğrudan dosya olarak iner (`dump_01.jpg`, `tiktok_01.jpg`, `story_01.jpg`, `frame_01.jpg`). Zip yalnız çoklu Carousel serisinde: `dump_N.zip` / `tiktok_N.zip`, içinde `dump_01.jpg`, `dump_02.jpg`…
+- **İndirme:** Tek görsel her zaman doğrudan dosya olarak iner (`dump_01.jpg`, `tiktok_01.jpg`, `story_01.jpg`, `frame_01.jpg`, `duzenle_01.jpg`). Zip yalnız çoklu Carousel serisinde: `dump_N.zip` / `tiktok_N.zip`, içinde `dump_01.jpg`, `dump_02.jpg`…
 
 ## 🧪 Referans Görseller
 

@@ -45,6 +45,18 @@ export const PLATFORM_SPECS: Record<ExportPlatform, ExportSpec> = {
     maxBytes: MAX_EXPORT_BYTES,
     verified: false,
   },
+  // Düzenle: kırpımın kendi çözünürlüğü, uzun kenar en çok 4096 (spec §4.5 E4, VARSAYIM)
+  edit: {
+    id: 'edit',
+    name: 'Düzenle',
+    width: 0,
+    height: 0,
+    aspectRatio: 'kırpım',
+    quality: JPEG_QUALITY_STEPS[0],
+    filePrefix: 'duzenle',
+    maxBytes: MAX_EXPORT_BYTES,
+    verified: true,
+  },
   // Upscale: boyut kaynağa bağlı; platform hedefi olmadığı için 8 MB sınırı uygulanmaz
   original: {
     id: 'original',

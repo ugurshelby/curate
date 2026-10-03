@@ -6,6 +6,16 @@
 
 const PI = Math.PI;
 
+/**
+ * Upscale güvenli sınırı: çıktının uzun kenarı en çok 8192 px (spec §4.5, VARSAYIM).
+ * Daha büyük çıktı mobil tarayıcıda bellek sınırını aşabilir; o çarpan arayüzde kapatılır.
+ */
+export const UPSCALE_MAX_LONG_EDGE = 8192;
+
+export function upscaleFactorAllowed(width: number, height: number, factor: number): boolean {
+  return Math.max(width, height) * factor <= UPSCALE_MAX_LONG_EDGE;
+}
+
 function sinc(x: number): number {
   if (x === 0) return 1;
   const pix = PI * x;

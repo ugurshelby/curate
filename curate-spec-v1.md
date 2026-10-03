@@ -108,15 +108,15 @@ Geçersiz kılınan taslak satırlar: önceki Faz S taslağındaki "1 fotoğraf 
 
 | # | Karar | Faz | Durum |
 |---|---|---|---|
-| E1 | Beşinci modül **"Düzenle"**: tek fotoğraf, Lightroom'un basit hâli. Sahip fotoğraf ve teknik terim bilmez; akış zahmetsiz olmalı. Sekmeler: Preset, Kırp (D1), Düzeltme (D2). | D1 | Kod yok |
+| E1 | Beşinci modül **"Düzenle"**: tek fotoğraf, Lightroom'un basit hâli. Sahip fotoğraf ve teknik terim bilmez; akış zahmetsiz olmalı. Sekmeler: Preset, Kırp (D1), Düzeltme (D2). | D1 | **Uygulandı (D1, 2026-10-03)**: `EditStudio.tsx`; Düzeltme sekmesi tanımlı, gizli |
 | E2 | Bölüm 7 madde 4 (manuel renk arayüzü yok) aynen geçerli: curve, kanal, ton ayrımı, HSL yok. **Tek istisna** D2'deki "Düzeltme" sekmesi: her satır tek açma/kapama ve tek şiddet kaydırıcısı. | D1, D2 | Kayıt |
 | E3 | Vinyet yasağı estetik vinyet **eklemeyi** kapsar. Lens kaynaklı kenar kararmasını **düzeltmek** yasak değildir (`AGENTS.md` §3). | D2 | Kayıt |
-| E4 | Düzenle export'u kırpılmış fotoğrafı kendi çözünürlüğünde verir, uzun kenar en çok 4096 px. Instagram/TikTok boyutu Carousel ve Story'nin işidir. **[VARSAYIM — sahip telefonda kullanıp onaylayacak]** | D1 | Kod yok |
-| E5 | Preset sekmesi: yatay preset satırı (fotoğrafın önizlemesiyle) + tek "Miktar" kaydırıcısı; Carousel'deki render adımlarıyla (M2 taban + görünüm). | D1 | Kod yok |
-| E6 | Kırp sekmesi: oranlar Serbest, Orijinal, 1:1, 4:5, 9:16, 16:9; çerçeve sahnede sabit, fotoğraf altında sürüklenir ve iki parmakla yakınlaşır (Story'deki pointer/rubber-band mantığı ortak); Serbest oranda çerçeve köşelerden boyutlanır; 90° döndürme, −10°…+10° ince açı, yatay çevirme. | D1 | Kod yok |
-| E7 | Sahneye basılı tutunca orijinal görünür, bırakınca düzenlenmiş hâl döner. | D1 | Kod yok |
-| E8 | Export: her zaman tek dosya, doğrudan iner, `duzenle_01.jpg`, JPEG 0.97, 8 MB'ı aşarsa basamaklı düşüş ve gösterim; PNG "Gelişmiş" altında. | D1 | Kod yok |
-| E9 | Yükleme: kütüphane boş başlar; "+" menüsünde Fotoğraf Yükle ve Referans Görsel Yükle (tek seçim); sınır 1 fotoğraf. Alt çubukta "Büyüt" mevcut Upscale modülünü bu fotoğrafla açar. | D1 | Kod yok |
+| E4 | Düzenle export'u kırpılmış fotoğrafı kendi çözünürlüğünde verir, uzun kenar en çok 4096 px. Instagram/TikTok boyutu Carousel ve Story'nin işidir. **[VARSAYIM — sahip telefonda kullanıp onaylayacak]** | D1 | **Uygulandı (D1)**: `editOutputSize`, testli |
+| E5 | Preset sekmesi: yatay preset satırı (fotoğrafın önizlemesiyle) + tek "Miktar" kaydırıcısı; Carousel'deki render adımlarıyla (M2 taban + görünüm). | D1 | **Uygulandı (D1)**: taban adımına kırp geometrisi eklendi (`CarouselRenderOptions.crop`), yeni render yolu yok; önizleme uzun kenarı 1350 px, sürüklerken yarısı |
+| E6 | Kırp sekmesi: oranlar Serbest, Orijinal, 1:1, 4:5, 9:16, 16:9; çerçeve sahnede sabit, fotoğraf altında sürüklenir ve iki parmakla yakınlaşır (Story'deki pointer/rubber-band mantığı ortak); Serbest oranda çerçeve köşelerden boyutlanır; 90° döndürme, −10°…+10° ince açı, yatay çevirme. | D1 | **Uygulandı (D1)**: `lib/engine/edit-geometry.ts`; jestler Story ile ortak `usePanPinch` |
+| E7 | Sahneye basılı tutunca orijinal görünür, bırakınca düzenlenmiş hâl döner. Orijinal = kırpılmamış, preset'siz fotoğraf; **yalnız Preset sekmesinde** (Kırp sekmesinde basılı tutma kırpma hareketidir) (sahip kararı 2026-10-03). | D1 | **Uygulandı (D1)** |
+| E8 | Export: her zaman tek dosya, doğrudan iner, `duzenle_01.jpg`, JPEG 0.97, 8 MB'ı aşarsa basamaklı düşüş ve gösterim; PNG "Gelişmiş" altında. | D1 | **Uygulandı (D1)**: `PLATFORM_SPECS.edit` |
+| E9 | Yükleme: kütüphane boş başlar; "+" menüsünde Fotoğraf Yükle ve Referans Görsel Yükle (tek seçim); sınır 1 fotoğraf. Alt çubukta "Büyüt" düzenlenmiş hâli (kırpılmış + preset'li) yeni fotoğraf olarak kütüphaneye ekler ve Upscale'i onunla açar (sahip kararı 2026-10-03). Upscale çıktısının uzun kenarı en çok **8192 px [VARSAYIM]**; aşan çarpan kapanır ve yanında "Bu boyut için çok büyük" yazar. | D1 | **Uygulandı (D1)**: `UPSCALE_MAX_LONG_EDGE`, testli |
 | E10 | Düzeltme sekmesi (Otomatik + Noise Azalt, Kenar Netliği, Kenar Renk Düzelt, Gölge Aç, Parlak Alan Kurtar, Pus Gider); yalnız iyileştirir, detay üretmez; AI tabanlı onarım yok. | D2 | Kod yok |
 
 **Kural:** P0 hataları kapanmadan P1'e geçilmez. P1 kapanmadan yeni özellik (preset genişletme, UI değişikliği vb.) eklenmez — mevcut temel sağlamlaşmadan üzerine inşa etmek, önceki preset kalibrasyon çalışmasında da görüldüğü gibi (koda hiç yansımadı), emeği boşa harcar.

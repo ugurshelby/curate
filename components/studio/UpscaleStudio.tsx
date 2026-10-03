@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { ZoomIn } from "lucide-react";
 import { 
   useStudio, 
@@ -9,7 +9,9 @@ import {
   stepUpscaleSplitPos,
   createStudioItem,
   workerBridge,
-  createExportCanvas
+  createExportCanvas,
+  upscaleFactorAllowed,
+  UPSCALE_MAX_LONG_EDGE,
 } from "@/lib";
 import { QuickExportSheet } from "./QuickExportSheet";
 import { StudioShell, StageNote } from "./StudioShell";
@@ -31,6 +33,15 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Seçili çarpan sınırı aşıyorsa izin verilen çarpana geç
+  useEffect(() => {
+    if (!selectedItem) return;
+    const { width, height } = selectedItem.dimensions;
+    if (!upscaleFactorAllowed(width, height, scaleFactor) && scaleFactor === 4 && upscaleFactorAllowed(width, height, 2)) {
+      actions.setUpscaleScale(2);
+    }
+  }, [selectedItem, scaleFactor, actions]);
 
   // Fotoğraf Yükleme
   // Upscale tek görsel çalışır: eklenen görsel kütüphaneye girer ve seçilir
@@ -121,6 +132,11 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     return outC;
   };
 
+  // Güvenli sınır: çıktının uzun kenarı en çok 8192 px (VARSAYIM); aşan çarpan kapanır
+  const srcW = selectedItem ? selectedItem.dimensions.width : 0;
+  const srcH = selectedItem ? selectedItem.dimensions.height : 0;
+  const factorAllowed = (f: 2 | 4) => !!selectedItem && upscaleFactorAllowed(srcW, srcH, f);
+  const anyAllowed = factorAllowed(2) || factorAllowed(4);
   const outW = selectedItem ? selectedItem.dimensions.width * scaleFactor : 0;
   const outH = selectedItem ? selectedItem.dimensions.height * scaleFactor : 0;
 
@@ -215,10 +231,12 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
             type="button"
             role="radio"
             aria-checked={scaleFactor === f}
+            disabled={hasPhoto && !factorAllowed(f)}
+            title={hasPhoto && !factorAllowed(f) ? "Bu boyut için çok büyük" : undefined}
             onClick={() => actions.setUpscaleScale(f)}
             className={`press w-14 h-11 rounded-[10px] text-sm num-metric ${
               scaleFactor === f ? "bg-[#f5a623] text-black font-semibold" : "text-[#a1a1aa]"
-            }`}
+            } disabled:opacity-40 disabled:line-through`}
           >
             {f}x
           </button>
@@ -233,9 +251,22 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
       onBack={onBack}
       exportLabel={`Export ${scaleFactor}x`}
       onExport={() => setIsExportOpen(true)}
-      exportDisabled={!hasPhoto}
+      exportDisabled={!hasPhoto || !factorAllowed(scaleFactor)}
       stage={stage}
-      stageToolbar={hasPhoto ? <StageNote>Çıktı {outW} × {outH} · Lanczos-3</StageNote> : undefined}
+      stageToolbar={
+        hasPhoto ? (
+          <>
+            <StageNote>
+              Çıktı {outW} × {outH}
+            </StageNote>
+            {!factorAllowed(4) && (
+              <span role="status" className="text-xs text-[#f5a623] text-right">
+                {anyAllowed ? "4x: Bu boyut için çok büyük" : "Bu boyut için çok büyük"} (en çok {UPSCALE_MAX_LONG_EDGE} px)
+              </span>
+            )}
+          </>
+        ) : undefined
+      }
       bar={bar}
     >
       <input

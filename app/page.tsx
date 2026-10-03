@@ -12,12 +12,14 @@ import {
   Upload,
   Plus,
   Trash2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Wand2
 } from "lucide-react";
 import { CarouselStudio } from "@/components/studio/CarouselStudio";
 import { StoryStudio } from "@/components/studio/StoryStudio";
 import { FrameStudio } from "@/components/studio/FrameStudio";
 import { UpscaleStudio } from "@/components/studio/UpscaleStudio";
+import { EditStudio } from "@/components/studio/EditStudio";
 import { StudioModule, StudioItem, useStudio, createStudioItem } from "@/lib";
 import { ReferencePicker } from "@/components/studio/ReferencePicker";
 
@@ -49,6 +51,9 @@ export default function CurateStudioMain() {
   }
   if (activeModule === "upscale") {
     return <UpscaleStudio onBack={closeModule} />;
+  }
+  if (activeModule === "edit") {
+    return <EditStudio onBack={closeModule} onOpenModule={openModule} />;
   }
 
   const processUploadedFiles = (files: FileList | File[]) => {
@@ -308,6 +313,33 @@ export default function CurateStudioMain() {
               </div>
               <p className="text-xs text-[#a1a1aa] leading-relaxed">
                 Matematiksel Lanczos-3 konvolüsyonu ile 2x ve 4x büyütme; Before/After Split View ile canlı keskinlik analizi.
+              </p>
+            </div>
+          </div>
+
+          {/* KART 5: Düzenle (spec §4.5) */}
+          <div
+            onClick={() => openModule("edit")}
+            className="group relative p-6 rounded-2xl bg-[#0f0f11] hover:bg-[#141418] border border-white/10 hover:border-[#f5a623]/50 transition-colors duration-300 cursor-pointer shadow-xl flex flex-col justify-between gap-6 sm:col-span-2"
+          >
+            <div className="flex items-start justify-between">
+              <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[#f5a623]">
+                <Wand2 className="w-5 h-5" />
+              </div>
+              <span className="text-xs num-metric px-2 py-0.5 rounded bg-white/5 text-[#a1a1aa]">
+                Tek fotoğraf
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-white group-hover:text-[#f5a623] transition-colors">
+                  Düzenle
+                </h2>
+                <ArrowRight className="w-4 h-4 text-[#71717a] group-hover:text-[#f5a623] transition-colors" />
+              </div>
+              <p className="text-xs text-[#a1a1aa] leading-relaxed">
+                Tek fotoğrafa preset, kırpma, döndürme ve ufuk düzeltme; kendi çözünürlüğünde dışa aktarma.
               </p>
             </div>
           </div>

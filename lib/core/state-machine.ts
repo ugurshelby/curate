@@ -7,7 +7,8 @@
  * 4. Lossless Upscale (Lanczos-3)
  */
 
-import { StudioItem, StudioModule, StudioState, ActivePreset, CubeLUT, ColorMetrics, ImageDimensions, StoryCellTransform } from './types';
+import { StudioItem, StudioModule, StudioState, ActivePreset, CubeLUT, ColorMetrics, ImageDimensions, StoryCellTransform, EditParams, EditCrop } from './types';
+import { DEFAULT_EDIT_PARAMS } from '../engine/edit-geometry';
 import { revokeUrl, cleanupAllUrls, generateProxyImage, registerUrl } from '../engine/proxy';
 
 const INITIAL_ITEMS: StudioItem[] = [];
@@ -34,6 +35,7 @@ const INITIAL_STATE: StudioState = {
     borderRadius: 12,
     showTimestamp: true,
   },
+  edits: {},
   upscaleConfig: {
     scaleFactor: 2,
   },
@@ -224,6 +226,19 @@ class StudioStateMachine {
         selectedItemId: prev.selectedItemId === old.id ? newItem.id : prev.selectedItemId,
         storyLayout: { ...prev.storyLayout, cellTransforms },
       };
+    });
+  }
+
+  /** Düzenle ayarlarını birleştirir (kırp alanları ayrı birleşir) */
+  public setEditParams(itemId: string, patch: Partial<Omit<EditParams, 'crop'>> & { crop?: Partial<EditCrop> }) {
+    this.setState((prev) => {
+      const current = prev.edits[itemId] ?? DEFAULT_EDIT_PARAMS;
+      const next: EditParams = {
+        ...current,
+        ...patch,
+        crop: { ...current.crop, ...(patch.crop ?? {}) },
+      };
+      return { edits: { ...prev.edits, [itemId]: next } };
     });
   }
 

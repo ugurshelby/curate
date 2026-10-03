@@ -16,7 +16,7 @@ Three written descriptions exist. They do not say the same thing.
 
 | Source | What it states | Tag |
 |---|---|---|
-| `README.md` | Uğur's personal, single-user, mobile-first tool for Instagram/TikTok **Carousel Dump** and **Story Dump**. Four modules: Carousel 4:5, Story 9:16, Minimal Frame, Lanczos-3 upscale. Planned items are marked with their phase. | [VERIFIED] 2026-10-02 |
+| `README.md` | Uğur's personal, single-user, mobile-first tool for Instagram/TikTok **Carousel Dump** and **Story Dump**. Five modules since Faz D1: Carousel 4:5, Story 9:16, Minimal Frame, Lanczos-3 upscale, Düzenle. Planned items are marked with their phase. | [VERIFIED] 2026-10-03 |
 | `AGENTS.md` | Personal single-user browser darkroom for Uğur, mobile primary (390×844). Scope lock: panorama permanently closed, AI inpainting/outpainting, accounts and server upload forbidden; halation (Night Cinematic) and 35mm grain (Amber Grain) allowed; light leak and vignette forbidden. | [VERIFIED] 2026-10-02 |
 | `curate-spec-v1.md` | A **personal, single-user** browser tool for **Uğur**, who edits architectural / silhouette / reflection dumps from a Redmi Note 12 Pro 5G + Old Roll workflow. One tap, personal presets, no required sliders. Not a multi-user product. No accounts, no cloud sync, no server-side processing. The spec says that if a prompt conflicts with the spec, the spec wins. | [VERIFIED] |
 
@@ -32,6 +32,8 @@ Stated product behavior that appears in more than one of those files:
 **Owner decisions (2026-10-02), recorded in `curate-spec-v1.md` §4.4 with phases:** TikTok as a separate Carousel export target, 1080×1920 assumed and not verified (Faz S); Story takes 2–6 photos with automatic grid (Faz S); reference images stay tracked and a user-triggered test loader is added (Faz M1); panorama permanently closed (Faz K, done); status colors amber/neutral (Faz M1); Frame stays 1080×1350; mobile panel redesign (Faz M1); preview render option A (Faz M2); export quality/download rules (Faz S). None of the Faz M1/M2/S items is implemented yet. [VERIFIED] doc edit; code unchanged.
 
 **Faz S (2026-10-03):** Story grid follows the photo count (2–6, `lib/engine/story-layout.ts`), cells sit inside a 250 px top/bottom safe area (assumption), per-cell pan/zoom shared by preview and export (`computeCellDraw`). Carousel IG/TikTok toggle sets preview and export size. Export sheet rewritten: no jargon, real target size, PNG under "Gelişmiş". [VERIFIED] tests + browser run in `docs/reports/2026-10-03-phases.md`.
+
+**Faz D1 (2026-10-03):** fifth module Düzenle (`components/studio/EditStudio.tsx`): Preset and Kırp tabs, crop geometry in `lib/engine/edit-geometry.ts` added to the shared base step (`CarouselRenderOptions.crop`), shared gesture hook `components/studio/usePanPinch.ts` (Story refactored onto it), shared `PresetStrip.tsx`, Upscale safe limit 8192 px (assumption). [VERIFIED] tests + browser run in `docs/reports/2026-10-03-phases.md`.
 
 No file states a business model, a launch date, or a hosting target beyond one historical commit message (section 4).
 
@@ -222,7 +224,7 @@ Last verified: 2026-10-03
 | `npm run build` | `"build": "next build"` | Pass, exit 0 [VERIFIED] |
 | `npm test` | Added in Phase 5 via Vitest | Pass, exit 0, 24 tests pass (core pipeline, upscale, selection, 6 editorial presets, proxy items) [VERIFIED] |
 | CI | `.github/workflows/ci.yml` | Triggers: push to `main`, pull request to `main`, manual. Node 22: tsc, lint, test, build [VERIFIED] file read; run results not checked [UNVERIFIED] |
-| Visual / mobile viewport check | Required after UI changes (AGENTS.md §4, CDS §6.5) | 2026-10-03 (Faz M1): Procedure 2 passes in all four modules at 360×740, 390×844, 430×932 (emulated, desktop CPU) [VERIFIED]; phone and landscape [UNVERIFIED] |
+| Visual / mobile viewport check | Required after UI changes (AGENTS.md §4, CDS §6.5) | 2026-10-03 (Faz D1): Procedure 2 passes in all five modules at 360×740, 390×844, 430×932 (emulated, desktop CPU) [VERIFIED]; phone and landscape [UNVERIFIED] |
 
 ---
 

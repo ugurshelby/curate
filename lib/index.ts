@@ -16,6 +16,7 @@ export * from './engine/upscale-lanczos';
 export * from './engine/upscale-slider';
 export * from './engine/carousel-render';
 export * from './engine/story-layout';
+export * from './engine/edit-geometry';
 
 export * from './export/platform-specs';
 export * from './export/exif-sanitizer';

@@ -9,7 +9,8 @@
  * CarouselPreviewRenderer, which caches step 1 so a slider only recomputes step 2.
  */
 
-import { ColorMetrics, CubeLUT } from '../core/types';
+import { ColorMetrics, CubeLUT, EditCrop } from '../core/types';
+import { drawEditGeometry, editCropKey } from './edit-geometry';
 import { calculateAspectCrop } from '../export/platform-specs';
 import { applyHarmonizeSync, extractColorMetrics } from './harmonize';
 import { applyCubeLutToImageData, applyPresetToImageData, CURATE_PRESETS } from './presets';
@@ -27,6 +28,8 @@ export interface CarouselRenderOptions {
   presetIntensity?: number;
   /** Export width this render stands for. Defaults to the render width (export). */
   outputWidth?: number;
+  /** Düzenle: kırp/döndür/çevir geometrisi. Verilirse fitMode yerine bu çizim kullanılır. */
+  crop?: EditCrop | null;
 }
 
 export interface CarouselBase {
@@ -86,8 +89,18 @@ export function renderCarouselBase(
   img: CarouselSource,
   targetW: number,
   targetH: number,
-  options: Pick<CarouselRenderOptions, 'fitMode' | 'heroColorMetrics'>
+  options: Pick<CarouselRenderOptions, 'fitMode' | 'heroColorMetrics' | 'crop'>
 ): CarouselBase {
+  if (options.crop) {
+    // Düzenle: aynı taban adımı, çizim kırp geometrisiyle (tüm hedef alanı kaplar)
+    drawEditGeometry(ctx, img, targetW, targetH, options.crop);
+    let cropped = ctx.getImageData(0, 0, targetW, targetH);
+    if (options.heroColorMetrics) {
+      cropped = applyHarmonizeSync(cropped, options.heroColorMetrics, HERO_HARMONIZE_STRENGTH);
+    }
+    return { imageData: cropped, x: 0, y: 0, w: targetW, h: targetH };
+  }
+
   const { w: imgW, h: imgH } = sourceSize(img);
   const rect = carouselImageRect(imgW, imgH, targetW, targetH, options.fitMode);
 
@@ -182,7 +195,7 @@ export class CarouselPreviewRenderer {
       this.cache.clear();
       this.imageKey = imageKey;
     }
-    const key = `${targetW}x${targetH}|${options.fitMode}|${metricsKey(options.heroColorMetrics)}`;
+    const key = `${targetW}x${targetH}|${options.fitMode}|${metricsKey(options.heroColorMetrics)}|${editCropKey(options.crop)}`;
     let base = this.cache.get(key);
     if (!base) {
       base = renderCarouselBase(ctx, img, targetW, targetH, options);
@@ -192,7 +205,7 @@ export class CarouselPreviewRenderer {
         if (first !== undefined) this.cache.delete(first);
       }
       this.cache.set(key, base);
-    } else {
+    } else if (!options.crop) {
       paintBackground(ctx, targetW, targetH, options.fitMode);
     }
     const look = applyCarouselLook(base.imageData, options, resolutionScaleFor(targetW, options));

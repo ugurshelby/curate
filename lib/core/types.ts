@@ -3,7 +3,7 @@
  * Headless, client-side, non-destructive image pipeline definitions
  */
 
-export type StudioModule = 'carousel' | 'story' | 'frame' | 'upscale';
+export type StudioModule = 'carousel' | 'story' | 'frame' | 'upscale' | 'edit';
 
 export interface ImageDimensions {
   width: number;
@@ -80,6 +80,32 @@ export interface StoryCellTransform {
   panY: number;
 }
 
+/** Düzenle modülü kırp oranları (spec §4.5 E6) */
+export type EditAspect = 'free' | 'original' | '1:1' | '4:5' | '9:16' | '16:9';
+
+export interface EditCrop {
+  aspect: EditAspect;
+  /** Serbest oranda çıktı oranı (genişlik / yükseklik); 0 = orijinal oran */
+  freeRatio: number;
+  /** 90° adımlarla döndürme (saat yönü) */
+  rotation: 0 | 90 | 180 | 270;
+  /** İnce açı düzeltme, derece (−10…+10) */
+  angle: number;
+  /** Çıktıyı yatay çevir */
+  flipH: boolean;
+  /** 1 = en büyük kırpım; büyüdükçe daha küçük bölge */
+  zoom: number;
+  /** −1…1: izin verilen kaydırma aralığının oranı (döndürülmüş görsel ekseninde) */
+  panX: number;
+  panY: number;
+}
+
+export interface EditParams {
+  presetId: string | null;
+  intensity: number; // 0–1
+  crop: EditCrop;
+}
+
 export interface StudioItem {
   id: string;
   file?: File;
@@ -113,6 +139,8 @@ export interface StudioState {
     cellTransforms: Record<string, StoryCellTransform>;
   };
   frameConfig: FrameConfig;
+  /** Düzenle modülü ayarları, fotoğraf kimliğine göre */
+  edits: Record<string, EditParams>;
   upscaleConfig: {
     scaleFactor: 2 | 4;
   };
@@ -121,7 +149,7 @@ export interface StudioState {
   processingStatus: string;
 }
 
-export type ExportPlatform = 'ig_post_4_5' | 'ig_story_9_16' | 'tiktok_9_16' | 'original';
+export type ExportPlatform = 'ig_post_4_5' | 'ig_story_9_16' | 'tiktok_9_16' | 'edit' | 'original';
 
 export interface ExportSpec {
   id: ExportPlatform;

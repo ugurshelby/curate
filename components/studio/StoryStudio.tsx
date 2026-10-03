@@ -7,6 +7,7 @@ import { InstagramOverlay } from "./InstagramOverlay";
 import { QuickExportSheet } from "./QuickExportSheet";
 import { StudioShell, StageNote } from "./StudioShell";
 import { AddMenu } from "./AddMenu";
+import { usePanPinch, PanPinchDelta } from "./usePanPinch";
 import { ReferencePicker } from "./ReferencePicker";
 import {
   PLATFORM_SPECS,
@@ -36,7 +37,7 @@ interface StoryStudioProps {
   onBack: () => void;
 }
 
-const TAP_SLOP_PX = 6;
+
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -55,7 +56,8 @@ interface LiveGesture {
   oy: number;
 }
 
-interface GestureStart {
+/** Hareket başındaki hücre ölçüleri (ekran px) */
+interface CellBase {
   index: number;
   itemId: string;
   t0: StoryCellTransform;
@@ -63,10 +65,6 @@ interface GestureStart {
   cellPxH: number;
   coverPxW: number;
   coverPxH: number;
-  pointers: Map<number, { x: number; y: number }>;
-  startPointers: Map<number, { x: number; y: number }>;
-  moved: boolean;
-  multi: boolean;
 }
 
 export function StoryStudio({ onBack }: StoryStudioProps) {
@@ -89,7 +87,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const replaceInputRef = useRef<HTMLInputElement | null>(null);
-  const gestureRef = useRef<GestureStart | null>(null);
+  const baseRef = useRef<CellBase | null>(null);
   const cellRefs = useRef<(HTMLDivElement | null)[]>([]);
   const stageRef = useRef<HTMLDivElement | null>(null);
 
@@ -167,67 +165,39 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
 
   const transformFor = (item: StudioItem): StoryCellTransform => cellTransforms[item.id] ?? DEFAULT_CELL_TRANSFORM;
 
-  // --- Hücre içi konumlandırma: 1 parmak kaydır, 2 parmak yakınlaştır, kenarda rubber-band (apple-design §2, §9) ---
-  const liveFromPointers = (g: GestureStart): LiveGesture => {
-    const ids = Array.from(g.pointers.keys()).filter((id) => g.startPointers.has(id));
-    let scale = 1;
-    let dx = 0;
-    let dy = 0;
-    if (ids.length >= 2) {
-      const a = g.pointers.get(ids[0])!;
-      const b = g.pointers.get(ids[1])!;
-      const a0 = g.startPointers.get(ids[0])!;
-      const b0 = g.startPointers.get(ids[1])!;
-      const d0 = Math.hypot(a0.x - b0.x, a0.y - b0.y) || 1;
-      scale = Math.hypot(a.x - b.x, a.y - b.y) / d0;
-      dx = (a.x + b.x) / 2 - (a0.x + b0.x) / 2;
-      dy = (a.y + b.y) / 2 - (a0.y + b0.y) / 2;
-    } else if (ids.length === 1) {
-      const p = g.pointers.get(ids[0])!;
-      const p0 = g.startPointers.get(ids[0])!;
-      dx = p.x - p0.x;
-      dy = p.y - p0.y;
-    }
-
-    let zoom = g.t0.zoom * scale;
+  // --- Hücre içi konumlandırma: ortak usePanPinch (1 parmak kaydır, 2 parmak yakınlaştır), kenarda rubber-band ---
+  const liveFrom = (b: CellBase, d: PanPinchDelta): LiveGesture => {
+    let zoom = b.t0.zoom * d.scale;
     if (zoom > STORY_MAX_ZOOM) zoom = STORY_MAX_ZOOM + rubberband(zoom - STORY_MAX_ZOOM, 1);
     if (zoom < 1) zoom = 1 - rubberband(1 - zoom, 1);
 
-    const maxX0 = Math.max(0, (g.coverPxW * g.t0.zoom - g.cellPxW) / 2);
-    const maxY0 = Math.max(0, (g.coverPxH * g.t0.zoom - g.cellPxH) / 2);
-    let ox = g.t0.panX * maxX0 + dx;
-    let oy = g.t0.panY * maxY0 + dy;
-    const limX = Math.max(0, (g.coverPxW * zoom - g.cellPxW) / 2);
-    const limY = Math.max(0, (g.coverPxH * zoom - g.cellPxH) / 2);
-    if (Math.abs(ox) > limX) ox = Math.sign(ox) * (limX + rubberband(Math.abs(ox) - limX, g.cellPxW));
-    if (Math.abs(oy) > limY) oy = Math.sign(oy) * (limY + rubberband(Math.abs(oy) - limY, g.cellPxH));
-    return { index: g.index, zoom, ox, oy };
+    const maxX0 = Math.max(0, (b.coverPxW * b.t0.zoom - b.cellPxW) / 2);
+    const maxY0 = Math.max(0, (b.coverPxH * b.t0.zoom - b.cellPxH) / 2);
+    let ox = b.t0.panX * maxX0 + d.dx;
+    let oy = b.t0.panY * maxY0 + d.dy;
+    const limX = Math.max(0, (b.coverPxW * zoom - b.cellPxW) / 2);
+    const limY = Math.max(0, (b.coverPxH * zoom - b.cellPxH) / 2);
+    if (Math.abs(ox) > limX) ox = Math.sign(ox) * (limX + rubberband(Math.abs(ox) - limX, b.cellPxW));
+    if (Math.abs(oy) > limY) oy = Math.sign(oy) * (limY + rubberband(Math.abs(oy) - limY, b.cellPxH));
+    return { index: b.index, zoom, ox, oy };
   };
 
-  const toTransform = (g: GestureStart, l: LiveGesture): StoryCellTransform => {
+  const toTransform = (b: CellBase, l: LiveGesture): StoryCellTransform => {
     const zoom = Math.min(STORY_MAX_ZOOM, Math.max(1, l.zoom));
-    const maxX = Math.max(0, (g.coverPxW * zoom - g.cellPxW) / 2);
-    const maxY = Math.max(0, (g.coverPxH * zoom - g.cellPxH) / 2);
+    const maxX = Math.max(0, (b.coverPxW * zoom - b.cellPxW) / 2);
+    const maxY = Math.max(0, (b.coverPxH * zoom - b.cellPxH) / 2);
     return clampCellTransform({ zoom, panX: maxX ? l.ox / maxX : 0, panY: maxY ? l.oy / maxY : 0 });
   };
 
-  const onCellPointerDown = (e: React.PointerEvent<HTMLDivElement>, index: number) => {
-    const item = storyPhotos[index];
-    const cell = cells[index];
-    const el = cellRefs.current[index];
-    if (!item || !cell || !el) return;
-    if (e.pointerType === "mouse" && e.button !== 0) return;
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      /* pointer artık aktif değil */
-    }
-
-    let g = gestureRef.current;
-    if (!g || g.index !== index) {
+  const cellGesture = usePanPinch<number>({
+    onStart: (index) => {
+      const item = storyPhotos[index];
+      const cell = cells[index];
+      const el = cellRefs.current[index];
+      if (!item || !cell || !el) return false;
       const rect = el.getBoundingClientRect();
       const cover = coverSize(cell, item.dimensions.width, item.dimensions.height);
-      g = {
+      baseRef.current = {
         index,
         itemId: item.id,
         t0: clampCellTransform(transformFor(item)),
@@ -235,52 +205,24 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
         cellPxH: rect.height,
         coverPxW: (cover.w / cell.w) * rect.width,
         coverPxH: (cover.h / cell.h) * rect.height,
-        pointers: new Map(),
-        startPointers: new Map(),
-        moved: false,
-        multi: false,
       };
-      gestureRef.current = g;
-    } else {
-      // İkinci parmak: o ana kadarki hareketi taban al, iki parmaktan yeniden başla
-      const current = liveFromPointers(g);
-      const maxX = Math.max(0, (g.coverPxW * current.zoom - g.cellPxW) / 2);
-      const maxY = Math.max(0, (g.coverPxH * current.zoom - g.cellPxH) / 2);
-      g.t0 = { zoom: current.zoom, panX: maxX ? current.ox / maxX : 0, panY: maxY ? current.oy / maxY : 0 };
-      g.pointers.forEach((p, id) => g!.startPointers.set(id, { ...p }));
-      g.multi = true;
-    }
-    g.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    g.startPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  };
-
-  const onCellPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const g = gestureRef.current;
-    if (!g || !g.pointers.has(e.pointerId)) return;
-    g.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    const s = g.startPointers.get(e.pointerId);
-    if (s && !g.moved && Math.hypot(e.clientX - s.x, e.clientY - s.y) > TAP_SLOP_PX) g.moved = true;
-    if (g.moved || g.multi) setLive(liveFromPointers(g));
-  };
-
-  const onCellPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    const g = gestureRef.current;
-    if (!g || !g.pointers.has(e.pointerId)) return;
-    g.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (g.moved || g.multi) {
-      actions.setStoryCellTransform(g.itemId, toTransform(g, liveFromPointers(g)));
-    } else {
-      handleCellTap(g.index);
-    }
-    // Hareket bitti: taahhüt edilen konuma 240ms geçişle döner (kenarda rubber-band geri yaylanması)
-    gestureRef.current = null;
-    setLive(null);
-  };
-
-  const onCellPointerCancel = () => {
-    gestureRef.current = null;
-    setLive(null);
-  };
+    },
+    onMove: (_index, d) => {
+      if (baseRef.current) setLive(liveFrom(baseRef.current, d));
+    },
+    onEnd: (index, d) => {
+      const b = baseRef.current;
+      baseRef.current = null;
+      if (d.tap) handleCellTap(index);
+      else if (b) actions.setStoryCellTransform(b.itemId, toTransform(b, liveFrom(b, d)));
+      // Taahhüt edilen konuma 240ms geçişle döner (kenarda rubber-band geri yaylanması)
+      setLive(null);
+    },
+    onCancel: () => {
+      baseRef.current = null;
+      setLive(null);
+    },
+  });
 
   // Masaüstü: tekerlek ile hücre yakınlaştırma (non-passive dinleyici)
   const wheelStateRef = useRef({ storyPhotos, cellTransforms });
@@ -404,7 +346,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
           const cover = coverSize(cell, item.dimensions.width, item.dimensions.height);
           const committed = clampCellTransform(transformFor(item));
           const isLive = live?.index === idx;
-          const g = gestureRef.current;
+          const g = baseRef.current;
           // Taahhüt edilen konum export ile aynı oranlardan (computeCellDraw) türetilir
           const zoom = isLive ? live!.zoom : committed.zoom;
           const txPct = isLive && g
@@ -424,10 +366,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
               tabIndex={0}
               aria-label={`${idx + 1}. hücre${isSelected ? ", seçili" : ""}`}
               aria-pressed={isSelected}
-              onPointerDown={(e) => onCellPointerDown(e, idx)}
-              onPointerMove={onCellPointerMove}
-              onPointerUp={onCellPointerUp}
-              onPointerCancel={onCellPointerCancel}
+              {...cellGesture.bind(idx)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();

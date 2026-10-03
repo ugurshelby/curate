@@ -5,14 +5,11 @@ import { Sliders, Star, Palette, X, FileCode, ChevronDown, Layers, Eye, EyeOff }
 import {
   useStudio,
   getStudioSelection,
-  CURATE_PRESETS,
   parseCubeLUT,
   PLATFORM_SPECS,
   StudioItem,
   drawCarouselFrame,
   createStudioItem,
-  calculateAspectCrop,
-  applyPresetToImageData,
   CarouselPreviewRenderer,
   CarouselRenderOptions,
   CAROUSEL_OUTPUT_WIDTH,
@@ -27,29 +24,8 @@ import { StudioShell, StageNote } from "./StudioShell";
 import { AddMenu } from "./AddMenu";
 import { ReferencePicker } from "./ReferencePicker";
 import { Filmstrip } from "./Filmstrip";
+import { PresetStrip, usePresetThumbs } from "./PresetStrip";
 import { reportRenderTime } from "./PerfHud";
-
-/** Fotoğraf yokken preset kartı yedeği (atmosfer rengi) */
-const PRESET_SWATCHES: Record<string, string> = {
-  moody_teal: "from-teal-600/40 via-cyan-950/40 to-zinc-900",
-  warm_silhouette: "from-orange-500/40 via-amber-800/40 to-zinc-900",
-  night_cinematic: "from-cyan-400/30 via-rose-950/40 to-black",
-  muted_coastal: "from-sky-300/30 via-stone-500/20 to-zinc-900",
-  amber_grain: "from-amber-400/40 via-yellow-900/30 to-zinc-900",
-  monochrome_noir: "from-zinc-200/30 via-zinc-800/60 to-black",
-};
-
-const PRESET_TAGS: Record<string, string> = {
-  moody_teal: "Mimari & Teal",
-  warm_silhouette: "Siluet & Ters Işık",
-  night_cinematic: "Neon & Halation",
-  muted_coastal: "Pastel & Ferah",
-  amber_grain: "35mm Analog Gren",
-  monochrome_noir: "Grafik B&W",
-};
-
-const THUMB_W = 100;
-const THUMB_H = 76;
 
 /** Hedef → export platformu (spec §4.4 K1). Önizleme tam = export boyutu, taslak = yarısı (slider sürüklenirken). */
 const TARGET_PLATFORM = { instagram: "ig_post_4_5", tiktok: "tiktok_9_16" } as const;
@@ -86,7 +62,6 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   const [isToolsOpen, setIsToolsOpen] = useState<boolean>(false);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [isReferenceOpen, setIsReferenceOpen] = useState<boolean>(false);
-  const [presetThumbs, setPresetThumbs] = useState<Record<string, string>>({});
 
   // Context Menu
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
@@ -192,38 +167,9 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
     };
   }, []);
 
-  // Preset kartı önizlemeleri: filmstrip proxy'sinden küçük boyutta, preset fonksiyonunun kendisiyle
+  // Preset kartı önizlemeleri: filmstrip proxy'sinden küçük boyutta (ortak PresetStrip)
   const thumbSrc = activePhoto ? activePhoto.proxyUrl || activePhoto.originalUrl : null;
-  useEffect(() => {
-    if (!thumbSrc) {
-      setPresetThumbs({});
-      return;
-    }
-    let cancelled = false;
-    const img = new window.Image();
-    img.src = thumbSrc;
-    img.onload = () => {
-      if (cancelled) return;
-      const c = document.createElement("canvas");
-      c.width = THUMB_W;
-      c.height = THUMB_H;
-      const ctx = c.getContext("2d", { willReadFrequently: true });
-      if (!ctx) return;
-      const crop = calculateAspectCrop(img.naturalWidth, img.naturalHeight, THUMB_W, THUMB_H);
-      ctx.drawImage(img, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, THUMB_W, THUMB_H);
-      const base = ctx.getImageData(0, 0, THUMB_W, THUMB_H);
-      const out: Record<string, string> = { raw: c.toDataURL("image/jpeg", 0.8) };
-      for (const p of CURATE_PRESETS) {
-        const copy = new ImageData(new Uint8ClampedArray(base.data), THUMB_W, THUMB_H);
-        ctx.putImageData(applyPresetToImageData(copy, p, 1), 0, 0);
-        out[p.id] = c.toDataURL("image/jpeg", 0.8);
-      }
-      setPresetThumbs(out);
-    };
-    return () => {
-      cancelled = true;
-    };
-  }, [thumbSrc]);
+  const presetThumbs = usePresetThumbs(thumbSrc);
 
   // Wheel zoom: native, non-passive dinleyici (React onWheel passive olduğu için preventDefault hatası veriyordu)
   useEffect(() => {
@@ -416,44 +362,18 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   const panel = isEditSheetOpen ? (
     <div className="flex flex-col gap-3 p-3">
       {/* Preset'ler: yatay kaydırmalı tek satır (CDS §6.3) */}
-      <div className="flex gap-2 overflow-x-auto hide-scrollbar snap-x snap-mandatory -mx-3 px-3">
-        {[{ id: null as string | null, name: "Doğal", tag: "Orijinal renk" }, ...CURATE_PRESETS.map((p) => ({
-          id: p.id as string | null,
-          name: p.name,
-          tag: PRESET_TAGS[p.id] ?? p.category,
-        }))].map((p) => {
-          const isActive = p.id === null ? selectedPresetId === null && !state.customLut : selectedPresetId === p.id;
-          const thumb = presetThumbs[p.id ?? "raw"];
-          return (
-            <button
-              key={p.id ?? "raw"}
-              type="button"
-              title={p.tag}
-              aria-pressed={isActive}
-              onClick={() => {
-                if (p.id === null) {
-                  actions.setGlobalPreset(null);
-                  actions.setCustomLut(null);
-                } else {
-                  actions.setGlobalPreset({ id: p.id, intensity: itemIntensity / 100 });
-                }
-              }}
-              className={`press relative shrink-0 snap-start rounded-xl overflow-hidden border-2 bg-gradient-to-br ${
-                (p.id && PRESET_SWATCHES[p.id]) || "from-zinc-800 to-zinc-900"
-              } ${isActive ? "border-[#f5a623]" : "border-white/10"}`}
-              style={{ width: THUMB_W, height: THUMB_H }}
-            >
-              {thumb && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={thumb} alt="" draggable={false} className="absolute inset-0 w-full h-full object-cover" />
-              )}
-              <span className="absolute inset-x-0 bottom-0 px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/85 to-transparent text-left text-xs font-semibold leading-tight text-white">
-                {p.name}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <PresetStrip
+        thumbs={presetThumbs}
+        activeId={state.customLut && selectedPresetId === "custom_lut" ? "__lut" : selectedPresetId}
+        onSelect={(id) => {
+          if (id === null) {
+            actions.setGlobalPreset(null);
+            actions.setCustomLut(null);
+          } else {
+            actions.setGlobalPreset({ id, intensity: itemIntensity / 100 });
+          }
+        }}
+      />
 
       {/* Katmanlı ifşa: preset veya LUT seçiliyse yoğunluk */}
       {selectedPresetId && (
