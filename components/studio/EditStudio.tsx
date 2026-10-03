@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Wand2, RotateCw, FlipHorizontal2, RotateCcw, ZoomIn, Undo2 } from "lucide-react";
+import { Wand2, RotateCw, FlipHorizontal2, RotateCcw, ZoomIn, Undo2, Sparkles } from "lucide-react";
 import {
   useStudio,
   getStudioSelection,
@@ -29,6 +29,12 @@ import {
   rubberband,
   upscaleFactorAllowed,
   derivedLabel,
+  AiTask,
+  AI_TASKS,
+  SuspectRegion,
+  prepareAiInput,
+  suspectRegionFromImages,
+  acceptAiResult,
 } from "@/lib";
 import { StudioShell, StageNote } from "./StudioShell";
 import { AddMenu } from "./AddMenu";
@@ -39,6 +45,8 @@ import { PresetStrip, usePresetThumbs } from "./PresetStrip";
 import { usePanPinch, PanPinchDelta } from "./usePanPinch";
 import { reportRenderTime } from "./PerfHud";
 import { DerivedBadge } from "./NoticeToast";
+import { AiRepairSheet } from "./AiRepairSheet";
+import { AiReviewScreen } from "./AiReviewScreen";
 
 type EditTab = "preset" | "crop" | "fix";
 
@@ -81,6 +89,18 @@ interface CropBase {
   Hr: number;
 }
 
+/** AI sonucu: kontrol sayfasında bekler, "Kullan" denmeden kütüphaneye girmez */
+interface AiReview {
+  task: AiTask;
+  blob: Blob;
+  url: string;
+  width: number;
+  height: number;
+  sourceId: string;
+  originalUrl: string;
+  suspect: SuspectRegion | null;
+}
+
 interface EditStudioProps {
   onBack: () => void;
   onOpenModule: (module: StudioModule) => void;
@@ -101,6 +121,8 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
   const [liveCrop, setLiveCrop] = useState<LiveCrop | null>(null);
   const [liveFrame, setLiveFrame] = useState<{ w: number; h: number } | null>(null);
   const [isEnlarging, setIsEnlarging] = useState(false);
+  const [isAiOpen, setIsAiOpen] = useState(false);
+  const [aiReview, setAiReview] = useState<AiReview | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -423,6 +445,59 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
     }
   };
 
+  // --- AI ile onar (spec §4.5 E12): aktif fotoğrafın kendi pikselleri gider (ayarsız) ---
+  const prepareAiPixels = async (): Promise<Blob> => {
+    if (!item) throw new Error("No photo");
+    const img = sourceRef.current?.img ?? (await loadImage(item.originalUrl || item.proxyUrl));
+    return prepareAiInput(img);
+  };
+  const handleAiResult = async (task: AiTask, blob: Blob) => {
+    if (!item) return;
+    const url = URL.createObjectURL(blob);
+    try {
+      const img = await loadImage(url);
+      const original = sourceRef.current?.img ?? null;
+      let suspect: SuspectRegion | null = null;
+      try {
+        suspect = original ? suspectRegionFromImages(original, img) : null;
+      } catch {
+        suspect = null;
+      }
+      setIsAiOpen(false);
+      setAiReview({
+        task,
+        blob,
+        url,
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+        sourceId: item.id,
+        originalUrl: item.proxyUrl || item.originalUrl,
+        suspect,
+      });
+    } catch {
+      URL.revokeObjectURL(url);
+    }
+  };
+  const discardAiReview = () => {
+    if (aiReview) URL.revokeObjectURL(aiReview.url);
+    setAiReview(null);
+  };
+  const acceptAiReview = () => {
+    if (!aiReview) return;
+    const { blob, task, width, height } = aiReview;
+    const makeItem = () => {
+      const file = new File([blob], `ai_${task.toLowerCase()}.jpg`, { type: "image/jpeg" });
+      const newItem = createStudioItem(file, state.items.length);
+      newItem.dimensions = { width, height, aspectRatio: width / height };
+      return newItem;
+    };
+    // Ortak "sonuç ekle" yolu; silinecek en eski kopya AI sonucuysa önce onay (reddedilirse kontrol sayfası açık kalır)
+    if (acceptAiResult(actions, makeItem, aiReview.sourceId, (m) => window.confirm(m)) === "declined") return;
+    URL.revokeObjectURL(aiReview.url);
+    setAiReview(null);
+    setTab("preset");
+  };
+
   // --- Önce/sonra: Preset sekmesinde basılı tut → orijinal (kırpılmamış, preset'siz) ---
   const startHold = () => {
     if (tab !== "preset" || !hasPhoto) return;
@@ -711,15 +786,27 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
         onReference={() => setIsReferenceOpen(true)}
         onClear={state.items.length > 0 ? handleClear : undefined}
       />
+      <button
+        type="button"
+        onClick={() => {
+          endHold();
+          setIsAiOpen(true);
+        }}
+        disabled={!hasPhoto || !srcDims}
+        className="press ml-auto h-11 px-3 rounded-xl text-sm font-semibold bg-white/10 text-white flex items-center gap-1.5 disabled:opacity-40"
+      >
+        <Sparkles className="w-4 h-4 text-[#f5a623]" />
+        <span>AI ile onar</span>
+      </button>
       {out && !canEnlarge && (
-        <span className="ml-auto text-xs text-[#f5a623] text-right">Büyütmek için çok büyük</span>
+        <span className="text-xs text-[#f5a623] text-right">Büyütmek için çok büyük</span>
       )}
       <button
         type="button"
         onClick={handleEnlarge}
         disabled={!hasPhoto || !out || isEnlarging || !canEnlarge}
         title={out && !canEnlarge ? "Bu boyut için çok büyük" : undefined}
-        className={`press ${out && !canEnlarge ? "" : "ml-auto"} h-11 px-3 rounded-xl text-sm font-semibold bg-white/10 text-white flex items-center gap-1.5 disabled:opacity-40`}
+        className={`press h-11 px-3 rounded-xl text-sm font-semibold bg-white/10 text-white flex items-center gap-1.5 disabled:opacity-40`}
       >
         <ZoomIn className="w-4 h-4" />
         <span>{isEnlarging ? "Hazırlanıyor" : "Büyüt"}</span>
@@ -746,6 +833,27 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
         onConfirm={addSingleFile}
         maxSelect={1}
       />
+
+      <AiRepairSheet
+        open={isAiOpen}
+        onClose={() => setIsAiOpen(false)}
+        size={srcDims ? { w: srcDims.w, h: srcDims.h } : null}
+        prepareInput={prepareAiPixels}
+        onResult={handleAiResult}
+      />
+
+      {aiReview && (
+        <AiReviewScreen
+          resultUrl={aiReview.url}
+          originalUrl={aiReview.originalUrl}
+          width={aiReview.width}
+          height={aiReview.height}
+          taskLabel={AI_TASKS[aiReview.task].label}
+          suspect={aiReview.suspect}
+          onUse={acceptAiReview}
+          onDiscard={discardAiReview}
+        />
+      )}
 
       <QuickExportSheet
         isOpen={isExportOpen}

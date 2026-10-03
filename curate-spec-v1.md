@@ -31,7 +31,7 @@ Curate bu ihtiyaca cevap vermek için başladı: **tek tık, kişiye özel prese
 2. **Preset'ler jenerik değil, kişisel olmalı.** Film simülasyonu isimleri (Portra, Velvia vb.) değil, kullanıcının kendi estetiğinden türetilmiş adlandırılmış preset'ler (Moody Teal, Warm Silhouette, vb. — bkz. Bölüm 5) öncelikli sunulur.
 3. **Önizleme = Export.** Kullanıcının ekranda gördüğü, indirdiği dosyayla birebir aynı olmalı. Bu ilke ihlal edildiğinde (şu an olduğu gibi) bu P0 bug sayılır, her şeyin önüne geçer.
 4. **Gelişmiş özellikler arka planda durur.** Reinhard referans seçimi, split view gibi niş araçlar ana akışı kalabalıklaştırmaz; "Araçlar" gibi ikincil bir katmanda yaşar.
-5. **İstemci taraflı, sunucusuz kalır.** Hiçbir görsel sunucuya yüklenmez; bu bir pazarlama sözü değil, mimari karar — her yeni özellik bu sınırın içinde tasarlanır.
+5. **İstemci taraflı, sunucusuz kalır.** Hiçbir görsel sunucuya yüklenmez; bu bir pazarlama sözü değil, mimari karar — her yeni özellik bu sınırın içinde tasarlanır. **Tek bilinçli istisna (sahip kararı 2026-10-03, Faz AI1):** yalnız Düzenle'deki "AI ile onar", yalnız kullanıcı dokunuşuyla, tek fotoğraf, kendi proxy'miz (`/api/ai`) üzerinden Google Vertex'e gider. Fotoğraf sunucuda saklanmaz, loglanmaz (§4.5 E12).
 
 ---
 
@@ -118,7 +118,8 @@ Geçersiz kılınan taslak satırlar: önceki Faz S taslağındaki "1 fotoğraf 
 | E8 | Export: her zaman tek dosya, doğrudan iner, `duzenle_01.jpg`, JPEG 0.97, 8 MB'ı aşarsa basamaklı düşüş ve gösterim; PNG "Gelişmiş" altında. | D1 | **Uygulandı (D1)**: `PLATFORM_SPECS.edit` |
 | E9 | Yükleme: kütüphane boş başlar; "+" menüsünde Fotoğraf Yükle ve Referans Görsel Yükle (tek seçim); sınır 1 fotoğraf. Alt çubukta "Büyüt" düzenlenmiş hâli (kırpılmış + preset'li) yeni fotoğraf olarak kütüphaneye ekler ve Upscale'i onunla açar (sahip kararı 2026-10-03). Upscale çıktısı uzun kenar en çok **8192 px** ve alan en çok **16 MP** **[VARSAYIM, telefonda ölçülmedi]**; aşan çarpan kapanır ve yanında "Bu boyut için çok büyük" yazar. | D1 | **Uygulandı (D1)**: `UPSCALE_MAX_LONG_EDGE`, testli |
 | E11 | **Türetilmiş fotoğraf (sahip kararı 2026-10-03, hafif yol):** kayıtta isteğe bağlı `sourceId` ve `derivedBy` ("upscale", ileride "ai"); sürüm yapısı yok. Tek ortak `addResultItem`: kaynağın arkasına ekler ve seçer, ayarlar sıfır başlar. Diğer modüller sıradan fotoğraf olarak görür (sınırlara sayılır), rozet "Büyütülmüş". Düzenle'de "Kaynağa dön" (44px) kaynağı ayarlarıyla açar. Türetilmiş silinirse yalnız o; kaynak silinirse türetilmişler kalır, `sourceId` temizlenir; her silmede URL'ler bırakılır. Kaynak başına en çok 2 türetilmiş, üçüncüde en eskisi silinir ve kısa mesaj gösterilir. | D1b | **Uygulandı**, `tests/derived-items.test.ts` |
-| E10 | Düzeltme sekmesi (Otomatik + Noise Azalt, Kenar Netliği, Kenar Renk Düzelt, Gölge Aç, Parlak Alan Kurtar, Pus Gider); yalnız iyileştirir, detay üretmez; AI tabanlı onarım yok. | D2 | Kod yok |
+| E10 | Düzeltme sekmesi (Otomatik + Noise Azalt, Kenar Netliği, Kenar Renk Düzelt, Gölge Aç, Parlak Alan Kurtar, Pus Gider); yalnız iyileştirir, detay üretmez; **Düzeltme sekmesinde** AI tabanlı onarım yok (AI, ayrı "AI ile onar" eylemidir, E12). | D2 | Kod yok |
+| E12 | **"AI ile onar" (sahip kararı 2026-10-03, Faz AI1):** Düzenle alt çubuğunda eylem; dört görev: Büyüt (A, 4K), Gürültü temizle (B, 2K), Kenar ve renk kayması düzelt (C, 2K), Patlak alanı ve pusu kurtar (D, 2K). Model görev başına: A/B/C Flash, D Pro (Flash D'de güneş diski uydurdu). Test edilmiş istemler aynen; model adı, boyut, istem, süre ve ₺ tahmini yalnız `lib/ai/config.ts`. Giden: **aktif fotoğrafın kendi pikselleri** (ayarsız; türetilmişse onun pikselleri), uzun kenar ≤ 2048, JPEG 0.92. Sunucu (Vercel, `maxDuration` 120) 4 MB üstünü reddeder, sonucu JPEG q92'ye çevirir, 4,3 MB'a sığana kadar kaliteyi (≥ 80) sonra boyutu düşürür. Erişim: `CURATE_AI_PASSWORD` (tarayıcıda saklanır), IP başına günde 10 yanlış şifre (genel sayaç yok); kota günde 20, ayda 150 (env), sayaç Upstash Redis REST, yoksa bellek; `AI_ENABLED=false` hepsini kapatır. Yeniden deneme yalnız 429/503'te bir kez ve kalan süre yetiyorsa. Sonuç önce tam ekran önce/sonra sayfasında ("AI bazen fotoğrafta olmayan bir şey ekleyebilir. Kaydetmeden önce kontrol et."; basılı tut: orijinal; hafif "Buraya dikkatli bak" işareti, kesin tespit değil); "Kullan" ortak `addResultItem` ile türetilmiş ("AI sonucu") ekler, "At" hiçbir şey eklemez. Silinecek en eski kopya AI sonucuysa önce onay sorulur. İptal: "İptal edildi; ücret yansımış olabilir." Gizlilik notu: "Bu işlem için fotoğraf Google'a gönderilir." Renk geri eşleme yok. Inpainting/outpainting yasağı (§7.3) sürer. | AI1 | **Uygulandı (AI1)**: `lib/ai/*`, `app/api/ai/route.ts`, testli; gerçek çağrı yalnız B, yerelde |
 
 **Kural:** P0 hataları kapanmadan P1'e geçilmez. P1 kapanmadan yeni özellik (preset genişletme, UI değişikliği vb.) eklenmez — mevcut temel sağlamlaşmadan üzerine inşa etmek, önceki preset kalibrasyon çalışmasında da görüldüğü gibi (koda hiç yansımadı), emeği boşa harcar.
 
@@ -166,7 +167,7 @@ Geçersiz kılınan taslak satırlar: önceki Faz S taslağındaki "1 fotoğraf 
 Bunlar bilinçli olarak dışarıda bırakılıyor — "madem elimizdeyiz" diye eklenmemeli:
 
 1. **Çok kullanıcılı/paylaşımlı özellikler** (hesap sistemi, bulut senkronu, paylaşılan preset kütüphanesi). Tek kullanıcılık araç.
-2. **Sunucu taraflı işleme.** Mimari karar, performans optimizasyonu bile olsa sunucuya görsel yükleme eklenmez.
+2. **Sunucu taraflı işleme.** Mimari karar, performans optimizasyonu bile olsa sunucuya görsel yükleme eklenmez. Tek istisna §4.5 E12 ("AI ile onar", sahip kararı 2026-10-03); başka hiçbir modül görsel göndermez.
 3. **AI destekli inpainting/outpainting.** Tanıtım dökümanında "Faz 2" olarak planlanmış ama bu spec'in kapsamında değil — P0/P1 sağlamlaşmadan konuşulmaz.
 4. **Gelişmiş manuel renk ayarı arayüzü** (curve editör, kanal bazlı ayrı kontroller, ton ayrımı, HSL). Tek istisna: Düzenle modülünün Düzeltme sekmesi, satır başına tek açma/kapama ve tek şiddet kaydırıcısı (§4.5 E2). Felsefeyle (Bölüm 3, madde 1) doğrudan çelişir.
 5. **Kamera/çekim asistanı özellikleri** (EV önerisi, shutter speed uyarısı vb.) — bu Curate'in değil, ayrı kamera uygulamasının işi.
@@ -186,6 +187,7 @@ Bunlar bilinçli olarak dışarıda bırakılıyor — "madem elimizdeyiz" diye 
 | **Faz M2 — Render hattı (A)** | §4.3 #11, §4.2 #5/#7, Hero metrik kaynağı | Önizleme ve export 1080×1350'de aynı çıktı (veya belgelenmiş tolerans) |
 | **Faz S — Story ve Export** | K1, K2, S-a, S-b | Export boyutları/MIME ve tek/çoklu indirme testlerle doğrulanır; parite korunur |
 | **Faz D1 — Düzenle: iskelet, Preset, Kırp** | §4.5 E1, E4–E9 | Prosedür 2 Düzenle'de 360/390/430'da geçer; kırpma matematiği, export boyut/MIME ve parite testleri |
+| **Faz AI1 — Düzenle: AI ile onar** | §4.5 E12 | Sahte fetch'le istek şeması, eşlemeler, şifre/kota/4 MB/JPEG/görsel yok testleri; build çıktısında sır yok (`npm run check:secrets`); Prosedür 2 yeni sayfaları 360/390/430'da geçer |
 | **Faz D2 — Düzenle: Düzeltme sekmesi** | §4.5 E3, E10 | Sentetik görsellerle ölçülebilir kabul (spec dışı prompt `prompt-D2.md`), parite testi |
 | **Faz 5+ — Nice-to-have** | Otomatik preset önerisi, 9:16 dump kolajı iyileştirmeleri, vb. | Ayrı değerlendirilir, bu fazlar tamamlanmadan başlanmaz |
 
@@ -217,6 +219,7 @@ Buna göre her faz için prompt şöyle yazılır:
 7. ~~Story ve 6'dan fazla fotoğraflı kütüphane~~ **KAPANDI (sahip onayı 2026-10-03):** Story ilk 6'sını kullanır ve bunu uyarıyla gösterir.
 8. ~~8 MB sınırı ve Upscale~~ **KAPANDI (sahip onayı 2026-10-03):** Sınır yalnız platform hedeflerine (post, story, TikTok, Çerçeve) uygulanır; Upscale'e uygulanmaz.
 9. ~~Story güvenli alan bandı~~ **KAPANDI (sahip onayı 2026-10-03):** 250 px üst ve alt. Telefonda Instagram arayüzüyle karşılaştırma hâlâ yapılmadı.
+10. **(Uğur)** AI1: Vercel'de gerçek süre ve zaman aşımı, telefonda akış, gerçek maliyet (Billing) ve sayacın dağıtık çalışması doğrulanmadı; ₺ tahminleri üçüncü taraf fiyatlarıdır.
 
 ---
 

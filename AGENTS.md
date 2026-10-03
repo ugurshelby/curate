@@ -13,16 +13,16 @@ Design authority is `design/CURATE_DESIGN_SYSTEM.md`; UI rule order is in `.agen
 ## 2. Permission Model
 - All development, commits, and pushes happen directly on `main`. No side or agent branches.
 - Whenever changes are committed or pushed, always commit and push directly to `main`.
-- This project has no database, no server, and no secrets. Do not add one. Never print or commit secret values; names only.
+- No database. The only server code is the "AI ile onar" proxy (`app/api/ai/route.ts`, owner decision 2026-10-03); do not add other server features. No secrets in the repo or the client bundle (the repo is public); secrets live only as Vercel server environment variables, never `NEXT_PUBLIC_*`. Never print or commit secret values; names only. After `npm run build`, `npm run check:secrets` must report 0 findings.
 - Do not decide owner questions (see `docs/reference/curate-reference.md` section 13). List them in reports.
 - If a browser is unavailable to you, mark every visual or interaction check as "not verified" instead of inferring it from code.
 
 ## 3. Scope Lock
-- Strictly forbidden: panorama (permanently closed by owner, 2026-10-02), AI inpainting/outpainting, accounts, server-side image upload.
+- Strictly forbidden: panorama (permanently closed by owner, 2026-10-02), AI inpainting/outpainting, accounts, server-side image upload. Only exception to the upload ban: Düzenle → "AI ile onar" (`curate-spec-v1.md` §4.5 E12).
 - No manual color UI (curves, channels, split toning, HSL). Only exception: Düzenle's Düzeltme tab, one on/off and one strength slider per row (`curate-spec-v1.md` §4.5).
 - Allowed for editorial aesthetic (per owner decision): optical highlight halation for Night Cinematic, and tactile 35mm analog grain for Amber Grain. Light leak, vignette, and panorama splitting remain forbidden. The vignette ban covers ADDING an aesthetic vignette; CORRECTING lens-caused edge darkening (Düzenle → Düzeltme, "Kenar Renk Düzelt") is allowed.
 - If the spec asks for any forbidden feature, stop and ask. Do not reintroduce removed features from git history.
-- No new dependency that sends pixels off-device.
+- No new dependency that sends pixels off-device. Single owner-approved exception: Düzenle's "AI ile onar", only on a user tap, one photo, only through our own proxy to Google Vertex with plain `fetch` (no third-party client SDK). No other module sends images. Photos are not stored or logged on the server; the log line holds task, model, duration, sizes and estimated cost only. Model ids, prompts and costs live only in `lib/ai/config.ts`.
 - No default or seed photos, mock EXIF strings, or debug labels (`Acik`, `Kapali`, proxy dimensions) in the UI. The library starts empty; the 13 owner-approved files in `public/reference-images/` enter it only through an explicit user action (same-origin fetch, never sent anywhere).
 - Export targets live as data in `lib/export/platform-specs.ts`. Owner decisions and their phases (K, M1, M2, S) are in `curate-spec-v1.md` §4.4.
 - Do not label a CSS filter as Lanczos.

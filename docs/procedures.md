@@ -69,7 +69,8 @@ Every procedure run must conclude with these steps in exact order:
      tinyText: [...document.querySelectorAll('body *')].filter(e => !e.children.length && e.textContent.trim() && visible(e) && parseFloat(getComputedStyle(e).fontSize) < 12).map(e => e.textContent.trim().slice(0, 20)),
      glass: [...document.querySelectorAll('.glass-panel')].filter(visible).length });
   ```
-  Required: `overlap` false, `hScroll` false, `offscreen`, `smallTargets` and `tinyText` empty, `glass` ≤ 3. Items inside a horizontal scroller (preset row, filmstrip) are excluded from `offscreen`; they are clipped by the scroller, not the page.
+  Required: `overlap` false, `hScroll` false, `offscreen`, `smallTargets` and `tinyText` empty, `glass` ≤ 3.
+  Düzenle "AI ile onar" (Faz AI1): the sheet is `[data-ai-sheet]` (must fit the viewport without inner scroll; 44px targets, 12px text); the full-screen review marks `[data-review-header]`, `[data-review-stage]`, `[data-review-bar]` (stage between header and bar, inside the viewport). Mock `/api/ai` in the page (override `fetch`) so no paid call is made; finish CSS animations (`document.getAnimations().forEach(a => a.finish())`) before measuring in the hidden pane. Items inside a horizontal scroller (preset row, filmstrip) are excluded from `offscreen`; they are clipped by the scroller, not the page.
   Notes: wait for the panel animation (≈250 ms) before measuring; in the in-app browser, transitions only advance while the pane is rendered, so take a screenshot first.
 - **May Change:** CSS classes, layout padding, responsive flex/grid wrappers.
 - **Must Only Report:** Visual rendering status (mark as "not verified" if browser unavailable).
@@ -104,7 +105,7 @@ Every procedure run must conclude with these steps in exact order:
 - **Scope:** Repository visibility, sensitive files, EXIF sanitation, and `.gitignore` integrity.
 - **Steps:**
   1. Check GitHub repository visibility using `gh repo view`.
-  2. Scan tracked files for secret-shaped tokens (API keys, passwords, private keys).
+  2. Scan tracked files for secret-shaped tokens (API keys, passwords, private keys). After `npm run build`, run `npm run check:secrets` (reads `.env` values in memory, never prints them; scans `.next` for real values, Google key shape, and secret names in the client bundle); required: 0 findings.
   3. Verify `.gitignore` covers `.env*`, `.vercel`, build outputs, dumps, and screenshots.
   4. Audit EXIF and GPS sanitation logic in export pipelines.
   5. List tracked files that look personal (reference photos under `public/reference-images/`).
@@ -164,8 +165,9 @@ Every procedure run must conclude with these steps in exact order:
   3. Run `npm run lint` (must exit 0).
   4. Run `npm test` (must exit 0).
   5. Run `npm run build` (must exit 0).
-  6. Generate git status and diff summary.
-  7. Compile list of residual risks and unverified browser interactions.
+  6. Run `npm run check:secrets` (must report 0 findings).
+  7. Generate git status and diff summary.
+  8. Compile list of residual risks and unverified browser interactions.
 - **May Change:** Nothing (read-only audit).
 - **Must Only Report:** Go/No-Go push recommendation, diff summary, and risk assessment.
 - **Docs Updated:** `logs/YYYY-MM-DD.md`.

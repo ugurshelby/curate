@@ -17,7 +17,7 @@ Three written descriptions exist. They do not say the same thing.
 | Source | What it states | Tag |
 |---|---|---|
 | `README.md` | Uğur's personal, single-user, mobile-first tool for Instagram/TikTok **Carousel Dump** and **Story Dump**. Five modules since Faz D1: Carousel 4:5, Story 9:16, Minimal Frame, Lanczos-3 upscale, Düzenle. Planned items are marked with their phase. | [VERIFIED] 2026-10-03 |
-| `AGENTS.md` | Personal single-user browser darkroom for Uğur, mobile primary (390×844). Scope lock: panorama permanently closed, AI inpainting/outpainting, accounts and server upload forbidden; halation (Night Cinematic) and 35mm grain (Amber Grain) allowed; light leak and vignette forbidden. | [VERIFIED] 2026-10-02 |
+| `AGENTS.md` | Personal single-user browser darkroom for Uğur, mobile primary (390×844). Scope lock: panorama permanently closed, AI inpainting/outpainting, accounts and server upload forbidden (single exception: Düzenle "AI ile onar" proxy, 2026-10-03); halation (Night Cinematic) and 35mm grain (Amber Grain) allowed; light leak and vignette forbidden. | [VERIFIED] 2026-10-02 |
 | `curate-spec-v1.md` | A **personal, single-user** browser tool for **Uğur**, who edits architectural / silhouette / reflection dumps from a Redmi Note 12 Pro 5G + Old Roll workflow. One tap, personal presets, no required sliders. Not a multi-user product. No accounts, no cloud sync, no server-side processing. The spec says that if a prompt conflicts with the spec, the spec wins. | [VERIFIED] |
 
 Stated product behavior that appears in more than one of those files:
@@ -163,40 +163,40 @@ Earlier statements in this file that "worker and proxy are unwired" (§10 item 4
 ---
 
 ## 4. Data and infrastructure (DB, schema, migrations, external APIs, cron jobs, deployment, branch and deploy triggers)
-Last verified: 2026-10-02
+Last verified: 2026-10-03
 
 | Concern | State | Tag |
 |---|---|---|
 | Database, schema, migrations | None | [VERIFIED] no SQL/Prisma files; no DB dependency |
-| External APIs | None in source. No `process.env` reads in `*.ts`/`*.tsx` | [VERIFIED] grep |
+| External APIs | One: Google Vertex `generateContent` via our own route `app/api/ai/route.ts` (Faz AI1, owner decision 2026-10-03). `process.env` is read only in `lib/ai/server.ts` / `lib/ai/quota.ts` (server). Upstash Redis REST for the quota counter (plain `fetch`) | [VERIFIED] code; one real call (task B) on localhost 2026-10-03 |
 | Cron | None | [VERIFIED] no workflow or route |
-| Auth | None | [VERIFIED] |
-| Persistence | None. No `localStorage` usage. Refresh drops uploads | [VERIFIED] |
-| Env files | None in the tree | [VERIFIED] |
+| Auth | Only the AI route: shared password `CURATE_AI_PASSWORD` in header `x-curate-password` (URI-encoded); 10 wrong per IP per day → 429 | [VERIFIED] tests |
+| Persistence | Photos: none, refresh drops uploads. `localStorage` holds only the AI password (`curate.ai.password`). Quota counters in Upstash Redis (`curate:ai:day:*`, `curate:ai:month:*`, `curate:ai:pwfail:*`) | [VERIFIED] |
+| Env files | `.env` local only (ignored); names in `.env.example`: `VERTEX_API_KEY`, `CURATE_AI_PASSWORD`, `AI_ENABLED`, `AI_DAILY_LIMIT`, `AI_MONTHLY_LIMIT`, `UPSTASH_REDIS_REST_URL/TOKEN` or `KV_REST_API_URL/TOKEN` | [VERIFIED] |
 | Branch | Single-branch model: direct commit and push to `main`; side branches eliminated | [VERIFIED] |
 | GitHub Actions | Added in Phase 5 via `.github/workflows/ci.yml` | [VERIFIED] |
 | GitHub Pages | None | [VERIFIED] |
-| Vercel | `.gitignore` ignores `.vercel`. No `vercel.json`. Commit `79d4cc4` mentions zero-config Vercel | [VERIFIED] |
+| Vercel | Project `curate` exists (framework nextjs, Node 24.x); latest production deployment READY (2026-10-03 read via Vercel API). No `vercel.json`. AI route `maxDuration` 120 s; docs: fluid compute (default on) allows up to 300 s on Hobby, 800 s on Pro | [VERIFIED] API + docs |
 | Deploy trigger | Automatic on push to `main` if connected to Vercel | [UNVERIFIED] |
 
-Images never leave the browser if the user uses this app as written. Reference photos sit in a public GitHub repo. [VERIFIED] `gh repo view` `isPrivate: false`.
+Images never leave the browser except through Düzenle → "AI ile onar" (one photo per user tap, to Google via our proxy; not stored or logged). Reference photos sit in a public GitHub repo. [VERIFIED] `gh repo view` `isPrivate: false`.
 
 PWA manifest exists (`public/manifest.json`, `display: standalone`). `app/layout.tsx` does not link it. [VERIFIED]
 
 ---
 
 ## 5. Security, secrets and cost exposure (env handling, .gitignore coverage, auth, abuse and quota risks)
-Last verified: 2026-10-02
+Last verified: 2026-10-03
 
 ### Secrets
 
-No `.env` files. No `process.env` in application TypeScript. No API keys were found in tracked files. [VERIFIED]
+Secrets live only in local `.env` (ignored) and Vercel server env vars; none are `NEXT_PUBLIC_*`. `npm run check:secrets` after build: 76 files (19 client), 6 real values searched, 0 findings (2026-10-03). History scan (D1b): key found 0 times in 42 commits. [VERIFIED]
 
 `.gitignore` ignores `.env`, `.env*.local`, `.env.production`, `*.pem`, `.vercel`, `/screenshots/`, `capture-screenshots.mjs`.
 
 ### Auth, abuse, quota
 
-There is no server endpoint to abuse and no account system. [VERIFIED] Processing cost is client CPU/RAM.
+One server endpoint, `/api/ai` (paid). Guards: `AI_ENABLED`, shared password with timing-safe compare, 10 wrong passwords per IP per day (no global lock), daily 20 / monthly 150 calls (env), counted before the model call and not refunded, input ≤ 4 MB JPEG, at most one waited retry on 429/503. Counter is Upstash Redis when its env vars exist, otherwise per-instance memory (not durable on Vercel). The password sits in the browser's `localStorage` in plain text (personal tool). [VERIFIED] tests; distributed counter behaviour [UNVERIFIED]
 
 ### EXIF
 
@@ -210,7 +210,7 @@ Thirteen `.jfif` files are tracked under `public/reference-images/` in a public 
 
 ### Cost
 
-No paid API usage in code. Hosting cost is zero inside this repo. [VERIFIED]
+Paid: Google Vertex image models per call. Estimates in `lib/ai/config.ts` (A ~₺8, B ~₺5, C ~₺5, D ~₺7) are third-party prices [UNVERIFIED]; real cost is read by the owner in Google Billing. Worst case with defaults: 150 calls per month.
 
 ---
 
@@ -222,7 +222,8 @@ Last verified: 2026-10-03
 | `npx tsc --noEmit` | Required by rules | Pass, exit 0 [VERIFIED] |
 | `npm run lint` | `"lint": "next lint"` | Pass, no warnings [VERIFIED] |
 | `npm run build` | `"build": "next build"` | Pass, exit 0 [VERIFIED] |
-| `npm test` | Added in Phase 5 via Vitest | Pass, exit 0, 24 tests pass (core pipeline, upscale, selection, 6 editorial presets, proxy items) [VERIFIED] |
+| `npm test` | Added in Phase 5 via Vitest | Pass, exit 0, 12 files / 118 tests (2026-10-03, Faz AI1) [VERIFIED] |
+| `npm run check:secrets` | `scripts/check-bundle-secrets.mjs`, run after build | 0 findings (2026-10-03) [VERIFIED] |
 | CI | `.github/workflows/ci.yml` | Triggers: push to `main`, pull request to `main`, manual. Node 22: tsc, lint, test, build [VERIFIED] file read; run results not checked [UNVERIFIED] |
 | Visual / mobile viewport check | Required after UI changes (AGENTS.md §4, CDS §6.5) | 2026-10-03 (Faz D1): Procedure 2 passes in all five modules at 360×740, 390×844, 430×932 (emulated, desktop CPU) [VERIFIED]; phone and landscape [UNVERIFIED] |
 
@@ -231,7 +232,7 @@ Last verified: 2026-10-03
 ## 7. Conventions and working systems (patterns, rules and processes)
 Last verified: 2026-10-03
 
-1. **Scope lock written as forbidden features:** Optical highlight halation (Night Cinematic) and tactile 35mm analog grain (Amber Grain) allowed per owner decision; light leak, vignette, panorama splitting, server image uploads, and AI inpainting/outpainting remain forbidden. [VERIFIED]
+1. **Scope lock written as forbidden features:** Optical highlight halation (Night Cinematic) and tactile 35mm analog grain (Amber Grain) allowed per owner decision; light leak, vignette, panorama splitting, server image uploads (except Düzenle "AI ile onar"), and AI inpainting/outpainting remain forbidden. [VERIFIED]
 2. **Platform sizes as data:** `PLATFORM_SPECS` holds post 1080×1350, story 1080×1920, TikTok 1080×1920 (`verified: false`), all @ 0.97 with an 8 MB limit; `original` (Upscale) @ 0.97 without a limit. [VERIFIED]
 3. **Headless store plus `useSyncExternalStore`:** Module-level state machine subscribed via React. [VERIFIED]
 4. **Non-destructive export:** Operations execute on new canvas / ImageData copies. [VERIFIED]
@@ -327,7 +328,7 @@ Last verified: 2026-10-03
 5. ~~`.cube` LUT placement~~ **Resolved 2026-10-02:** under a collapsed "Araçlar" section (Faz M1).
 6. ~~Reference photos~~ **Resolved 2026-10-02:** they stay.
 7. ~~Is mobile primary?~~ **Resolved 2026-10-02:** yes. Still open: which preview render option (audit report §2) to adopt.
-8. Was zero-config Vercel connected, and should it deploy `main`?
+8. ~~Was zero-config Vercel connected?~~ **Answered by API 2026-10-03:** project `curate` exists with a READY production deployment. Still open: owner sets `VERTEX_API_KEY`, `CURATE_AI_PASSWORD` (and Upstash) in Vercel Production and Preview.
 9. ~~Rewrite or delete the UI rule file?~~ **Resolved 2026-10-02:** rewritten against existing files.
 10. ~~`layout.tsx` language~~ **Resolved:** now `lang="tr"`.
 11. ~~Frame aspect~~ **Resolved 2026-10-02:** Frame stays 1080×1350.
@@ -337,5 +338,7 @@ Last verified: 2026-10-03
 15. TikTok 1080×1920 to be confirmed on phone. (spec §10 q6)
 16. ~~Story with more than 6 library photos~~ **Resolved 2026-10-03:** first 6 with a warning.
 17. ~~8 MB limit for Upscale~~ **Resolved 2026-10-03:** not applied.
+18. ~~Vertex key vs "no secrets / no pixels off-device"~~ **Resolved 2026-10-03 (Faz AI1):** owner-approved single exception, recorded in spec §3.5, §7.2, §4.5 E12 and AGENTS.md §2–§3.
+19. AI1 not verified: real duration and timeout on Vercel, phone flow, real cost (Billing), counter under distributed load.
 18. ~~Story safe band~~ **Resolved 2026-10-03:** 250 px approved; phone comparison still not done.
 19. ~~Overlay hide control~~ **Resolved 2026-10-03:** eye toggle under the Carousel stage, default visible.

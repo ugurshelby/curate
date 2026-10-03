@@ -22,6 +22,32 @@ export function derivedLabel(kind: DerivedKind | undefined): string | null {
   return kind ? DERIVED_LABEL[kind] : null;
 }
 
+function evictionNotice(evicted: StudioItem): string {
+  return evicted.derivedBy === 'ai'
+    ? `En eski AI sonucu silindi (en çok ${MAX_DERIVED_PER_SOURCE}).`
+    : `Bellek için en eski büyütülmüş kopya silindi (en çok ${MAX_DERIVED_PER_SOURCE}).`;
+}
+
+/** AI sonucunun silinmesi için sorulacak onay metni (ücretli işlem) */
+export const AI_EVICT_CONFIRM = 'En eski AI sonucu silinecek (ücretli bir işlemdi). Devam?';
+
+/**
+ * AI sonucu "Kullan": ortak addResultItem yolu. Silinecek en eski kopya AI sonucuysa önce onay;
+ * reddedilirse hiçbir şey eklenmez. Büyüt sonucuysa mevcut davranış (mesajlı silme).
+ */
+export function acceptAiResult(
+  store: Pick<StudioStateMachine, 'evictionCandidate' | 'addResultItem'>,
+  makeResult: () => StudioItem,
+  sourceId: string,
+  confirm: (message: string) => boolean,
+): 'added' | 'declined' {
+  const victim = store.evictionCandidate(sourceId);
+  if (victim?.derivedBy === 'ai' && !confirm(AI_EVICT_CONFIRM)) return 'declined';
+  // Kayıt (ve blob URL'si) yalnız onaydan sonra oluşur
+  store.addResultItem(makeResult(), sourceId, 'ai');
+  return 'added';
+}
+
 const INITIAL_STATE: StudioState = {
   activeModule: 'carousel',
   items: INITIAL_ITEMS,
@@ -150,12 +176,18 @@ class StudioStateMachine {
         items: items.map((item, idx) => ({ ...item, order: idx })),
         selectedItemId: entry.id,
         edits,
-        notice: evicted
-          ? `Bellek için en eski ${derivedLabel((evicted as StudioItem).derivedBy)?.toLocaleLowerCase('tr')} kopya silindi (en çok ${MAX_DERIVED_PER_SOURCE}).`
-          : base.notice,
+        notice: evicted ? evictionNotice(evicted as StudioItem) : base.notice,
       };
     });
     return evicted;
+  }
+
+  /** Yeni sonuç eklenirse silinecek en eski türetilmiş (yoksa null). AI sonucuysa arayüz önce onay ister. */
+  public evictionCandidate(sourceId: string): StudioItem | null {
+    const siblings = this.state.items
+      .filter((i) => i.sourceId === sourceId)
+      .sort((a, b) => a.createdAt - b.createdAt);
+    return siblings.length >= MAX_DERIVED_PER_SOURCE ? siblings[0] : null;
   }
 
   public setNotice(notice: string | null) {

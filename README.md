@@ -42,6 +42,7 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 - **Önce/sonra:** Preset sekmesinde sahneye basılı tut → kırpılmamış, preset'siz orijinal.
 - **Export:** Tek dosya `duzenle_01.jpg`, kırpımın kendi çözünürlüğünde (uzun kenar en çok 4096 px, varsayım), JPEG %97, 8 MB üstünde basamaklı düşüş.
 - **Büyüt:** Düzenlenmiş hâli kaynağa bağlı yeni bir fotoğraf olarak ekleyip (rozet "Büyütülmüş", ayarları sıfır) Upscale'i onunla açar. Türetilmiş fotoğrafta "Kaynağa dön" kaynağı ayarlarıyla açar. Kaynak başına en çok 2 türetilmiş tutulur; üçüncüde en eskisi silinir ve kısa mesaj çıkar.
+- **AI ile onar:** Alt çubuktaki eylem dört işlem sunar (Büyüt, Gürültü temizle, Kenar ve renk kayması düzelt, Patlak alanı ve pusu kurtar), her biri tahmini süre ve ~₺ ile. Aktif fotoğrafın kendi pikselleri kendi proxy'miz (`/api/ai`) üzerinden Google Vertex'e gider ("Bu işlem için fotoğraf Google'a gönderilir"). Sonuç önce tam ekran önce/sonra sayfasında gösterilir; "Kullan" denmeden kütüphaneye girmez ("AI sonucu" rozetli türetilmiş fotoğraf). Şifre, günlük/aylık kota ve `AI_ENABLED` ile kapatma sunucuda; sırlar yalnız Vercel ortam değişkeninde (`.env.example`). Uygulamanın geri kalanı tamamen istemci taraflıdır.
 - Düzeltme sekmesi (Faz D2) henüz yok.
 
 ## 🚀 Dışa Aktarma
@@ -88,6 +89,9 @@ npm test
 npx tsc --noEmit
 npm run lint
 npm run build
+
+# Build çıktısında sır taraması (build sonrası)
+npm run check:secrets
 ```
 
 - **CI/CD:** GitHub Actions iş akışı (`.github/workflows/ci.yml`) pull request aşamasında `tsc`, `lint`, `test` ve `build` kontrollerini otomatik çalıştırır.

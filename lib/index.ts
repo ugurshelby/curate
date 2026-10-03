@@ -22,3 +22,8 @@ export * from './export/platform-specs';
 export * from './export/exif-sanitizer';
 export * from './export/zip-packager';
 export * from './export/export-plan';
+
+// AI ile onar (istemci tarafı; sunucu kodu lib/ai/server.ts yalnız route'tan içe aktarılır)
+export * from './ai/config';
+export * from './ai/client';
+export * from './ai/diff-check';

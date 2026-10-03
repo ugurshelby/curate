@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { ZoomIn } from "lucide-react";
+import { ZoomIn, Sparkles } from "lucide-react";
 import { StudioItem, derivedLabel } from "@/lib";
 
 interface FilmstripProps {
@@ -228,7 +228,7 @@ export function Filmstrip({ items, activeId, onTap, onReorder, onContextMenu }: 
                 title={derivedLabel(photo.derivedBy) ?? undefined}
                 className="absolute bottom-0.5 right-0.5 w-5 h-5 rounded-full bg-[#f5a623] text-black flex items-center justify-center pointer-events-none"
               >
-                <ZoomIn className="w-3 h-3" />
+                {photo.derivedBy === "ai" ? <Sparkles className="w-3 h-3" /> : <ZoomIn className="w-3 h-3" />}
               </span>
             )}
           </div>
