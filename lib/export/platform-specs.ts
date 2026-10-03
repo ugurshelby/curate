@@ -1,34 +1,60 @@
 /**
  * Curate Export — Platform Standards & Dimension Matrices
- * Hard-locked to Meta & TikTok optimum dimensions.
+ * Export targets as data (spec §4.4 K1, S-b).
  */
 
 import { ExportPlatform, ExportSpec } from '../core/types';
 
+/** Platform dosya sınırı (sahip kararı, Faz S): aşılırsa JPEG kalitesi kademeli düşer */
+export const MAX_EXPORT_BYTES = 8 * 1024 * 1024;
+/** Varsayılan en yüksek kalite ve düşüş basamakları */
+export const JPEG_QUALITY_STEPS = [0.97, 0.94, 0.91, 0.88, 0.85, 0.82, 0.79, 0.76];
+
 export const PLATFORM_SPECS: Record<ExportPlatform, ExportSpec> = {
   ig_post_4_5: {
     id: 'ig_post_4_5',
-    name: 'Instagram Carousel / Post (4:5)',
+    name: 'Instagram',
     width: 1080,
     height: 1350,
     aspectRatio: '4:5',
-    quality: 0.92, // Optimal sweet spot avoiding Meta aggressive recompression
+    quality: JPEG_QUALITY_STEPS[0],
+    filePrefix: 'dump',
+    maxBytes: MAX_EXPORT_BYTES,
+    verified: true,
   },
   ig_story_9_16: {
     id: 'ig_story_9_16',
-    name: 'Instagram / TikTok Story (9:16)',
+    name: 'Instagram Story',
     width: 1080,
     height: 1920,
     aspectRatio: '9:16',
-    quality: 0.92,
+    quality: JPEG_QUALITY_STEPS[0],
+    filePrefix: 'story',
+    maxBytes: MAX_EXPORT_BYTES,
+    verified: true,
   },
+  // VARSAYIM (spec §4.4 K1): 1080×1920 telefonda doğrulanmadı
+  tiktok_9_16: {
+    id: 'tiktok_9_16',
+    name: 'TikTok',
+    width: 1080,
+    height: 1920,
+    aspectRatio: '9:16',
+    quality: JPEG_QUALITY_STEPS[0],
+    filePrefix: 'tiktok',
+    maxBytes: MAX_EXPORT_BYTES,
+    verified: false,
+  },
+  // Upscale: boyut kaynağa bağlı; platform hedefi olmadığı için 8 MB sınırı uygulanmaz
   original: {
     id: 'original',
-    name: 'Original Resolution Lossless',
-    width: 0, // dynamic
-    height: 0, // dynamic
+    name: 'Orijinal boyut',
+    width: 0,
+    height: 0,
     aspectRatio: 'original',
-    quality: 0.94,
+    quality: JPEG_QUALITY_STEPS[0],
+    filePrefix: 'upscale',
+    verified: true,
   },
 };
 

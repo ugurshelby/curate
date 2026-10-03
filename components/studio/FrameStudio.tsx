@@ -7,7 +7,7 @@ import { QuickExportSheet } from "./QuickExportSheet";
 import { StudioShell, StageNote } from "./StudioShell";
 import { AddMenu } from "./AddMenu";
 import { ReferencePicker } from "./ReferencePicker";
-import { extractAdaptiveGradient, AdaptiveGradientResult, useStudio, getStudioSelection, createStudioItem } from "@/lib";
+import { extractAdaptiveGradient, AdaptiveGradientResult, useStudio, getStudioSelection, createStudioItem, createExportCanvas, PLATFORM_SPECS } from "@/lib";
 
 interface FrameStudioProps {
   onBack: () => void;
@@ -104,15 +104,11 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
     ctx.closePath();
   };
 
-  // Dışa aktarma blobu — Tam 1080x1350 Çözünürlükte Zemin + İç Fotoğraf + Analog Tarih Damgası
-  const getExportBlob = async (format: "jpeg" | "png" = "jpeg"): Promise<Blob> => {
-    const W = 1080;
-    const H = 1350;
-    const canvas = document.createElement("canvas");
-    canvas.width = W;
-    canvas.height = H;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Context failed");
+  // Export tuvali — 1080×1350 (sahip kararı: Çerçeve 4:5 kalır), sRGB; kodlama export sayfasında
+  const renderExportCanvas = async (): Promise<HTMLCanvasElement> => {
+    const W = PLATFORM_SPECS.ig_post_4_5.width;
+    const H = PLATFORM_SPECS.ig_post_4_5.height;
+    const { canvas, ctx } = createExportCanvas(W, H);
     if (!photoPath) throw new Error("No photo to export");
 
     // 1. Çerçeve Zemini Çiz
@@ -200,14 +196,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
       ctx.restore();
     }
 
-    const mimeType = format === "png" ? "image/png" : "image/jpeg";
-    return new Promise((res) => {
-      canvas.toBlob(
-        (b) => res(b!),
-        mimeType,
-        mimeType === "image/jpeg" ? 0.92 : undefined
-      );
-    });
+    return canvas;
   };
 
   const stage = (
@@ -348,12 +337,8 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         platform="ig_post_4_5"
-        itemsToExport={[{
-          id: "frame_1",
-          name: "minimal_frame",
-          order: 0,
-          getBlob: (fmt) => getExportBlob(fmt),
-        }]}
+        filePrefix="frame"
+        itemsToExport={hasPhoto ? [{ id: "frame_1", order: 0, renderCanvas: renderExportCanvas }] : []}
       />
     </StudioShell>
   );

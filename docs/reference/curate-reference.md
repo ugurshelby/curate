@@ -10,7 +10,7 @@ This document does not choose between conflicting written statements. Conflicts 
 ---
 
 ## 1. Purpose and intended users (only what the repo states)
-Last verified: 2026-10-02
+Last verified: 2026-10-03
 
 Three written descriptions exist. They do not say the same thing.
 
@@ -24,12 +24,14 @@ Stated product behavior that appears in more than one of those files:
 
 - Preview must match export. The spec calls a mismatch a P0 bug. [VERIFIED] `curate-spec-v1.md` §3.3 and §4.1.
 - Processing stays in the browser. Original pixels are not destructively overwritten. [VERIFIED] `AGENTS.md` §3.2; `curate-spec-v1.md` §3.5.
-- Export targets: Instagram post **1080×1350** JPEG quality **0.92**; story **1080×1920**; sequenced `dump_01.jpg` names inside a zip; EXIF/GPS stripped at export. [VERIFIED] `README.md`, `AGENTS.md` §3.4, `lib/export/platform-specs.ts`.
+- Export targets (Faz S, 2026-10-03): Instagram post **1080×1350**, story **1080×1920**, TikTok **1080×1920** (unverified assumption), sRGB JPEG **0.97**, stepping down only above **8 MB**; one image downloads directly, a multi-image Carousel series as one zip (`dump_N.zip` / `tiktok_N.zip`); EXIF/GPS stripped at export. [VERIFIED] `lib/export/platform-specs.ts`, `lib/export/export-plan.ts`, `tests/export-plan.test.ts`.
 - Carousel harmonize transfers only about 15–25% (README says 20%) of exposure/color, and presets must not copy crop. [VERIFIED] `AGENTS.md` §3.3; `README.md`.
 
 **Owner decision (2026-10-02):** Curate is a single-user personal tool for Uğur; primary runtime is mobile (390×844 reference viewport). README, AGENTS.md and the spec were aligned to this sentence. [VERIFIED] by editing those files in the same commit.
 
 **Owner decisions (2026-10-02), recorded in `curate-spec-v1.md` §4.4 with phases:** TikTok as a separate Carousel export target, 1080×1920 assumed and not verified (Faz S); Story takes 2–6 photos with automatic grid (Faz S); reference images stay tracked and a user-triggered test loader is added (Faz M1); panorama permanently closed (Faz K, done); status colors amber/neutral (Faz M1); Frame stays 1080×1350; mobile panel redesign (Faz M1); preview render option A (Faz M2); export quality/download rules (Faz S). None of the Faz M1/M2/S items is implemented yet. [VERIFIED] doc edit; code unchanged.
+
+**Faz S (2026-10-03):** Story grid follows the photo count (2–6, `lib/engine/story-layout.ts`), cells sit inside a 250 px top/bottom safe area (assumption), per-cell pan/zoom shared by preview and export (`computeCellDraw`). Carousel IG/TikTok toggle sets preview and export size. Export sheet rewritten: no jargon, real target size, PNG under "Gelişmiş". [VERIFIED] tests + browser run in `docs/reports/2026-10-03-phases.md`.
 
 No file states a business model, a launch date, or a hosting target beyond one historical commit message (section 4).
 
@@ -44,7 +46,7 @@ Measured on 2026-10-02 in this workspace (Node `v22.18.0`, npm `10.9.3`, `node_m
 |---|---|---|
 | `npx tsc --noEmit` | Exit 0 | [VERIFIED] |
 | `npm run lint` (`next lint`) | Exit 0, "No ESLint warnings or errors" | [VERIFIED] |
-| `npm run build` (`next build`, Next.js 14.2.35) | Exit 0. Compiled, typecheck during build passed. Route table (2026-10-02, after Session 4): `○ /` 60.3 kB (first load 148 kB) and `○ /_not-found` 873 B. Both static. Log line `Generating static pages (4/4)` is Next's internal counter, not four app routes. | [VERIFIED] |
+| `npm run build` (`next build`, Next.js 14.2.35) | Exit 0. Compiled, typecheck during build passed. Route table (2026-10-03, after Faz S): `○ /` 66.7 kB (first load 154 kB) and `○ /_not-found` 873 B. Both static. Log line `Generating static pages (4/4)` is Next's internal counter, not four app routes. | [VERIFIED] |
 | `npm test` | Exit 0 (`vitest run`, 24 tests; see §6) | [VERIFIED] |
 | Browser, 390×844, Carousel: upload 4 photos, open edit panel, select preset, measure layout and main-thread long tasks | Run 2026-10-02 against `npm run dev` (Next 14.2.35, in-app browser, desktop CPU) | [VERIFIED] see `docs/reports/2026-10-02-audit.md` |
 | Browser: export download, Story/Frame/Upscale flows, real phone | Not run | [UNVERIFIED] |
@@ -225,10 +227,10 @@ Last verified: 2026-10-03
 ---
 
 ## 7. Conventions and working systems (patterns, rules and processes)
-Last verified: 2026-10-02
+Last verified: 2026-10-03
 
 1. **Scope lock written as forbidden features:** Optical highlight halation (Night Cinematic) and tactile 35mm analog grain (Amber Grain) allowed per owner decision; light leak, vignette, panorama splitting, server image uploads, and AI inpainting/outpainting remain forbidden. [VERIFIED]
-2. **Platform sizes as data:** `PLATFORM_SPECS` holds 1080×1350 @ 0.92 and 1080×1920 @ 0.92. [VERIFIED]
+2. **Platform sizes as data:** `PLATFORM_SPECS` holds post 1080×1350, story 1080×1920, TikTok 1080×1920 (`verified: false`), all @ 0.97 with an 8 MB limit; `original` (Upscale) @ 0.97 without a limit. [VERIFIED]
 3. **Headless store plus `useSyncExternalStore`:** Module-level state machine subscribed via React. [VERIFIED]
 4. **Non-destructive export:** Operations execute on new canvas / ImageData copies. [VERIFIED]
 5. **Commit prefixes:** `feat:`, `fix:`, `refactor:`, `chore:`, `test:`, `docs:`. [VERIFIED]
@@ -314,7 +316,7 @@ Incorporated into `AGENTS.md` (see Phase 2).
 ---
 
 ## 13. Open questions for owner
-Last verified: 2026-10-02
+Last verified: 2026-10-03
 
 1. ~~Which audience sentence is binding?~~ **Resolved 2026-10-02:** single-user personal tool.
 2. Do the six shipping profiles replace Moody Teal / Warm Silhouette / Night Cinematic / Muted Coastal / Amber Grain / Monochrome Noir, sit beside them, or get replaced by them?
@@ -331,3 +333,6 @@ Last verified: 2026-10-02
 13. The "new Düzenle module" named in decision K2 does not exist in code or in the phase plan. What is it and which phase? (spec §10 q4)
 14. Carousel IG/TikTok toggle: does an "overlay off" state remain, and can the safe-area overlay be hidden? (spec §10 q5)
 15. TikTok 1080×1920 to be confirmed on phone. (spec §10 q6)
+16. Story with more than 6 library photos: currently uses the first 6 with a warning; K2 only covers adding. (spec §10 q7)
+17. Should the 8 MB limit apply to Upscale output? Currently not. (spec §10 q8)
+18. Confirm the 250 px Story safe band on a phone. (spec §10 q9)

@@ -74,6 +74,12 @@ export interface FrameConfig {
   showTimestamp: boolean;
 }
 
+export interface StoryCellTransform {
+  zoom: number; // 1 – 4, cover boyutuna göre
+  panX: number; // -1 – 1, izin verilen kaydırma aralığının oranı
+  panY: number;
+}
+
 export interface StudioItem {
   id: string;
   file?: File;
@@ -100,9 +106,11 @@ export interface StudioState {
     strength: number;
   };
   storyLayout: {
-    slotCount: 2 | 3 | 4 | 5 | 6;
-    spacing: number; // 0 - 48px
+    // Grid sayısı fotoğraf sayısından türetilir (2–6), kullanıcı seçmez (spec §4.4 K2)
+    spacing: number; // 0 - 32 (export'ta ×2.5 px)
     backgroundMode: 'adaptive-gradient' | 'black' | 'white' | 'charcoal';
+    /** Hücre başına konum/yakınlaştırma, fotoğraf kimliğine göre */
+    cellTransforms: Record<string, StoryCellTransform>;
   };
   frameConfig: FrameConfig;
   upscaleConfig: {
@@ -113,7 +121,7 @@ export interface StudioState {
   processingStatus: string;
 }
 
-export type ExportPlatform = 'ig_post_4_5' | 'ig_story_9_16' | 'original';
+export type ExportPlatform = 'ig_post_4_5' | 'ig_story_9_16' | 'tiktok_9_16' | 'original';
 
 export interface ExportSpec {
   id: ExportPlatform;
@@ -121,7 +129,14 @@ export interface ExportSpec {
   width: number;
   height: number;
   aspectRatio: string;
-  quality: number; // 0.92 Meta optimum
+  /** Varsayılan JPEG kalitesi (en yüksek; yalnız 8 MB sınırında kademeli düşer) */
+  quality: number;
+  /** Tekil dosya ve zip içindeki ad öneki: dump_01.jpg, tiktok_01.jpg */
+  filePrefix: string;
+  /** Platform dosya sınırı; aşılırsa JPEG kalitesi kademeli düşer */
+  maxBytes?: number;
+  /** false: boyut telefonda doğrulanmadı (sahip doğrulayacak) */
+  verified: boolean;
 }
 
 export interface ExportProgress {

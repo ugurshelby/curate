@@ -15,7 +15,9 @@ export * from './engine/adaptive-gradient';
 export * from './engine/upscale-lanczos';
 export * from './engine/upscale-slider';
 export * from './engine/carousel-render';
+export * from './engine/story-layout';
 
 export * from './export/platform-specs';
 export * from './export/exif-sanitizer';
 export * from './export/zip-packager';
+export * from './export/export-plan';

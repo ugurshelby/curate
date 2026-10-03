@@ -8,7 +8,8 @@ import {
   calculateUpscaleSplitPos, 
   stepUpscaleSplitPos,
   createStudioItem,
-  workerBridge
+  workerBridge,
+  createExportCanvas
 } from "@/lib";
 import { QuickExportSheet } from "./QuickExportSheet";
 import { StudioShell, StageNote } from "./StudioShell";
@@ -96,7 +97,8 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     }
   };
 
-  const getExportBlob = async (format: "jpeg" | "png" = "jpeg"): Promise<Blob> => {
+  // Export tuvali: Lanczos-3 (worker), sRGB; kodlama export sayfasında (platform hedefi değil, 8 MB sınırı yok)
+  const renderExportCanvas = async (): Promise<HTMLCanvasElement> => {
     if (!photoPath) throw new Error("No photo to export");
     const img = new window.Image();
     if (!photoPath.startsWith("data:") && !photoPath.startsWith("blob:")) {
@@ -114,20 +116,9 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     const srcData = ctx.getImageData(0, 0, c.width, c.height);
     const upscaledData = await workerBridge.upscaleLanczos(srcData, scaleFactor);
 
-    const outC = document.createElement("canvas");
-    outC.width = upscaledData.width;
-    outC.height = upscaledData.height;
-    const outCtx = outC.getContext("2d")!;
+    const { canvas: outC, ctx: outCtx } = createExportCanvas(upscaledData.width, upscaledData.height);
     outCtx.putImageData(upscaledData, 0, 0);
-
-    const mimeType = format === "png" ? "image/png" : "image/jpeg";
-    return new Promise((res) => {
-      outC.toBlob(
-        (b) => res(b!),
-        mimeType,
-        mimeType === "image/jpeg" ? 0.94 : undefined
-      );
-    });
+    return outC;
   };
 
   const outW = selectedItem ? selectedItem.dimensions.width * scaleFactor : 0;
@@ -267,12 +258,9 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         platform="original"
-        itemsToExport={[{
-          id: "upscale_1",
-          name: `upscaled_${scaleFactor}x`,
-          order: 0,
-          getBlob: (fmt) => getExportBlob(fmt),
-        }]}
+        filePrefix={`upscale_${scaleFactor}x`}
+        sizeLabel={`${outW} × ${outH}`}
+        itemsToExport={hasPhoto ? [{ id: "upscale_1", order: 0, renderCanvas: renderExportCanvas }] : []}
       />
     </StudioShell>
   );

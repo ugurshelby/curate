@@ -18,10 +18,12 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 
 ### 2. Story Dump (9:16)
 - **iPhone Mockup Sahnesi:** Dynamic Island ve yuvarlatılmış kasa sınırlarıyla dikey telefon ekranı; sahneye sığacak şekilde ölçeklenir. Instagram story güvenli alanı gösterilir (platform geçişi yok).
-- **Grid:** 2, 3, 4, 5 ve 6'lı kolaj şablonları. Bugün grid sayısını kullanıcı seçiyor; **planlanan (Faz S):** grid sayısı fotoğraf sayısına eşit ve otomatik, Story en az 2 en fazla 6 fotoğraf alır.
-- **Tekil "Space" Kontrolü:** Tek bir slider ile fotoğrafların hem kendi aralarındaki hem telefon kenarlarındaki boşluklarını yönetme.
+- **Otomatik Grid:** Story en az 2, en fazla 6 fotoğraf alır; grid sayısı fotoğraf sayısına eşittir (kullanıcı seçmez). 2'den azsa Export kapalıdır ("En az 2 fotoğraf ekle"); 6 doluyken ekleme kapanır, fazlası alınmaz.
+- **Güvenli Alan:** Hücreler Story'nin üst (ilerleme çubuğu, hesap satırı) ve alt (mesaj çubuğu) bantlarının dışında kalır; export aynı geometriyi kullanır (bant yüksekliği 250 px, telefonda doğrulanmadı).
+- **Hücre Başına Kadraj:** Sürükleyerek konumlandırma, iki parmakla yakınlaştırma (kenarda rubber-band), seçili hücrede "Değiştir" ve "Sıfırla". Konum ve yakınlaştırma export'a birebir yansır.
+- **Boşluk:** Tek bir slider ile fotoğrafların hem kendi aralarındaki hem telefon kenarlarındaki boşluklarını yönetme.
 - **Akıllı Gradyan:** Fotoğrafların kenar piksellerinden otomatik türetilen organik arka plan gradyanı; siyah, beyaz ve antrasit zemin seçenekleri.
-- **İki Tıkla Swap:** Fotoğraflara sırayla dokunarak hücreler arasında anında yer değiştirme.
+- **İki Dokunuşla Takas:** Bir hücreyi seçip başka bir hücreye dokunmak yerlerini değiştirir.
 
 ### 3. Minimal Çerçeve
 - Tekil görsel için `Polaroid`, `Matte` ve `Akıllı Gradyan` çerçeveleri.
@@ -34,14 +36,15 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 
 ---
 
-## 🚀 Sıfır Veri Sızıntılı Dışa Aktarma (Zero-Waste Export)
+## 🚀 Dışa Aktarma
 
-- **Instagram Post:** Tam **1080 × 1350 px** (`4:5`), %92 optimize JPEG.
+- **Instagram Post:** Tam **1080 × 1350 px** (`4:5`).
+- **TikTok (Carousel hedefi):** **1080 × 1920 px** (`9:16`) — sahip varsayımı, telefonda doğrulanmadı. Carousel'deki Instagram/TikTok geçişi önizlemeyi ve export'u birlikte belirler; TikTok arayüz güvenli alanı yalnız önizlemede görünür.
 - **Instagram Story:** Tam **1080 × 1920 px** (`9:16`).
-- **Planlanan (Faz S, sahip kararı 2026-10-02):** Carousel'de Instagram/TikTok geçişi export hedefini de belirler. TikTok 1080 × 1920 (9:16, telefonda doğrulanmadı), dosya adı `tiktok_01.jpg`. Tek görsel doğrudan dosya olarak iner, zip yalnız çoklu Carousel serisinde. Varsayılan JPEG 0.97; PNG "Gelişmiş" altında.
+- **Kalite:** Varsayılan sRGB JPEG %97. Dosya 8 MB'ı aşarsa kalite kademeli düşer (%94, %91, …) ve export sayfasında gösterilir. PNG "Gelişmiş" altındadır. Upscale platform hedefi olmadığı için 8 MB sınırı uygulanmaz.
 - **Gizlilik:** GPS, cihaz seri numaraları ve özel EXIF verileri dışa aktarma anında otomatik soyutlanır.
 - **Format Desteği:** JPEG, PNG, WEBP; HEIC desteği cihazın yerel tarayıcı desteğine bağlıdır (harici JS decoder paketi bulunmamaktadır).
-- **JSZip:** Tüm seri `dump_01.jpg`, `dump_02.jpg` şeklinde sıralı isimlendirilerek tek tıkla `.zip` olarak indirilir.
+- **İndirme:** Tek görsel her zaman doğrudan dosya olarak iner (`dump_01.jpg`, `tiktok_01.jpg`, `story_01.jpg`, `frame_01.jpg`). Zip yalnız çoklu Carousel serisinde: `dump_N.zip` / `tiktok_N.zip`, içinde `dump_01.jpg`, `dump_02.jpg`…
 
 ## 🧪 Referans Görseller
 

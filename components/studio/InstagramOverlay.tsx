@@ -13,6 +13,7 @@ export function InstagramOverlay({ type, isDarkBg = true }: InstagramOverlayProp
   const mutedText = isDarkBg ? "text-white/70" : "text-zinc-600";
   const progressBg = isDarkBg ? "bg-white/40" : "bg-black/25";
   const progressActive = isDarkBg ? "bg-white" : "bg-black";
+  const inputBorder = isDarkBg ? "border-white/40 text-white/80" : "border-black/30 text-zinc-900";
 
   if (type === "post") {
     return (
@@ -52,11 +53,11 @@ export function InstagramOverlay({ type, isDarkBg = true }: InstagramOverlayProp
     );
   }
 
-  // Story Overlay
+  // Story Overlay: üst ve alt bantlar Story güvenli alanının içinde (lib/engine/story-layout.ts, %13 / %13)
   return (
-    <div aria-hidden className={`absolute inset-0 pointer-events-none z-20 flex flex-col p-3 select-none ${textColor}`}>
-      {/* Üst Progress Çubukları & Başlık */}
-      <div className="flex flex-col gap-2.5 pt-2">
+    <div aria-hidden className={`absolute inset-0 pointer-events-none z-20 select-none ${textColor}`}>
+      {/* Üst bant: ilerleme çubuğu + hesap satırı */}
+      <div className="absolute inset-x-0 top-0 h-[13%] px-3 pb-1 flex flex-col justify-end gap-2">
         <div className="flex items-center gap-1 w-full">
           <div className={`h-[2px] flex-1 rounded-full ${progressActive}`} />
           <div className={`h-[2px] flex-1 rounded-full ${progressBg}`} />
@@ -64,17 +65,22 @@ export function InstagramOverlay({ type, isDarkBg = true }: InstagramOverlayProp
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-[#f5a623] flex items-center justify-center text-black font-bold text-xs shadow-sm">
+            <div className="w-6 h-6 rounded-full bg-[#f5a623] flex items-center justify-center text-black font-bold text-xs">
               C
             </div>
-            <span className="text-xs font-semibold drop-shadow-sm">curatestudio</span>
+            <span className="text-xs font-semibold">curatestudio</span>
             <span className={`text-xs ${mutedText}`}>2s</span>
           </div>
-          <X className="w-4 h-4 drop-shadow-sm cursor-pointer" />
+          <X className="w-4 h-4" />
         </div>
       </div>
 
-      {/* "Mesaj gönder" çubuğu mockup süsüydü ve hücreleri kapatıyordu; sahneden çıkarıldı (M1) */}
+      {/* Alt bant: mesaj çubuğu (hücreler bu bandın üstünde biter) */}
+      <div className="absolute inset-x-0 bottom-0 h-[13%] px-3 flex items-center gap-2">
+        <div className={`flex-1 h-8 rounded-full border px-3 flex items-center text-xs ${inputBorder}`}>Mesaj gönder</div>
+        <Heart className="w-5 h-5" />
+        <Send className="w-5 h-5" />
+      </div>
     </div>
   );
 }

@@ -17,6 +17,7 @@ import {
   CarouselRenderOptions,
   CAROUSEL_OUTPUT_WIDTH,
   extractHeroMetrics,
+  createExportCanvas,
 } from "@/lib";
 import { InstagramOverlay } from "./InstagramOverlay";
 import { TikTokOverlay } from "./TikTokOverlay";
@@ -50,11 +51,8 @@ const PRESET_TAGS: Record<string, string> = {
 const THUMB_W = 100;
 const THUMB_H = 76;
 
-/** Önizleme çözünürlükleri: tam = export (1080×1350), taslak = slider sürüklenirken (540×675) */
-const FULL_W = PLATFORM_SPECS.ig_post_4_5.width;
-const FULL_H = PLATFORM_SPECS.ig_post_4_5.height;
-const DRAFT_W = FULL_W / 2;
-const DRAFT_H = FULL_H / 2;
+/** Hedef → export platformu (spec §4.4 K1). Önizleme tam = export boyutu, taslak = yarısı (slider sürüklenirken). */
+const TARGET_PLATFORM = { instagram: "ig_post_4_5", tiktok: "tiktok_9_16" } as const;
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -97,6 +95,12 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const lutInputRef = useRef<HTMLInputElement | null>(null);
+
+  const spec = PLATFORM_SPECS[TARGET_PLATFORM[target]];
+  const FULL_W = spec.width;
+  const FULL_H = spec.height;
+  const DRAFT_W = FULL_W / 2;
+  const DRAFT_H = FULL_H / 2;
 
   const selectedPresetId = state.globalPreset?.id ?? null;
   const itemIntensity = Math.round((state.globalPreset?.intensity ?? 1.0) * 100);
@@ -176,7 +180,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   useEffect(() => {
     scheduleRender();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitMode, state.heroColorMetrics, state.customLut, selectedPresetId, itemIntensity, hasPhoto]);
+  }, [fitMode, state.heroColorMetrics, state.customLut, selectedPresetId, itemIntensity, hasPhoto, target]);
 
   useEffect(() => {
     return () => {
@@ -311,40 +315,23 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
     setContextMenu(null);
   };
 
-  // Export için Blob oluşturucu — Yüksek Çözünürlüklü ve Filtreleri İşlenmiş Çıktı (Single Render Parity)
-  const getExportBlob = async (item: StudioItem, format: "jpeg" | "png" = "jpeg"): Promise<Blob> => {
-    const targetW = PLATFORM_SPECS.ig_post_4_5.width; // 1080
-    const targetH = PLATFORM_SPECS.ig_post_4_5.height; // 1350
-
-    const expCanvas = document.createElement("canvas");
-    expCanvas.width = targetW;
-    expCanvas.height = targetH;
-    const ctx = expCanvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx) throw new Error("Canvas context failed");
-
+  // Export tuvali: önizleme ile aynı parametre şeması, hedefin tam boyutu, sRGB (kodlama export sayfasında)
+  const renderExportCanvas = async (item: StudioItem): Promise<HTMLCanvasElement> => {
+    const { canvas, ctx } = createExportCanvas(FULL_W, FULL_H);
     const img = await loadImage(item.originalUrl || item.proxyUrl);
-
-    // Önizleme ile aynı parametre şeması ve aynı adımlar (renderCarouselBase + applyCarouselLook)
-    drawCarouselFrame(ctx, img, targetW, targetH, buildRenderOptions(item));
-
-    const mimeType = format === "png" ? "image/png" : "image/jpeg";
-    return new Promise((resolve, reject) => {
-      expCanvas.toBlob(
-        (b) => {
-          if (b) resolve(b);
-          else reject(new Error("Blob generation failed"));
-        },
-        mimeType,
-        mimeType === "image/jpeg" ? 0.92 : undefined
-      );
-    });
+    drawCarouselFrame(ctx, img, FULL_W, FULL_H, buildRenderOptions(item));
+    return canvas;
   };
 
   const stage = (
     <div
       ref={stageRef}
       data-stage
-      className="relative aspect-[4/5] w-[min(100cqw,calc(100cqh*4/5))] rounded-xl overflow-hidden border border-white/10 bg-[#0a0a0c] flex items-center justify-center"
+      className={`relative rounded-xl overflow-hidden border border-white/10 bg-[#0a0a0c] flex items-center justify-center ${
+        target === "tiktok"
+          ? "aspect-[9/16] w-[min(100cqw,calc(100cqh*9/16))]"
+          : "aspect-[4/5] w-[min(100cqw,calc(100cqh*4/5))]"
+      }`}
       style={{ touchAction: "none" }}
     >
       {hasPhoto && activePhoto ? (
@@ -372,7 +359,8 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
       )}
 
       {hasPhoto && target === "instagram" && <InstagramOverlay type="post" />}
-      {hasPhoto && target === "tiktok" && <TikTokOverlay type="post" />}
+      {/* TikTok arayüz güvenli alanı yalnız önizlemede; export'a yazılmaz */}
+      {hasPhoto && target === "tiktok" && <TikTokOverlay type="story" />}
     </div>
   );
 
@@ -395,7 +383,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         ))}
       </div>
 
-      <StageNote>1080 × 1350 · 4:5</StageNote>
+      <StageNote>{FULL_W} × {FULL_H} · {spec.aspectRatio}</StageNote>
 
       <button
         type="button"
@@ -631,12 +619,11 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
       <QuickExportSheet
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
-        platform="ig_post_4_5"
+        platform={TARGET_PLATFORM[target]}
         itemsToExport={photos.map((p, idx) => ({
           id: p.id,
-          name: p.name,
           order: idx,
-          getBlob: (fmt) => getExportBlob(p, fmt),
+          renderCanvas: () => renderExportCanvas(p),
         }))}
       />
     </StudioShell>

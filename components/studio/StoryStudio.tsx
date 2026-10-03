@@ -1,144 +1,317 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Sparkles, Smartphone } from "lucide-react";
+import { Sparkles, Smartphone, ImagePlus, RotateCcw } from "lucide-react";
 import { ResettableSlider } from "./ResettableSlider";
 import { InstagramOverlay } from "./InstagramOverlay";
 import { QuickExportSheet } from "./QuickExportSheet";
 import { StudioShell, StageNote } from "./StudioShell";
 import { AddMenu } from "./AddMenu";
 import { ReferencePicker } from "./ReferencePicker";
-import { 
-  PLATFORM_SPECS, 
-  extractAdaptiveGradient, 
-  AdaptiveGradientResult, 
-  useStudio, 
+import {
+  PLATFORM_SPECS,
+  extractAdaptiveGradient,
+  AdaptiveGradientResult,
+  useStudio,
   StudioItem,
-  createStudioItem 
+  StoryCellTransform,
+  createStudioItem,
+  createExportCanvas,
+  computeStoryCells,
+  computeCellDraw,
+  coverSize,
+  clampCellTransform,
+  rubberband,
+  acceptStoryFiles,
+  DEFAULT_CELL_TRANSFORM,
+  STORY_W,
+  STORY_H,
+  STORY_CORNER_RADIUS,
+  STORY_MAX_PHOTOS,
+  STORY_MIN_PHOTOS,
+  STORY_MAX_ZOOM,
 } from "@/lib";
 
 interface StoryStudioProps {
   onBack: () => void;
 }
 
+const TAP_SLOP_PX = 6;
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    if (!src.startsWith("data:") && !src.startsWith("blob:")) img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Görsel yüklenemedi"));
+    img.src = src;
+  });
+}
+
+interface LiveGesture {
+  index: number;
+  zoom: number;
+  ox: number; // px: görsel merkezinin hücre merkezine göre kayması
+  oy: number;
+}
+
+interface GestureStart {
+  index: number;
+  itemId: string;
+  t0: StoryCellTransform;
+  cellPxW: number;
+  cellPxH: number;
+  coverPxW: number;
+  coverPxH: number;
+  pointers: Map<number, { x: number; y: number }>;
+  startPointers: Map<number, { x: number; y: number }>;
+  moved: boolean;
+  multi: boolean;
+}
+
 export function StoryStudio({ onBack }: StoryStudioProps) {
   const { state, actions } = useStudio();
-  const storyPhotos = state.items;
-  const { slotCount, spacing, backgroundMode } = state.storyLayout;
+  const library = state.items;
+  const { spacing, backgroundMode, cellTransforms } = state.storyLayout;
 
-  const [isReferenceOpen, setIsReferenceOpen] = useState<boolean>(false);
-  // Story en fazla 6 fotoğraf (spec §4.4 K2); referans seçimi kalan yerle sınırlı
-  const referenceSlots = Math.max(0, 6 - storyPhotos.length);
-  const [swapSelectedIdx, setSwapSelectedIdx] = useState<number | null>(null);
+  // Story 2–6 fotoğraf; grid sayısı fotoğraf sayısıdır, kullanıcı seçmez (spec §4.4 K2)
+  const storyPhotos = library.slice(0, STORY_MAX_PHOTOS);
+  const count = storyPhotos.length;
+  const cells = computeStoryCells(count, spacing);
+  const room = Math.max(0, STORY_MAX_PHOTOS - library.length);
+
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
+  const [isReferenceOpen, setIsReferenceOpen] = useState<boolean>(false);
   const [adaptiveGradient, setAdaptiveGradient] = useState<AdaptiveGradientResult | null>(null);
+  const [notice, setNotice] = useState<string>("");
+  const [live, setLive] = useState<LiveGesture | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const replaceInputRef = useRef<HTMLInputElement | null>(null);
+  const gestureRef = useRef<GestureStart | null>(null);
+  const cellRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const stageRef = useRef<HTMLDivElement | null>(null);
 
-  // Görseller değiştikçe Akıllı Gradyan türet
+  // Görseller değiştikçe Akıllı Gradyan türet (ilk fotoğraftan)
+  const heroSrc = storyPhotos[0] ? storyPhotos[0].proxyUrl || storyPhotos[0].originalUrl : null;
   useEffect(() => {
-    if (storyPhotos.length === 0) return;
-    const heroImg = new window.Image();
-    const firstItem = storyPhotos[0];
-    const targetSrc = firstItem.originalUrl || firstItem.proxyUrl;
-    if (!targetSrc.startsWith("data:") && !targetSrc.startsWith("blob:")) {
-      heroImg.crossOrigin = "anonymous";
-    }
-    heroImg.src = targetSrc;
-    heroImg.onload = () => {
-      const c = document.createElement("canvas");
-      c.width = heroImg.naturalWidth;
-      c.height = heroImg.naturalHeight;
-      const ctx = c.getContext("2d");
-      if (ctx) {
-        ctx.drawImage(heroImg, 0, 0);
-        const data = ctx.getImageData(0, 0, c.width, c.height);
-        setAdaptiveGradient(extractAdaptiveGradient(data));
-      }
+    if (!heroSrc) return;
+    let cancelled = false;
+    loadImage(heroSrc)
+      .then((img) => {
+        if (cancelled) return;
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        const ctx = c.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0);
+        setAdaptiveGradient(extractAdaptiveGradient(ctx.getImageData(0, 0, c.width, c.height)));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
     };
-  }, [storyPhotos]);
+  }, [heroSrc]);
+
+  // Kısa uyarılar 3 sn sonra kaybolur
+  useEffect(() => {
+    if (!notice) return;
+    const t = window.setTimeout(() => setNotice(""), 3000);
+    return () => window.clearTimeout(t);
+  }, [notice]);
+
+  useEffect(() => {
+    if (selectedIdx !== null && selectedIdx >= count) setSelectedIdx(null);
+  }, [count, selectedIdx]);
 
   const addFiles = (files: File[]) => {
-    const validFiles = files.filter((f) => f.type.startsWith("image/"));
-    if (validFiles.length === 0) return;
-    const newItems: StudioItem[] = validFiles.map((file, idx) =>
-      createStudioItem(file, storyPhotos.length + idx)
-    );
-    actions.addItems(newItems);
+    const valid = files.filter((f) => f.type.startsWith("image/"));
+    if (valid.length === 0) return;
+    const { accepted, rejected } = acceptStoryFiles(library.length, valid);
+    if (accepted.length > 0) {
+      actions.addItems(accepted.map((file, idx) => createStudioItem(file, library.length + idx)));
+    }
+    if (rejected > 0) {
+      setNotice(`Story en fazla ${STORY_MAX_PHOTOS} fotoğraf alır; ${rejected} fotoğraf alınmadı.`);
+    }
   };
 
-  // Fotoğraf Yükleme
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
-    addFiles(Array.from(files));
+    if (files && files.length > 0) addFiles(Array.from(files));
     e.target.value = "";
+  };
+
+  const handleReplace = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || selectedIdx === null) return;
+    actions.replaceItem(selectedIdx, createStudioItem(file, selectedIdx));
   };
 
   const handleClear = () => {
     if (window.confirm("Tüm fotoğraflar kaldırılsın mı?")) actions.clearItems();
   };
 
-  // İki tıkla fotoğraf takası (Swap)
-  const handleCellClick = (index: number) => {
-    if (swapSelectedIdx === null) {
-      setSwapSelectedIdx(index);
-    } else if (swapSelectedIdx === index) {
-      setSwapSelectedIdx(null); // Deselect
+  // Dokunma: seç; seçiliyken başka hücreye dokunmak yer değiştirir (iki dokunuşla takas)
+  const handleCellTap = (index: number) => {
+    if (selectedIdx === null) setSelectedIdx(index);
+    else if (selectedIdx === index) setSelectedIdx(null);
+    else {
+      actions.swapItems(selectedIdx, index);
+      setSelectedIdx(null);
+    }
+  };
+
+  const transformFor = (item: StudioItem): StoryCellTransform => cellTransforms[item.id] ?? DEFAULT_CELL_TRANSFORM;
+
+  // --- Hücre içi konumlandırma: 1 parmak kaydır, 2 parmak yakınlaştır, kenarda rubber-band (apple-design §2, §9) ---
+  const liveFromPointers = (g: GestureStart): LiveGesture => {
+    const ids = Array.from(g.pointers.keys()).filter((id) => g.startPointers.has(id));
+    let scale = 1;
+    let dx = 0;
+    let dy = 0;
+    if (ids.length >= 2) {
+      const a = g.pointers.get(ids[0])!;
+      const b = g.pointers.get(ids[1])!;
+      const a0 = g.startPointers.get(ids[0])!;
+      const b0 = g.startPointers.get(ids[1])!;
+      const d0 = Math.hypot(a0.x - b0.x, a0.y - b0.y) || 1;
+      scale = Math.hypot(a.x - b.x, a.y - b.y) / d0;
+      dx = (a.x + b.x) / 2 - (a0.x + b0.x) / 2;
+      dy = (a.y + b.y) / 2 - (a0.y + b0.y) / 2;
+    } else if (ids.length === 1) {
+      const p = g.pointers.get(ids[0])!;
+      const p0 = g.startPointers.get(ids[0])!;
+      dx = p.x - p0.x;
+      dy = p.y - p0.y;
+    }
+
+    let zoom = g.t0.zoom * scale;
+    if (zoom > STORY_MAX_ZOOM) zoom = STORY_MAX_ZOOM + rubberband(zoom - STORY_MAX_ZOOM, 1);
+    if (zoom < 1) zoom = 1 - rubberband(1 - zoom, 1);
+
+    const maxX0 = Math.max(0, (g.coverPxW * g.t0.zoom - g.cellPxW) / 2);
+    const maxY0 = Math.max(0, (g.coverPxH * g.t0.zoom - g.cellPxH) / 2);
+    let ox = g.t0.panX * maxX0 + dx;
+    let oy = g.t0.panY * maxY0 + dy;
+    const limX = Math.max(0, (g.coverPxW * zoom - g.cellPxW) / 2);
+    const limY = Math.max(0, (g.coverPxH * zoom - g.cellPxH) / 2);
+    if (Math.abs(ox) > limX) ox = Math.sign(ox) * (limX + rubberband(Math.abs(ox) - limX, g.cellPxW));
+    if (Math.abs(oy) > limY) oy = Math.sign(oy) * (limY + rubberband(Math.abs(oy) - limY, g.cellPxH));
+    return { index: g.index, zoom, ox, oy };
+  };
+
+  const toTransform = (g: GestureStart, l: LiveGesture): StoryCellTransform => {
+    const zoom = Math.min(STORY_MAX_ZOOM, Math.max(1, l.zoom));
+    const maxX = Math.max(0, (g.coverPxW * zoom - g.cellPxW) / 2);
+    const maxY = Math.max(0, (g.coverPxH * zoom - g.cellPxH) / 2);
+    return clampCellTransform({ zoom, panX: maxX ? l.ox / maxX : 0, panY: maxY ? l.oy / maxY : 0 });
+  };
+
+  const onCellPointerDown = (e: React.PointerEvent<HTMLDivElement>, index: number) => {
+    const item = storyPhotos[index];
+    const cell = cells[index];
+    const el = cellRefs.current[index];
+    if (!item || !cell || !el) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* pointer artık aktif değil */
+    }
+
+    let g = gestureRef.current;
+    if (!g || g.index !== index) {
+      const rect = el.getBoundingClientRect();
+      const cover = coverSize(cell, item.dimensions.width, item.dimensions.height);
+      g = {
+        index,
+        itemId: item.id,
+        t0: clampCellTransform(transformFor(item)),
+        cellPxW: rect.width,
+        cellPxH: rect.height,
+        coverPxW: (cover.w / cell.w) * rect.width,
+        coverPxH: (cover.h / cell.h) * rect.height,
+        pointers: new Map(),
+        startPointers: new Map(),
+        moved: false,
+        multi: false,
+      };
+      gestureRef.current = g;
     } else {
-      actions.swapItems(swapSelectedIdx, index);
-      setSwapSelectedIdx(null);
+      // İkinci parmak: o ana kadarki hareketi taban al, iki parmaktan yeniden başla
+      const current = liveFromPointers(g);
+      const maxX = Math.max(0, (g.coverPxW * current.zoom - g.cellPxW) / 2);
+      const maxY = Math.max(0, (g.coverPxH * current.zoom - g.cellPxH) / 2);
+      g.t0 = { zoom: current.zoom, panX: maxX ? current.ox / maxX : 0, panY: maxY ? current.oy / maxY : 0 };
+      g.pointers.forEach((p, id) => g!.startPointers.set(id, { ...p }));
+      g.multi = true;
     }
+    g.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    g.startPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   };
 
-  // Dinamik Grid şablonu (Slot sayısına göre)
-  const getGridClasses = () => {
-    switch (slotCount) {
-      case 2:
-        return "grid-rows-2 grid-cols-1";
-      case 3:
-        return "grid-rows-3 grid-cols-1";
-      case 4:
-        return "grid-rows-2 grid-cols-2";
-      case 5:
-        return "grid-rows-3 grid-cols-2";
-      case 6:
-        return "grid-rows-3 grid-cols-2";
-      default:
-        return "grid-rows-2 grid-cols-2";
-    }
+  const onCellPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const g = gestureRef.current;
+    if (!g || !g.pointers.has(e.pointerId)) return;
+    g.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const s = g.startPointers.get(e.pointerId);
+    if (s && !g.moved && Math.hypot(e.clientX - s.x, e.clientY - s.y) > TAP_SLOP_PX) g.moved = true;
+    if (g.moved || g.multi) setLive(liveFromPointers(g));
   };
 
-  // Zemin stili
-  const getBackgroundStyle = () => {
-    switch (backgroundMode) {
-      case "black":
-        return { backgroundColor: "#000000" };
-      case "white":
-        return { backgroundColor: "#ffffff" };
-      case "charcoal":
-        return { backgroundColor: "#18181b" };
-      case "adaptive-gradient":
-      default:
-        return {
-          background: adaptiveGradient
-            ? adaptiveGradient.cssLinear
-            : "linear-gradient(180deg, #2e201b 0%, #141113 100%)",
-        };
+  const onCellPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const g = gestureRef.current;
+    if (!g || !g.pointers.has(e.pointerId)) return;
+    g.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (g.moved || g.multi) {
+      actions.setStoryCellTransform(g.itemId, toTransform(g, liveFromPointers(g)));
+    } else {
+      handleCellTap(g.index);
     }
+    // Hareket bitti: taahhüt edilen konuma 240ms geçişle döner (kenarda rubber-band geri yaylanması)
+    gestureRef.current = null;
+    setLive(null);
   };
+
+  const onCellPointerCancel = () => {
+    gestureRef.current = null;
+    setLive(null);
+  };
+
+  // Masaüstü: tekerlek ile hücre yakınlaştırma (non-passive dinleyici)
+  const wheelStateRef = useRef({ storyPhotos, cellTransforms });
+  wheelStateRef.current = { storyPhotos, cellTransforms };
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      const cellEl = (e.target as HTMLElement).closest("[data-cell]") as HTMLElement | null;
+      if (!cellEl) return;
+      e.preventDefault();
+      const item = wheelStateRef.current.storyPhotos[Number(cellEl.dataset.cell)];
+      if (!item) return;
+      const t = wheelStateRef.current.cellTransforms[item.id] ?? DEFAULT_CELL_TRANSFORM;
+      actions.setStoryCellTransform(item.id, clampCellTransform({ ...t, zoom: t.zoom + (e.deltaY < 0 ? 0.1 : -0.1) }));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [actions]);
+
+  // Zemin (önizleme) — export aynı renkleri tuvale çizer
+  const gradientTop = adaptiveGradient ? adaptiveGradient.colorTop : "#2e201b";
+  const gradientBottom = adaptiveGradient ? adaptiveGradient.colorBottom : "#141113";
+  const backgroundStyle: React.CSSProperties =
+    backgroundMode === "adaptive-gradient"
+      ? { background: `linear-gradient(180deg, ${gradientTop} 0%, ${gradientBottom} 100%)` }
+      : { backgroundColor: backgroundMode === "white" ? "#ffffff" : backgroundMode === "charcoal" ? "#18181b" : "#000000" };
 
   const isDarkBg = backgroundMode !== "white";
 
-  // Helper: Yuvarlatılmış dikdörtgen çizici
-  const drawRoundedRect = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    r: number
-  ) => {
+  const drawRoundedRect = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
     ctx.beginPath();
     if (typeof ctx.roundRect === "function") {
       ctx.roundRect(x, y, w, h, r);
@@ -156,235 +329,192 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
     ctx.closePath();
   };
 
-  // Export render fonksiyonu — Tam 1080x1920 Çözünürlükte Zemin + Grid Fotoğrafları
-  const getStoryExportBlob = async (format: "jpeg" | "png" = "jpeg"): Promise<Blob> => {
-    const W = PLATFORM_SPECS.ig_story_9_16.width; // 1080
-    const H = PLATFORM_SPECS.ig_story_9_16.height; // 1920
+  // Export tuvali — 1080×1920, önizlemeyle aynı geometri (computeStoryCells + computeCellDraw), sRGB
+  const renderExportCanvas = async (): Promise<HTMLCanvasElement> => {
+    const W = PLATFORM_SPECS.ig_story_9_16.width;
+    const H = PLATFORM_SPECS.ig_story_9_16.height;
+    const { canvas, ctx } = createExportCanvas(W, H);
 
-    const canvas = document.createElement("canvas");
-    canvas.width = W;
-    canvas.height = H;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Canvas context failed");
-
-    // 1. Zemin dolgusu
-    if (backgroundMode === "white") {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, W, H);
-    } else if (backgroundMode === "charcoal") {
-      ctx.fillStyle = "#18181b";
-      ctx.fillRect(0, 0, W, H);
-    } else if (backgroundMode === "black") {
-      ctx.fillStyle = "#000000";
-      ctx.fillRect(0, 0, W, H);
-    } else {
-      // Adaptive Gradient
+    if (backgroundMode === "adaptive-gradient") {
       const grad = ctx.createLinearGradient(0, 0, 0, H);
-      if (adaptiveGradient) {
-        grad.addColorStop(0, adaptiveGradient.colorTop);
-        grad.addColorStop(1, adaptiveGradient.colorBottom);
-      } else {
-        grad.addColorStop(0, "#2e201b");
-        grad.addColorStop(1, "#141113");
-      }
+      grad.addColorStop(0, gradientTop);
+      grad.addColorStop(1, gradientBottom);
       ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, W, H);
+    } else {
+      ctx.fillStyle = backgroundMode === "white" ? "#ffffff" : backgroundMode === "charcoal" ? "#18181b" : "#000000";
     }
+    ctx.fillRect(0, 0, W, H);
 
-    // 2. Grid Hücre Geometrileri Hesabı (Safe area & Space slider ölçekli)
-    const topSafe = 140; // Dynamic Island safe area
-    const bottomSafe = 130; // Instagram story alt etkileşim alanı
-    const usableH = H - topSafe - bottomSafe;
-    const gap = Math.round(spacing * 2.5); // Ölçeklenmiş piksel boşluğu
-    const sidePadding = Math.max(28, gap);
-    const usableW = W - sidePadding * 2;
-
-    interface CellRect {
-      x: number;
-      y: number;
-      w: number;
-      h: number;
-    }
-    const cells: CellRect[] = [];
-
-    if (slotCount === 2) {
-      const cellH = (usableH - gap) / 2;
-      const cellW = usableW;
-      cells.push({ x: sidePadding, y: topSafe, w: cellW, h: cellH });
-      cells.push({ x: sidePadding, y: topSafe + cellH + gap, w: cellW, h: cellH });
-    } else if (slotCount === 3) {
-      const cellH = (usableH - gap * 2) / 3;
-      const cellW = usableW;
-      for (let r = 0; r < 3; r++) {
-        cells.push({ x: sidePadding, y: topSafe + r * (cellH + gap), w: cellW, h: cellH });
-      }
-    } else if (slotCount === 4) {
-      const cellW = (usableW - gap) / 2;
-      const cellH = (usableH - gap) / 2;
-      for (let r = 0; r < 2; r++) {
-        for (let c = 0; c < 2; c++) {
-          cells.push({ x: sidePadding + c * (cellW + gap), y: topSafe + r * (cellH + gap), w: cellW, h: cellH });
-        }
-      }
-    } else if (slotCount === 5) {
-      const cellW = (usableW - gap) / 2;
-      const cellH = (usableH - gap * 2) / 3;
-      for (let r = 0; r < 2; r++) {
-        for (let c = 0; c < 2; c++) {
-          cells.push({ x: sidePadding + c * (cellW + gap), y: topSafe + r * (cellH + gap), w: cellW, h: cellH });
-        }
-      }
-      // 5. hücre: 3. satırda tam genişlikte yatay kart
-      cells.push({ x: sidePadding, y: topSafe + 2 * (cellH + gap), w: usableW, h: cellH });
-    } else if (slotCount === 6) {
-      const cellW = (usableW - gap) / 2;
-      const cellH = (usableH - gap * 2) / 3;
-      for (let r = 0; r < 3; r++) {
-        for (let c = 0; c < 2; c++) {
-          cells.push({ x: sidePadding + c * (cellW + gap), y: topSafe + r * (cellH + gap), w: cellW, h: cellH });
-        }
-      }
-    }
-
-    // 3. Her hücreye görseli cover modunda ve yuvarlatılmış köşelerle çiz
-    const cornerRadius = 32;
-
-    for (let i = 0; i < cells.length; i++) {
-      const cell = cells[i];
-      const photoItem = storyPhotos[i];
-      if (!photoItem) continue;
-
-      const photoSrc = photoItem.originalUrl || photoItem.proxyUrl;
-      const img = new window.Image();
-      if (!photoSrc.startsWith("data:") && !photoSrc.startsWith("blob:")) {
-        img.crossOrigin = "anonymous";
-      }
-      img.src = photoSrc;
-
-      await new Promise((resolve) => {
-        img.onload = () => resolve(null);
-        img.onerror = () => resolve(null);
-      });
-
-      if (!img.naturalWidth || !img.naturalHeight) continue;
-
+    const exportCells = computeStoryCells(count, spacing, W, H);
+    for (let i = 0; i < exportCells.length; i++) {
+      const item = storyPhotos[i];
+      if (!item) continue;
+      const img = await loadImage(item.originalUrl || item.proxyUrl);
+      const cell = exportCells[i];
+      const d = computeCellDraw(cell, img.naturalWidth, img.naturalHeight, transformFor(item));
       ctx.save();
-      drawRoundedRect(ctx, cell.x, cell.y, cell.w, cell.h, cornerRadius);
+      drawRoundedRect(ctx, cell.x, cell.y, cell.w, cell.h, STORY_CORNER_RADIUS * (W / STORY_W));
       ctx.clip();
-
-      // Cover kırpması hesabı
-      const imgRatio = img.naturalWidth / img.naturalHeight;
-      const cellRatio = cell.w / cell.h;
-      let sw = img.naturalWidth;
-      let sh = img.naturalHeight;
-      let sx = 0;
-      let sy = 0;
-
-      if (imgRatio > cellRatio) {
-        sw = img.naturalHeight * cellRatio;
-        sx = (img.naturalWidth - sw) / 2;
-      } else {
-        sh = img.naturalWidth / cellRatio;
-        sy = (img.naturalHeight - sh) / 2;
-      }
-
-      ctx.drawImage(img, sx, sy, sw, sh, cell.x, cell.y, cell.w, cell.h);
+      ctx.drawImage(img, d.dx, d.dy, d.dw, d.dh);
       ctx.restore();
     }
-
-    const mimeType = format === "png" ? "image/png" : "image/jpeg";
-    return new Promise((resolve) => {
-      canvas.toBlob(
-        (b) => resolve(b!),
-        mimeType,
-        mimeType === "image/jpeg" ? 0.92 : undefined
-      );
-    });
+    return canvas;
   };
+
+  const pct = (v: number, total: number) => `${(v / total) * 100}%`;
 
   const stage = (
     <div
+      ref={stageRef}
       data-stage
-      className="relative aspect-[9/16] w-[min(100cqw,calc(100cqh*9/16))] rounded-[32px] p-1.5 bg-[#121215] border-[3px] border-[#27272a] flex flex-col overflow-hidden"
+      className="relative aspect-[9/16] w-[min(calc(100cqw-24px),calc((100cqh-24px)*9/16))] rounded-[22px] overflow-hidden"
+      style={{
+        ...backgroundStyle,
+        containerType: "inline-size",
+        boxShadow: "0 0 0 6px #121215, 0 0 0 9px #27272a",
+      }}
     >
-      {/* İç Ekran */}
-      <div
-        className="relative w-full h-full rounded-[26px] overflow-hidden flex flex-col"
-        style={getBackgroundStyle()}
-      >
-        {/* Dynamic Island */}
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 w-[28%] h-[3.2%] rounded-full bg-black pointer-events-none" />
+      {/* Dynamic Island: üst güvenli alanın içinde süs */}
+      <div className="absolute top-[1.2%] left-1/2 -translate-x-1/2 z-30 w-[28%] h-[2.6%] rounded-full bg-black pointer-events-none" />
 
-        {/* Instagram story güvenli alan katmanı (Story'de platform geçişi yok, spec §4.4 S-a) */}
-        {storyPhotos.length > 0 && <InstagramOverlay type="story" isDarkBg={isDarkBg} />}
+      {count > 0 && <InstagramOverlay type="story" isDarkBg={isDarkBg} />}
 
-        {storyPhotos.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-[#71717a] gap-1">
-            <Smartphone className="w-8 h-8 text-[#3f3f46]" />
-            <span className="text-sm">Story için henüz fotoğraf yok</span>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="touch-target px-3 text-sm text-[#f5a623]"
+      {count === 0 ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center text-[#71717a] gap-1">
+          <Smartphone className="w-8 h-8 text-[#3f3f46]" />
+          <span className="text-sm">Story için en az 2 fotoğraf ekle</span>
+          <button type="button" onClick={() => fileInputRef.current?.click()} className="touch-target px-3 text-sm text-[#f5a623]">
+            Fotoğraf Yükle
+          </button>
+        </div>
+      ) : count < STORY_MIN_PHOTOS ? (
+        <div className="absolute inset-x-0 top-[13%] bottom-[13%] flex flex-col items-center justify-center p-4 text-center gap-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={storyPhotos[0].proxyUrl || storyPhotos[0].originalUrl}
+            alt=""
+            className="w-1/2 aspect-[4/5] object-cover rounded-xl opacity-60"
+          />
+          <span className={`text-sm ${isDarkBg ? "text-white" : "text-zinc-900"}`}>Bir fotoğraf daha ekle</span>
+        </div>
+      ) : (
+        cells.map((cell, idx) => {
+          const item = storyPhotos[idx];
+          const isSelected = selectedIdx === idx;
+          const cover = coverSize(cell, item.dimensions.width, item.dimensions.height);
+          const committed = clampCellTransform(transformFor(item));
+          const isLive = live?.index === idx;
+          const g = gestureRef.current;
+          // Taahhüt edilen konum export ile aynı oranlardan (computeCellDraw) türetilir
+          const zoom = isLive ? live!.zoom : committed.zoom;
+          const txPct = isLive && g
+            ? (live!.ox / g.coverPxW) * 100
+            : ((committed.panX * (cover.w * committed.zoom - cell.w)) / 2 / cover.w) * 100;
+          const tyPct = isLive && g
+            ? (live!.oy / g.coverPxH) * 100
+            : ((committed.panY * (cover.h * committed.zoom - cell.h)) / 2 / cover.h) * 100;
+          return (
+            <div
+              key={item.id}
+              ref={(n) => {
+                cellRefs.current[idx] = n;
+              }}
+              data-cell={idx}
+              role="button"
+              tabIndex={0}
+              aria-label={`${idx + 1}. hücre${isSelected ? ", seçili" : ""}`}
+              aria-pressed={isSelected}
+              onPointerDown={(e) => onCellPointerDown(e, idx)}
+              onPointerMove={onCellPointerMove}
+              onPointerUp={onCellPointerUp}
+              onPointerCancel={onCellPointerCancel}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleCellTap(idx);
+                }
+              }}
+              className={`absolute overflow-hidden cursor-grab ${isSelected ? "ring-2 ring-[#f5a623] z-10" : ""}`}
+              style={{
+                left: pct(cell.x, STORY_W),
+                top: pct(cell.y, STORY_H),
+                width: pct(cell.w, STORY_W),
+                height: pct(cell.h, STORY_H),
+                borderRadius: `calc(${STORY_CORNER_RADIUS / STORY_W} * 100cqw)`,
+                touchAction: "none",
+              }}
             >
-              Fotoğraf Yükle
-            </button>
-          </div>
-        ) : (
-          <div
-            className={`w-full h-full grid ${getGridClasses()} pt-10 pb-6`}
-            style={{
-              gap: `${spacing}px`,
-              paddingLeft: `${Math.max(8, spacing)}px`,
-              paddingRight: `${Math.max(8, spacing)}px`,
-            }}
-          >
-            {storyPhotos.slice(0, slotCount).map((photoItem, idx) => {
-              const isSelected = swapSelectedIdx === idx;
-              const photoSrc = photoItem.proxyUrl || photoItem.originalUrl;
-              return (
-                <button
-                  type="button"
-                  key={photoItem.id || idx}
-                  onClick={() => handleCellClick(idx)}
-                  aria-pressed={isSelected}
-                  aria-label={`${idx + 1}. hücre`}
-                  className={`press relative rounded-xl overflow-hidden ${
-                    slotCount === 5 && idx === 4 ? "col-span-2" : ""
-                  } ${isSelected ? "ring-2 ring-[#f5a623]" : ""}`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={photoSrc}
-                    alt=""
-                    draggable={false}
-                    className="w-full h-full object-cover pointer-events-none"
-                  />
-                  {isSelected && (
-                    <span className="absolute inset-0 bg-black/40 flex items-center justify-center pointer-events-none">
-                      <span className="text-xs font-semibold bg-[#f5a623] text-black px-2 py-0.5 rounded-full">
-                        Takas için seçildi
-                      </span>
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={item.proxyUrl || item.originalUrl}
+                alt=""
+                draggable={false}
+                className="absolute max-w-none pointer-events-none"
+                style={{
+                  width: pct(cover.w, cell.w),
+                  height: pct(cover.h, cell.h),
+                  left: pct((cell.w - cover.w) / 2, cell.w),
+                  top: pct((cell.h - cover.h) / 2, cell.h),
+                  transform: `translate(${txPct}%, ${tyPct}%) scale(${zoom})`,
+                  transition: isLive ? "none" : "transform 240ms cubic-bezier(0.23, 1, 0.32, 1)",
+                }}
+              />
+            </div>
+          );
+        })
+      )}
     </div>
   );
 
+  const statusText =
+    notice ||
+    (library.length > STORY_MAX_PHOTOS
+      ? `Kütüphanede ${library.length} fotoğraf var; Story ilk ${STORY_MAX_PHOTOS}'sını kullanır.`
+      : count < STORY_MIN_PHOTOS
+        ? "En az 2 fotoğraf ekle"
+        : "");
+
   const stageToolbar = (
     <>
-      <StageNote>1080 × 1920 · 9:16</StageNote>
-      <StageNote>{Math.min(storyPhotos.length, slotCount)}/{slotCount} hücre dolu</StageNote>
+      <StageNote>
+        {STORY_W} × {STORY_H} · 9:16
+      </StageNote>
+      {statusText ? (
+        <span role="status" className="text-xs text-[#f5a623] text-right truncate min-w-0">
+          {statusText}
+        </span>
+      ) : (
+        <span className="text-xs text-[#71717a] text-right truncate min-w-0">Sürükle, iki parmakla yakınlaştır</span>
+      )}
     </>
   );
 
+  const selectedItem = selectedIdx !== null ? storyPhotos[selectedIdx] : null;
+
   const panel = (
     <div className="flex flex-col gap-2 p-3">
+      {selectedItem && (
+        <div className="flex items-center gap-2 animate-panel-in">
+          <span className="text-sm text-[#f5a623] mr-auto num-metric">{(selectedIdx ?? 0) + 1}. hücre</span>
+          <button
+            type="button"
+            onClick={() => replaceInputRef.current?.click()}
+            className="press h-11 px-3 rounded-xl text-sm border border-white/15 bg-white/5 text-[#f5f5f7] flex items-center gap-2"
+          >
+            <ImagePlus className="w-4 h-4" />
+            <span>Değiştir</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => actions.setStoryCellTransform(selectedItem.id, null)}
+            className="press h-11 px-3 rounded-xl text-sm border border-white/15 bg-white/5 text-[#f5f5f7] flex items-center gap-2"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>Sıfırla</span>
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm text-[#a1a1aa]">Zemin</span>
         <div className="flex items-center gap-1">
@@ -424,7 +554,6 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
         min={0}
         max={32}
         defaultValue={10}
-        unit="px"
         onChange={(val) => actions.setStoryLayout({ spacing: val })}
       />
     </div>
@@ -435,25 +564,12 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
       <AddMenu
         onUpload={() => fileInputRef.current?.click()}
         onReference={() => setIsReferenceOpen(true)}
-        onClear={storyPhotos.length > 0 ? handleClear : undefined}
-        addDisabledReason={referenceSlots <= 0 ? "Story en fazla 6 fotoğraf alır." : undefined}
+        onClear={library.length > 0 ? handleClear : undefined}
+        addDisabledReason={room <= 0 ? `Story en fazla ${STORY_MAX_PHOTOS} fotoğraf alır.` : undefined}
       />
-      <div role="radiogroup" aria-label="Grid hücre sayısı" className="ml-auto flex p-0.5 rounded-xl bg-white/5 border border-white/10">
-        {([2, 3, 4, 5, 6] as const).map((count) => (
-          <button
-            key={count}
-            type="button"
-            role="radio"
-            aria-checked={slotCount === count}
-            onClick={() => actions.setStoryLayout({ slotCount: count })}
-            className={`press w-11 h-11 rounded-[10px] text-sm num-metric ${
-              slotCount === count ? "bg-[#f5a623] text-black font-semibold" : "text-[#a1a1aa]"
-            }`}
-          >
-            {count}
-          </button>
-        ))}
-      </div>
+      <span className="ml-auto pr-2 text-sm text-[#a1a1aa] num-metric">
+        {count}/{STORY_MAX_PHOTOS} fotoğraf · grid otomatik
+      </span>
     </div>
   );
 
@@ -462,39 +578,27 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
       title="Story Dump"
       onBack={onBack}
       onExport={() => setIsExportOpen(true)}
-      exportDisabled={storyPhotos.length === 0}
+      exportDisabled={count < STORY_MIN_PHOTOS}
       stage={stage}
       stageToolbar={stageToolbar}
       panel={panel}
       bar={bar}
     >
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept="image/*"
-        className="hidden"
-        onChange={handlePhotoUpload}
-      />
+      <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+      <input ref={replaceInputRef} type="file" accept="image/*" className="hidden" onChange={handleReplace} />
 
       <ReferencePicker
         open={isReferenceOpen}
         onClose={() => setIsReferenceOpen(false)}
         onConfirm={addFiles}
-        maxSelect={referenceSlots}
+        maxSelect={room}
       />
 
-      {/* Dışa Aktarma Çekmecesi */}
       <QuickExportSheet
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         platform="ig_story_9_16"
-        itemsToExport={[{
-          id: "story_1",
-          name: "story_dump",
-          order: 0,
-          getBlob: (fmt) => getStoryExportBlob(fmt),
-        }]}
+        itemsToExport={count >= STORY_MIN_PHOTOS ? [{ id: "story_1", order: 0, renderCanvas: renderExportCanvas }] : []}
       />
     </StudioShell>
   );

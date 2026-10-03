@@ -7,7 +7,7 @@
  * 4. Lossless Upscale (Lanczos-3)
  */
 
-import { StudioItem, StudioModule, StudioState, ActivePreset, CubeLUT, ColorMetrics, ImageDimensions } from './types';
+import { StudioItem, StudioModule, StudioState, ActivePreset, CubeLUT, ColorMetrics, ImageDimensions, StoryCellTransform } from './types';
 import { revokeUrl, cleanupAllUrls, generateProxyImage, registerUrl } from '../engine/proxy';
 
 const INITIAL_ITEMS: StudioItem[] = [];
@@ -24,9 +24,9 @@ const INITIAL_STATE: StudioState = {
     strength: 0.20,
   },
   storyLayout: {
-    slotCount: 4,
     spacing: 10,
     backgroundMode: 'adaptive-gradient',
+    cellTransforms: {},
   },
   frameConfig: {
     frameType: 'polaroid',
@@ -197,6 +197,34 @@ class StudioStateMachine {
     this.setState((prev) => ({
       storyLayout: { ...prev.storyLayout, ...layout },
     }));
+  }
+
+  public setStoryCellTransform(itemId: string, transform: StoryCellTransform | null) {
+    this.setState((prev) => {
+      const cellTransforms = { ...prev.storyLayout.cellTransforms };
+      if (transform) cellTransforms[itemId] = transform;
+      else delete cellTransforms[itemId];
+      return { storyLayout: { ...prev.storyLayout, cellTransforms } };
+    });
+  }
+
+  /** Belirli sıradaki fotoğrafı yenisiyle değiştirir (Story "görseli değiştir") */
+  public replaceItem(index: number, newItem: StudioItem) {
+    this.setState((prev) => {
+      if (index < 0 || index >= prev.items.length) return {};
+      const old = prev.items[index];
+      revokeUrl(old.originalUrl);
+      revokeUrl(old.proxyUrl);
+      const items = [...prev.items];
+      items[index] = { ...newItem, order: index };
+      const cellTransforms = { ...prev.storyLayout.cellTransforms };
+      delete cellTransforms[old.id];
+      return {
+        items,
+        selectedItemId: prev.selectedItemId === old.id ? newItem.id : prev.selectedItemId,
+        storyLayout: { ...prev.storyLayout, cellTransforms },
+      };
+    });
   }
 
   public setFrameConfig(config: Partial<StudioState['frameConfig']>) {

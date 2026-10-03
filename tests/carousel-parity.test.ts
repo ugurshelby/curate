@@ -149,6 +149,21 @@ describe('Carousel preview/export parity at 1080×1350 (spec §4.4 M2-a)', () =>
     expect(countDiff(full.buf, exportPixels(landscape, opts))).toBe(0);
   });
 
+  it('TikTok target 1080×1920: preview equals export (fill and fit)', () => {
+    const TW = 1080;
+    const TH = 1920;
+    for (const fitMode of ['fill', 'fit'] as const) {
+      const opts: CarouselRenderOptions = { fitMode, presetId: 'warm_silhouette', presetIntensity: 0.9, heroColorMetrics: hero, outputWidth: TW };
+      const exp = new FakeContext(TW, TH);
+      drawCarouselFrame(asCtx(exp), asImg(landscape), TW, TH, opts);
+      const prev = new FakeContext(TW, TH);
+      const renderer = new CarouselPreviewRenderer();
+      renderer.render(asCtx(prev), asImg(landscape), 'photo', TW, TH, { ...opts, presetId: null });
+      renderer.render(asCtx(prev), asImg(landscape), 'photo', TW, TH, opts);
+      expect(countDiff(prev.buf, exp.buf)).toBe(0);
+    }
+  });
+
   it('.cube LUT look is identical in preview and export', () => {
     const lines = ['LUT_3D_SIZE 2'];
     for (let b = 0; b < 2; b++) for (let g = 0; g < 2; g++) for (let r = 0; r < 2; r++) lines.push(`${r * 0.9} ${g} ${b * 0.8}`);
