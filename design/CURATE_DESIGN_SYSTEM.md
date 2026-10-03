@@ -62,9 +62,9 @@ Kurallar:
 | Display | 24–32px | 600 | `-0.03em` | 1.1 |
 | Title | 16–18px | 500–600 | `-0.02em` | 1.25 |
 | Body / etiket | 13–15px | 400–500 | `-0.01em` | 1.4 |
-| Caption | **11–12px** | 500 | `+0.01em` | 1.3 |
+| Caption | **12px** | 500 | `+0.01em` | 1.3 |
 
-- **Alt sınır 11px.** Okunması gereken hiçbir metin 11px'in altına inmez (rozet numaraları dâhil). Cam yüzey üstünde metin `text-secondary` değil `text-primary` ve en az 500 ağırlık (apple-design §12 "vibrancy").
+- **Alt sınır 12px** (sahip kararı, Faz M1). Okunması gereken hiçbir metin 12px'in altına inmez (rozet numaraları, kart adları, mockup katmanları dâhil). Cam yüzey üstünde metin `text-secondary` değil `text-primary` ve en az 500 ağırlık (apple-design §12 "vibrancy").
 - Boşluklar `rem`/`em` veya 4px ızgarasında (4, 8, 12, 16, 20, 24, 40).
 
 ---
@@ -131,11 +131,11 @@ Kurallar:
 - Her etkileşimli öğe **en az 44×44px** dokunma alanı (görsel ikon küçük olabilir; hit-area 44px). Alt sınır istisnası yoktur: kapatma, önizleme geçişi, Fit/Fill, araç düğmeleri dâhil.
 - Güvenli alan: `env(safe-area-inset-*, 0px)` (yedek değer 0; `34px` yedeği yanlış boşluk üretir). Sayfa `viewport-fit=cover` ile açılır.
 - `:hover` yalnız `@media (hover: hover) and (pointer: fine)` içinde; dokunmatikte `:active` ile `scale(0.97)`.
-- Filmstrip sıralaması şu an HTML5 `draggable` kullanıyor; dokunmatikte güvenilirliği cihazda doğrulanmadı (denetim raporu §1). Dokunmatik sürükleme Pointer Events + `setPointerCapture` ile tasarlanır (apple-design §2).
+- Filmstrip sıralaması Pointer Events ile (`components/studio/Filmstrip.tsx`): dokunmatikte 350ms basılı tut → sürükle (1:1 takip, `setPointerCapture`), fare ile 6px hareket. Basılı tutma dolmadan hareket yatay kaydırmadır. Gerçek telefonda doğrulanmadı.
 
 ### 6.5 Doğrulama (her UI değişikliğinde)
 
-390×844, 360×740, 430×932 ve yatay 844×390'da, düzenleme paneli açık ve preset seçili hâlde: (a) stage ile header/bottom stack kesişmez, (b) `document.documentElement.scrollWidth ≤ innerWidth`, (c) 44px altı etkileşimli öğe yok, (d) 11px altı metin yok. Tarayıcı yoksa bu maddeler "doğrulanmadı" olarak işaretlenir. Betik: `docs/procedures.md` Prosedür 2.
+390×844, 360×740, 430×932 ve yatay 844×390'da, düzenleme paneli açık ve preset seçili hâlde: (a) stage ile header/bottom stack kesişmez, (b) `document.documentElement.scrollWidth ≤ innerWidth`, (c) 44px altı etkileşimli öğe yok, (d) 12px altı metin yok, (e) en çok 3 görünür cam yüzey. Tarayıcı yoksa bu maddeler "doğrulanmadı" olarak işaretlenir. Betik: `docs/procedures.md` Prosedür 2.
 
 ---
 
@@ -173,7 +173,11 @@ Kurallar:
 | Amber | `text-accent-amber`, `bg-accent-amber` | `--accent-amber` |
 | Cam | `glass-panel` | `.glass-panel` |
 | Dokunma hedefi | `touch-target` | `.touch-target` |
-| Sahne alanı (mevcut) | — | `.canvas-viewport` (sabit padding'e dayanıyor; bölüm 6'ya göre yeniden yazılmalı, bkz. denetim raporu) |
+| Stüdyo kökü (100dvh, flex sütun) | — | `.studio-root` |
+| Sahne alanı (cq birimleriyle sığdırma) | `w-[min(100cqw,calc(100cqh*4/5))]` | `.stage-fit` (`container-type: size`) |
+| Basma geri bildirimi | — | `.press` (`scale(0.97)`, 120ms) |
+| Panel girişi | — | `.animate-panel-in` (220ms, transform + opacity) |
+| Ortak iskelet | — | `components/studio/StudioShell.tsx`; ölçüm işaretleri `[data-stage]`, `[data-bottom-stack]` |
 
 ## 10. Kullanılan Skill'lerdeki İstisnalar
 

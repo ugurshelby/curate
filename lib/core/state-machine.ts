@@ -10,16 +10,6 @@
 import { StudioItem, StudioModule, StudioState, ActivePreset, CubeLUT, ColorMetrics, ImageDimensions } from './types';
 import { revokeUrl, cleanupAllUrls, generateProxyImage, registerUrl } from '../engine/proxy';
 
-const DEFAULT_REFERENCE_PHOTOS = [
-  { id: "p1", name: "01-Kapak.jpg", path: "/reference-images/ic-mekan-bar.jfif" },
-  { id: "p2", name: "02-Saha.jpg", path: "/reference-images/cim-saha.jfif" },
-  { id: "p3", name: "03-Gokdelen.jpg", path: "/reference-images/sehir-gokdelen.jfif" },
-  { id: "p4", name: "04-Gunbatimi.jpg", path: "/reference-images/gun-batimi-gunese-dokunan-eleman.jfif" },
-  { id: "p5", name: "05-Tren.jpg", path: "/reference-images/tren.jfif" },
-  { id: "p6", name: "06-GolEvi.jpg", path: "/reference-images/gol-evi.jfif" },
-  { id: "p7", name: "07-Kovboy.jpg", path: "/reference-images/kovboy.jfif" },
-];
-
 const INITIAL_ITEMS: StudioItem[] = [];
 
 const INITIAL_STATE: StudioState = {

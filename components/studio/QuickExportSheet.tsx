@@ -65,9 +65,9 @@ export function QuickExportSheet({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 animate-fade-in">
       <div 
-        className="w-full max-w-lg rounded-t-sheet sm:rounded-sheet glass-panel p-6 border border-white/10 shadow-2xl animate-sheet-slide-up flex flex-col gap-5"
+        className="w-full max-w-lg rounded-t-sheet sm:rounded-sheet bg-[#18181b] p-6 pb-[calc(var(--safe-area-bottom)+24px)] border border-white/10 shadow-2xl animate-panel-in flex flex-col gap-5"
       >
         {/* Başlık ve Kapat */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
@@ -77,15 +77,16 @@ export function QuickExportSheet({
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-[#f5f5f7]">Quick Export Sheet</span>
-              <span className="text-[11px] text-[#71717a]">Zero-Waste Platform Standartları</span>
+              <span className="text-xs text-[#71717a]">Zero-Waste Platform Standartları</span>
             </div>
           </div>
           <button 
             onClick={onClose}
             disabled={isExporting}
-            className="p-1.5 rounded-full hover:bg-white/10 text-[#71717a] hover:text-white transition-colors"
+            aria-label="Kapat"
+            className="touch-target press rounded-full text-[#a1a1aa] hover:text-white"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -97,13 +98,13 @@ export function QuickExportSheet({
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-[#a1a1aa]">Kilitli Çözünürlük:</span>
-            <span className="font-mono text-emerald-400 font-medium">
+            <span className="num-metric text-[#f5a623] font-medium">
               {spec.width > 0 ? `${spec.width} × ${spec.height} px (${spec.aspectRatio})` : "Orijinal"}
             </span>
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-[#a1a1aa]">Görsel Sayısı:</span>
-            <span className="font-mono text-[#f5f5f7]">{itemsToExport.length} Kare</span>
+            <span className="num-metric text-[#f5f5f7]">{itemsToExport.length} Kare</span>
           </div>
         </div>
 
@@ -113,7 +114,7 @@ export function QuickExportSheet({
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setFormat("jpeg")}
-              className={`p-3 rounded-md border text-left flex flex-col gap-1 transition-all ${
+              className={`press min-h-[44px] p-3 rounded-md border text-left flex flex-col gap-1 transition-all ${
                 format === "jpeg" 
                   ? "border-[#f5a623] bg-[#f5a623]/10" 
                   : "border-white/5 bg-[#18181b]/60 hover:border-white/10"
@@ -123,14 +124,14 @@ export function QuickExportSheet({
                 <span>JPEG (%92 Optimize)</span>
                 {format === "jpeg" && <Check className="w-3.5 h-3.5 text-[#f5a623]" />}
               </div>
-              <span className="text-[10px] text-[#71717a]">
+              <span className="text-xs text-[#71717a]">
                 Meta sıkıştırma algoritmasını tetiklemeyen standart
               </span>
             </button>
 
             <button
               onClick={() => setFormat("png")}
-              className={`p-3 rounded-md border text-left flex flex-col gap-1 transition-all ${
+              className={`press min-h-[44px] p-3 rounded-md border text-left flex flex-col gap-1 transition-all ${
                 format === "png" 
                   ? "border-[#f5a623] bg-[#f5a623]/10" 
                   : "border-white/5 bg-[#18181b]/60 hover:border-white/10"
@@ -140,7 +141,7 @@ export function QuickExportSheet({
                 <span>PNG (Kayıpsız)</span>
                 {format === "png" && <Check className="w-3.5 h-3.5 text-[#f5a623]" />}
               </div>
-              <span className="text-[10px] text-[#71717a]">
+              <span className="text-xs text-[#71717a]">
                 Maksimum piksel sadakati, büyük dosya boyutu
               </span>
             </button>
@@ -148,7 +149,7 @@ export function QuickExportSheet({
         </div>
 
         {/* EXIF Gizlilik Garantisi */}
-        <div className="flex items-center gap-2 p-2.5 rounded-md bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 text-xs">
+        <div className="flex items-center gap-2 p-2.5 rounded-md bg-white/5 border border-white/10 text-[#a1a1aa] text-xs">
           <ShieldCheck className="w-4 h-4 shrink-0" />
           <span>GPS ve cihaz EXIF verileri otomatik olarak sıfırlanır.</span>
         </div>
@@ -156,7 +157,7 @@ export function QuickExportSheet({
         {/* İlerleme ve İndir Butonu */}
         <div className="flex flex-col gap-2 pt-2">
           {progressStatus && (
-            <span className="text-xs font-mono text-[#f5a623] text-center">
+            <span className="text-xs num-metric text-[#f5a623] text-center">
               {progressStatus}
             </span>
           )}

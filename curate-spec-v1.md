@@ -82,8 +82,8 @@ Aşağıdaki çelişkiler açıkta olup agent'lar tarafından karara bağlanamaz
 
 | # | Hata | Kanıt |
 |---|---|---|
-| 9 | **[Faz M1]** **Mobil düzenleme paneli görseli kapatıyor.** 390×844'te panel açık + preset seçili: sahne y=107–501, panel y=186–730; görselin ≈%80'i panelin altında. Panel preset yokken bile görselin ≈%53'ünü örter | `docs/reports/2026-10-02-audit.md` §1 |
-| 10 | **[Faz M1]** Mobil header tek satıra sığmıyor (95px, 4 satıra kırılan başlık, Export düğmesi sağ kenarı 444px'e taşıyor, ekran 390) | aynı rapor |
+| 9 | ~~**[Faz M1]** Mobil düzenleme paneli görseli kapatıyor~~ **KAPANDI (M1, 2026-10-03):** 360×740, 390×844, 430×932'de örtüşme 0 (`docs/reports/2026-10-03-phases.md`). Eski ölçüm: 390×844'te panel açık + preset seçili: sahne y=107–501, panel y=186–730; görselin ≈%80'i panelin altında. Panel preset yokken bile görselin ≈%53'ünü örter | `docs/reports/2026-10-02-audit.md` §1 |
+| 10 | ~~**[Faz M1]** Mobil header tek satıra sığmıyor~~ **KAPANDI (M1, 2026-10-03):** header 52px tek satır. Eski ölçüm: (95px, 4 satıra kırılan başlık, Export düğmesi sağ kenarı 444px'e taşıyor, ekran 390) | aynı rapor |
 | 11 | **[Faz M2]** Canlı önizleme tam çözünürlükte işleniyor; önizleme ve export aynı fonksiyonu **farklı parametrelerle** çağırıyor (önizleme `fitMode:"fill"` sabit ve tam boyutlu tuval; export 1080×1350). Gren/halation çözünürlüğe bağlı olduğundan eşitlik garanti değil | aynı rapor |
 
 ### 4.4 — Sahip Kararları (2026-10-02) ve Faz Bağlantısı
@@ -92,12 +92,12 @@ Faz sırası: **K** (bu kararların dokümana işlenmesi, ölü kod temizliği) 
 
 | # | Karar | Faz | Durum |
 |---|---|---|---|
-| K1 | **TikTok ayrı export.** Carousel'deki Instagram/TikTok geçişi hem önizlemeyi hem export'u belirler. Instagram: 1080×1350 (4:5). TikTok: 1080×1920 (9:16) **[VARSAYIM — doğrulanmadı; sahip telefonda deneyip onaylayacak]**. Fit/Fill, preset, harmonize ve parite kuralları iki modda aynı. TikTok önizlemesi 9:16 sahnede çizilir; TikTok arayüz güvenli alanı (sağ buton sütunu, alt açıklama) önizlemede gösterilir, export'a yazılmaz. `lib/export/platform-specs.ts` iki hedefi veri olarak tutar. Dosya adı: `dump_01.jpg` (Instagram), `tiktok_01.jpg` (TikTok). | S | Kod yok |
+| K1 | **TikTok ayrı export.** Carousel'deki Instagram/TikTok geçişi hem önizlemeyi hem export'u belirler. Instagram: 1080×1350 (4:5). TikTok: 1080×1920 (9:16) **[VARSAYIM — doğrulanmadı; sahip telefonda deneyip onaylayacak]**. Fit/Fill, preset, harmonize ve parite kuralları iki modda aynı. TikTok önizlemesi 9:16 sahnede çizilir; TikTok arayüz güvenli alanı (sağ buton sütunu, alt açıklama) önizlemede gösterilir, export'a yazılmaz. `lib/export/platform-specs.ts` iki hedefi veri olarak tutar. Dosya adı: `dump_01.jpg` (Instagram), `tiktok_01.jpg` (TikTok). | S | M1'de geçiş her zaman bir hedef seçili (varsayılan Instagram, sahip kararı 2026-10-03); export bağlantısı Faz S |
 | K2 | **Story: en az 2, en fazla 6 fotoğraf.** Grid sayısı fotoğraf sayısına eşit ve otomatik; kullanıcı seçmez (grid seçici kalkar). 2'den az fotoğrafta Export pasif + kısa ipucu: "En az 2 fotoğraf ekle". 6 doluyken ekleme yolu kapanır, fazlası alınmaz, kısa uyarı verilir. Tek fotoğraflık Story bu modülün işi değildir; tek kare için Çerçeve (ve planlanan Düzenle modülü, bkz. §10 soru 4). | S | Kod yok (bugün grid sayısını kullanıcı seçiyor: `storyLayout.slotCount`) |
-| K3 | **Referans görseller kalır, test yükleme eklenir.** `public/reference-images/` altındaki 13 görsel repoda kalır. Ana sayfada ikincil görünümde "Referans Görsel Yükle": küçük önizleme ızgarası, çoklu seçim, "Hepsi" kısayolu; seçilenler kütüphaneye eklenir. Modül içinde de alt çubuktaki "+" menüsünde aynı eylem; modül sınırlarına uyar (Story 2–6, Çerçeve ve Upscale tek görsel). Yükleme aynı kökten `fetch` → `Blob` (`.jfif` için tür açıkça `image/jpeg`) → `createObjectURL`; görseller hiçbir yere gönderilmez. Kütüphane boş başlar; referanslar yalnız kullanıcı isteyince girer. | M1 | Kod yok |
+| K3 | **Referans görseller kalır, test yükleme eklenir.** `public/reference-images/` altındaki 13 görsel repoda kalır. Ana sayfada ikincil görünümde "Referans Görsel Yükle": küçük önizleme ızgarası, çoklu seçim, "Hepsi" kısayolu; seçilenler kütüphaneye eklenir. Modül içinde de alt çubuktaki "+" menüsünde aynı eylem; modül sınırlarına uyar (Story 2–6, Çerçeve ve Upscale tek görsel). Yükleme aynı kökten `fetch` → `Blob` (`.jfif` için tür açıkça `image/jpeg`) → `createObjectURL`; görseller hiçbir yere gönderilmez. Kütüphane boş başlar; referanslar yalnız kullanıcı isteyince girer. | M1 | **Uygulandı (M1)**: `lib/core/reference-images.ts`, `ReferencePicker.tsx`, testli |
 | K4 | **Panorama kalıcı olarak kapatıldı.** | K | Uygulandı (bu commit) |
-| K5 | Durum renkleri amber/nötr (yeşil "Hero aktif" ve TikTok kırmızısı kalkar). Frame export 1080×1350 kalır. | M1 (renk), — (Frame: değişiklik yok) | Kod yok |
-| M1-a | Mobil panel yeniden tasarımı onaylandı: preset'ler yatay kaydırmalı tek satır; `.cube` LUT ve Hero Harmonize "Araçlar" altında kapalı bölümde. | M1 | Kod yok |
+| K5 | Durum renkleri amber/nötr (yeşil "Hero aktif" ve TikTok kırmızısı kalkar). Frame export 1080×1350 kalır. | M1 (renk), — (Frame: değişiklik yok) | **Uygulandı (M1)** |
+| M1-a | Mobil panel yeniden tasarımı onaylandı: preset'ler yatay kaydırmalı tek satır; `.cube` LUT ve Hero Harmonize "Araçlar" altında kapalı bölümde. | M1 | **Uygulandı (M1)** |
 | M2-a | Önizleme render hattı: denetim raporu §2 seçenek **A** (CPU, doğru çözünürlük, export ile aynı fonksiyon ve parametre şeması). WebGL ve worker bu fazda yok. | M2 | Kod yok |
 | S-a | Story'de Instagram/TikTok geçişi kalkar; fotoğraflar story güvenli alanına (üst ilerleme çubuğu/hesap satırı, alt mesaj çubuğu) yerleşir ve export aynı geometriyi kullanır; hücre başına yer değiştirme, görsel değiştirme, sürükleyerek konumlandırma ve iki parmakla yakınlaştırma; konum/zoom export'a birebir yansır. | S | Kod yok |
 | S-b | Export: tek görsel her zaman doğrudan dosya iner, zip yalnız çoklu Carousel serisinde. Varsayılan en yüksek kalite: tam hedef boyut, sRGB, JPEG 0.97; dosya 8 MB'ı aşarsa kalite kademeli düşer ve kullanıcıya gösterilir. PNG ve format seçimi "Gelişmiş" altında. Export sayfasında jargon yok; hedef olarak gerçek boyut (örn. 1080×1350) yazılır. | S | Kod yok (bugün JPEG 0.92) |
@@ -193,8 +193,8 @@ Buna göre her faz için prompt şöyle yazılır:
 1. **(Uğur)** Hedef 6 preset ailesi kodda uygulandı, eski 6 profil kaldırıldı. Bu değişimin kalıcı karar olarak onaylanıp onaylanmadığı ve değerlerin referans görsellerden kalibrasyonu (Faz 3) sahibin teyidini bekliyor.
 2. ~~Mobil kullanım önceliği~~ **KAPANDI (2026-10-02):** Birincil kullanım mobil. Worker/proxy/render hattı kapsamı `docs/reports/2026-10-02-audit.md` §2'deki seçeneklerden sahip tarafından seçilir.
 3. ~~`.CUBE` LUT yeri~~ **KAPANDI (2026-10-02):** "Araçlar" altında kapalı bölüm (M1-a).
-4. **(Uğur)** K2'de anılan **"yeni Düzenle modülü"** kodda ve faz planında yok. Kapsamı ve hangi faza girdiği belirlenmeli.
-5. **(Uğur)** K1: Carousel'de Instagram/TikTok geçişi export hedefini belirleyecek. Bugünkü "önizleme katmanı kapalı" (ne IG ne TikTok) durumu kalacak mı, yoksa her zaman iki hedeften biri mi seçili olacak? Güvenli alan katmanı gizlenebilir mi?
+4. **Ertelendi (sahip kararı 2026-10-03):** K2'de anılan "yeni Düzenle modülü" bu fazlardan (K, M1, M2, S) sonraya bırakıldı.
+5. ~~Carousel hedef geçişi~~ **KAPANDI (2026-10-03):** Her zaman bir hedef seçili, varsayılan Instagram. Açık kalan: güvenli alan katmanının gizlenebilmesi istenir mi?
 6. **(Uğur)** K1: TikTok 1080×1920 boyutu telefonda doğrulanacak.
 
 ---

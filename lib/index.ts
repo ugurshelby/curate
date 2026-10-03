@@ -6,6 +6,7 @@ export * from './core/types';
 export * from './core/state-machine';
 export * from './core/use-studio';
 export * from './core/worker-bridge';
+export * from './core/reference-images';
 
 export * from './engine/proxy';
 export * from './engine/harmonize';

@@ -50,21 +50,27 @@ Every procedure run must conclude with these steps in exact order:
   2. Check filmstrip behavior during sheet open/close (it must fit the bottom stack budget, CDS §6.2).
   3. Audit touch target dimensions (minimum 44×44px on interactive controls) and text size (minimum 11px).
   4. Check safe-area paddings (Dynamic Island, navigation bars, Instagram/TikTok overlays) and root height unit (`dvh`, not `vh`).
-  5. Audit typography and copy for Turkish UI consistency and absence of typewriter monospace fonts in UI copy.
+  5. Audit typography and copy for Turkish UI consistency and absence of typewriter monospace fonts in UI copy (minimum text size 12px since Faz M1).
 
-  Invariant script (browser console or `javascript_tool`; first load, stage = the 4:5 photo box, header/bottom stack = first `header` and `footer`):
+  Invariant script (browser console or `javascript_tool`). Since Faz M1 the layout marks its regions: `[data-stage]` = photo box, `header` = top bar, `[data-bottom-stack]` = panel + bar:
   ```js
   const R = e => e.getBoundingClientRect();
-  const stage = R(document.querySelector('main > div')), hd = R(document.querySelector('header'));
-  const panel = document.querySelector('.animate-sheet-slide-up'), fs = R(document.querySelector('footer'));
-  const bottomTop = panel ? Math.min(R(panel).top, fs.top) : fs.top;
+  const stage = R(document.querySelector('[data-stage]')), hd = R(document.querySelector('header'));
+  const bottomTop = R(document.querySelector('[data-bottom-stack]')).top;
+  const visible = e => { const r = R(e); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
+  const interactive = [...document.querySelectorAll('button, [role="button"], [role="radio"], [role="slider"], input[type="range"]')].filter(visible);
+  const inScroller = e => { for (let p = e.parentElement; p; p = p.parentElement) { const o = getComputedStyle(p).overflowX; if (o === 'auto' || o === 'scroll') return true; } return false; };
   ({ overlap: stage.top < hd.bottom || stage.bottom > bottomTop,
      stage: [Math.round(stage.top), Math.round(stage.bottom)], headerBottom: Math.round(hd.bottom), bottomStackTop: Math.round(bottomTop),
+     stageHeightPct: Math.round(stage.height / innerHeight * 100),
      hScroll: document.documentElement.scrollWidth > innerWidth,
-     smallTargets: [...document.querySelectorAll('button')].filter(b => { const r = R(b); return r.width && (r.width < 44 || r.height < 44); }).map(b => b.innerText.trim() || b.title),
-     tinyText: [...document.querySelectorAll('body *')].filter(e => !e.children.length && e.textContent.trim() && parseFloat(getComputedStyle(e).fontSize) < 11).length });
+     offscreen: interactive.filter(e => !inScroller(e)).filter(e => R(e).right > innerWidth + 0.5 || R(e).left < -0.5).map(e => e.getAttribute('aria-label') || e.innerText.trim()),
+     smallTargets: interactive.filter(e => { const r = R(e); return r.width < 44 || r.height < 44; }).map(e => e.getAttribute('aria-label') || e.innerText.trim()),
+     tinyText: [...document.querySelectorAll('body *')].filter(e => !e.children.length && e.textContent.trim() && visible(e) && parseFloat(getComputedStyle(e).fontSize) < 12).map(e => e.textContent.trim().slice(0, 20)),
+     glass: [...document.querySelectorAll('.glass-panel')].filter(visible).length });
   ```
-  Notes: wait for the sheet animation (≈400 ms) before measuring; in the in-app browser, transitions only advance while the pane is rendered, so take a screenshot first (measured 2026-10-02: without it the panel still read y=730); `footer` top includes the panel when the panel is rendered inside it (current layout).
+  Required: `overlap` false, `hScroll` false, `offscreen`, `smallTargets` and `tinyText` empty, `glass` ≤ 3. Items inside a horizontal scroller (preset row, filmstrip) are excluded from `offscreen`; they are clipped by the scroller, not the page.
+  Notes: wait for the panel animation (≈250 ms) before measuring; in the in-app browser, transitions only advance while the pane is rendered, so take a screenshot first.
 - **May Change:** CSS classes, layout padding, responsive flex/grid wrappers.
 - **Must Only Report:** Visual rendering status (mark as "not verified" if browser unavailable).
 - **Docs Updated:** `docs/reference/curate-reference.md` (§2, §7), `logs/YYYY-MM-DD.md`.

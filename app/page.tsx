@@ -18,12 +18,14 @@ import { CarouselStudio } from "@/components/studio/CarouselStudio";
 import { StoryStudio } from "@/components/studio/StoryStudio";
 import { FrameStudio } from "@/components/studio/FrameStudio";
 import { UpscaleStudio } from "@/components/studio/UpscaleStudio";
-import { StudioModule, studioStore, StudioItem, useStudio, createStudioItem } from "@/lib";
+import { StudioModule, StudioItem, useStudio, createStudioItem } from "@/lib";
+import { ReferencePicker } from "@/components/studio/ReferencePicker";
 
 export default function CurateStudioMain() {
   const { state, actions } = useStudio();
   const [activeModule, setActiveModule] = useState<StudioModule | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isReferenceOpen, setIsReferenceOpen] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const openModule = (mod: StudioModule) => {
@@ -62,6 +64,12 @@ export default function CurateStudioMain() {
     openModule("carousel");
   };
 
+  // Referans görseller kütüphaneye eklenir; modül açılmaz (test amaçlı ikincil eylem)
+  const addReferenceFiles = (files: File[]) => {
+    const newItems: StudioItem[] = files.map((file, idx) => createStudioItem(file, state.items.length + idx));
+    actions.addItems(newItems);
+  };
+
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
@@ -79,7 +87,7 @@ export default function CurateStudioMain() {
 
   // 2. Karşılama Ekranı (Studio Hub View)
   return (
-    <div className="relative min-h-screen w-screen bg-black text-[#f5f5f7] select-none flex flex-col justify-between p-6 sm:p-12 overflow-x-hidden">
+    <div className="relative min-h-[100dvh] w-full bg-black text-[#f5f5f7] select-none flex flex-col justify-between p-6 sm:p-12 overflow-x-hidden">
       <input
         ref={fileInputRef}
         type="file"
@@ -97,14 +105,16 @@ export default function CurateStudioMain() {
           </div>
           <div className="flex flex-col">
             <span className="text-base font-semibold tracking-tight text-[#f5f5f7]">Curate Studio</span>
-            <span className="text-[11px] text-[#71717a] font-mono">Editorial Photo Darkroom</span>
+            <span className="text-xs text-[#71717a] num-metric">Editorial Photo Darkroom</span>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           {state.items.length > 0 && (
             <button
-              onClick={() => actions.clearItems()}
+              onClick={() => {
+                if (window.confirm("Kütüphanedeki tüm fotoğraflar kaldırılsın mı?")) actions.clearItems();
+              }}
               className="touch-target px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-medium flex items-center gap-1.5 transition-all border border-rose-500/20"
               title="Kütüphanedeki tüm fotoğrafları temizle"
             >
@@ -122,8 +132,8 @@ export default function CurateStudioMain() {
             <span>Fotoğraf Yükle</span>
           </button>
 
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full glass-panel text-[11px] text-[#a1a1aa] border border-white/10">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full glass-panel text-xs text-[#a1a1aa] border border-white/10">
+            <span className="w-2 h-2 rounded-full bg-[#f5a623]" />
             <span>Client-Side Engine Active</span>
           </div>
         </div>
@@ -161,7 +171,7 @@ export default function CurateStudioMain() {
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold text-white">Fotoğraflarınızı buraya sürükleyin</span>
-                <span className="text-[10px] bg-[#f5a623]/15 text-[#f5a623] px-2 py-0.5 rounded font-mono">
+                <span className="text-xs bg-[#f5a623]/15 text-[#f5a623] px-2 py-0.5 rounded num-metric">
                   Hızlı Başla
                 </span>
               </div>
@@ -177,6 +187,20 @@ export default function CurateStudioMain() {
           </button>
         </div>
 
+        {/* İkincil, test amaçlı: referans görsel yükleme (spec §4.4 K3) */}
+        <div className="flex items-center justify-between gap-3 -mt-2">
+          <button
+            type="button"
+            onClick={() => setIsReferenceOpen(true)}
+            className="touch-target press px-1 text-sm text-[#a1a1aa] hover:text-white underline-offset-4 hover:underline"
+          >
+            Referans Görsel Yükle
+          </button>
+          {state.items.length > 0 && (
+            <span className="text-xs text-[#71717a] num-metric">Kütüphane: {state.items.length} fotoğraf</span>
+          )}
+        </div>
+
         {/* 4'lü Bento Kart Izgarası */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           
@@ -189,7 +213,7 @@ export default function CurateStudioMain() {
               <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[#f5a623] group-hover:scale-110 transition-transform">
                 <Layers className="w-5 h-5" />
               </div>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white/5 text-[#a1a1aa]">
+              <span className="text-xs num-metric px-2 py-0.5 rounded bg-white/5 text-[#a1a1aa]">
                 4:5 Post
               </span>
             </div>
@@ -216,7 +240,7 @@ export default function CurateStudioMain() {
               <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[#f5a623] group-hover:scale-110 transition-transform">
                 <Smartphone className="w-5 h-5" />
               </div>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white/5 text-[#a1a1aa]">
+              <span className="text-xs num-metric px-2 py-0.5 rounded bg-white/5 text-[#a1a1aa]">
                 9:16 Mockup
               </span>
             </div>
@@ -243,7 +267,7 @@ export default function CurateStudioMain() {
               <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[#f5a623] group-hover:scale-110 transition-transform">
                 <Crop className="w-5 h-5" />
               </div>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white/5 text-[#a1a1aa]">
+              <span className="text-xs num-metric px-2 py-0.5 rounded bg-white/5 text-[#a1a1aa]">
                 Polaroid & Mat
               </span>
             </div>
@@ -270,7 +294,7 @@ export default function CurateStudioMain() {
               <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[#f5a623] group-hover:scale-110 transition-transform">
                 <ZoomIn className="w-5 h-5" />
               </div>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white/5 text-[#a1a1aa]">
+              <span className="text-xs num-metric px-2 py-0.5 rounded bg-white/5 text-[#a1a1aa]">
                 Lanczos-3
               </span>
             </div>
@@ -290,11 +314,18 @@ export default function CurateStudioMain() {
         </div>
       </main>
 
+      <ReferencePicker
+        open={isReferenceOpen}
+        onClose={() => setIsReferenceOpen(false)}
+        onConfirm={addReferenceFiles}
+        maxSelect={13}
+      />
+
       {/* ALT FOOTER: Sistem Garantileri */}
-      <footer className="w-full max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 py-4 border-t border-white/5 text-[11px] text-[#71717a]">
+      <footer className="w-full max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 py-4 border-t border-white/5 text-xs text-[#71717a]">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5 text-white/80">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <ShieldCheck className="w-3.5 h-3.5 text-[#a1a1aa]" />
             Sıfır Sunucu Yükü (100% Client-Side)
           </span>
           <span>·</span>
@@ -302,8 +333,8 @@ export default function CurateStudioMain() {
           <span>·</span>
           <span>Lanczos-3 Engine</span>
         </div>
-        <div className="font-mono text-[#71717a]">
-          Curate Design System (CDS) v1.0
+        <div className="num-metric text-[#71717a]">
+          Curate Design System (CDS) v2.0
         </div>
       </footer>
     </div>

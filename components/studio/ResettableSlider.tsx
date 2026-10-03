@@ -26,44 +26,39 @@ export function ResettableSlider({
   const isDefault = value === defaultValue;
 
   return (
-    <div className="flex flex-col gap-1.5 w-full select-none">
-      <div className="flex items-center justify-between text-xs">
-        <span 
-          className="text-[#a1a1aa] cursor-pointer hover:text-white transition-colors"
-          onDoubleClick={() => onChange(defaultValue)}
-          title="Sıfırlamak için çift tıklayın"
-        >
-          {label}
-        </span>
-        <div className="flex items-center gap-1.5">
-          <span className="font-mono text-[11px] text-[#f5f5f7]">
+    <div className="flex flex-col w-full select-none">
+      <div className="flex items-center justify-between gap-2 text-sm min-h-[28px]">
+        <span className="text-[#a1a1aa] truncate">{label}</span>
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-[#f5f5f7] num-metric">
             {value > 0 && defaultValue === 0 ? `+${value}` : value}
             {unit}
           </span>
           {!isDefault && (
             <button
+              type="button"
               onClick={() => onChange(defaultValue)}
-              className="text-[10px] text-[#f5a623] hover:underline"
+              className="-my-2 h-11 px-2 text-xs text-[#f5a623]"
               title="Varsayılana sıfırla"
             >
-              sıfırla
+              Sıfırla
             </button>
           )}
         </div>
       </div>
 
-      <div className="relative flex items-center h-5">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(e) => onChange(parseFloat(e.target.value))}
-          onDoubleClick={() => onChange(defaultValue)}
-          className="w-full h-1 bg-[#27272a] rounded-lg appearance-none cursor-pointer accent-[#f5a623]"
-        />
-      </div>
+      {/* 44px dokunma yüksekliği; görünen iz ince kalır */}
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        aria-label={label}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        onDoubleClick={() => onChange(defaultValue)}
+        className="w-full h-11 bg-transparent cursor-pointer accent-[#f5a623]"
+      />
     </div>
   );
 }

@@ -11,12 +11,13 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 ### 1. Carousel Dump (4:5)
 - **Sahne Mimarisi:** Varsayılan 4:5 Fill modu, tek tıkla Fit/Fill geçişi, izole wheel zoom.
 - **Platform Safe-Zone:** Yarı saydam göz ikonuyla Instagram Post arayüz (profil başlığı, kaydetme/beğeni butonları) katmanı.
-- **Filmstrip & İşlem Menüsü:** Kart üzerinde masaüstünde sağ tık, mobilde çift dokunma (`double-tap` ~320ms) ile `01 Kapak Yap`, `Seriyi Bu Renge Eşitle (Hero Harmonize)` ve `Seriden Çıkar` seçenekleri.
+- **Filmstrip & İşlem Menüsü:** Kart üzerinde masaüstünde sağ tık, mobilde çift dokunma (~320ms) ile `Kapak yap`, `Seriyi bu renge eşitle (Hero Harmonize)` ve `Seriden çıkar`. Sıralama: dokunmatikte basılı tut (350ms) ve sürükle, farede sürükle.
+- **Düzenleme Paneli:** Preset'ler yatay kaydırmalı tek satır, kartlarda seçili fotoğrafın küçük önizlemesi; `.cube` LUT ve Hero Harmonize kapalı "Araçlar" bölümünde. Instagram/TikTok hedef geçişi sahnenin altında (varsayılan Instagram).
 - **Hero Renk Eşitleme:** Seçili karenin renk ve pozlama dengesini tüm seriye nazikçe (%20) işler; asla aşırı deformasyon yapmaz.
-- **Kutsal Viewport Kuralı (hedef):** Görsel, düzenleme panelinin/header'ın/filmstrip'in altında kalmaz (`design/CURATE_DESIGN_SYSTEM.md` §6). **Güncel durum:** 390×844'te panel açıkken ihlal ediliyor (2026-10-02 ölçümü, `docs/reports/2026-10-02-audit.md` §1); düzeltme bekliyor.
+- **Kutsal Viewport Kuralı:** Görsel, düzenleme panelinin/header'ın/filmstrip'in altında kalmaz (`design/CURATE_DESIGN_SYSTEM.md` §6). Faz M1'de 360×740, 390×844 ve 430×932'de dört modülde ölçüldü, örtüşme 0 (`docs/reports/2026-10-03-phases.md`). Telefonda doğrulanmadı.
 
 ### 2. Story Dump (9:16)
-- **iPhone Mockup Sahnesi:** Dynamic Island ve yuvarlatılmış kasa sınırlarıyla gerçekçi dikey iPhone ekranı.
+- **iPhone Mockup Sahnesi:** Dynamic Island ve yuvarlatılmış kasa sınırlarıyla dikey telefon ekranı; sahneye sığacak şekilde ölçeklenir. Instagram story güvenli alanı gösterilir (platform geçişi yok).
 - **Grid:** 2, 3, 4, 5 ve 6'lı kolaj şablonları. Bugün grid sayısını kullanıcı seçiyor; **planlanan (Faz S):** grid sayısı fotoğraf sayısına eşit ve otomatik, Story en az 2 en fazla 6 fotoğraf alır.
 - **Tekil "Space" Kontrolü:** Tek bir slider ile fotoğrafların hem kendi aralarındaki hem telefon kenarlarındaki boşluklarını yönetme.
 - **Akıllı Gradyan:** Fotoğrafların kenar piksellerinden otomatik türetilen organik arka plan gradyanı; siyah, beyaz ve antrasit zemin seçenekleri.
@@ -44,7 +45,9 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 
 ## 🧪 Referans Görseller
 
-`public/reference-images/` altındaki 13 görsel sahip kararıyla repoda kalır. Kütüphane boş başlar. **Planlanan (Faz M1):** ana sayfada ve modül içi "+" menüsünde ikincil "Referans Görsel Yükle" eylemi; görseller aynı kökten yüklenir, hiçbir yere gönderilmez.
+`public/reference-images/` altındaki 13 görsel sahip kararıyla repoda kalır. Kütüphane boş başlar. Ana sayfada ve modül içi "+" menüsünde ikincil "Referans Görsel Yükle" eylemi vardır (çoklu seçim, "Hepsi"; Story en çok 6, Çerçeve/Upscale tek görsel). Görseller aynı kökten yüklenir, hiçbir yere gönderilmez.
+
+`?perf=1` ile açılan küçük geliştirme göstergesi kare süresini, son önizleme çizim süresini ve uzun görev sayısını gösterir.
 
 ---
 

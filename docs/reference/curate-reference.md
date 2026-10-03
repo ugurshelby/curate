@@ -36,7 +36,7 @@ No file states a business model, a launch date, or a hosting target beyond one h
 ---
 
 ## 2. Current state summary (what works, what is broken, what is half-built; measured, not described)
-Last verified: 2026-10-02
+Last verified: 2026-10-03
 
 Measured on 2026-10-02 in this workspace (Node `v22.18.0`, npm `10.9.3`, `node_modules` present, installed Next `14.2.35`):
 
@@ -78,7 +78,7 @@ Letterbox math in the daily log matches the formula in `getExportBlob`: a 1920×
 10. **Story and Frame do not run the color pipeline.** Their exports draw the source image only. [VERIFIED]
 11. **Filmstrip thumbnail dimensions standardized.** Updated from non-standard `w-13 h-15` to standard `w-14 h-16 rounded-xl` with smooth border transitions. [VERIFIED]
 12. **`runPipelineVerification` converted to automated tests.** Replaced by Vitest suite `tests/pipeline.test.ts` covering crop math, Lanczos dimensions, zip extensions, harmonize bounds, letterbox math, and 6 editorial presets; unwired runner deleted. [VERIFIED]
-13. **Mobile edit panel covers the photo (measured).** At 390×844 with the panel open and a preset selected: stage y=107–501, panel y=186–730 (545px tall), so about 80% of the stage is under the panel; with no preset the panel is 436px and covers about 53%. `.canvas-viewport-sheet-open` pads a fixed 280px regardless of panel height, and `scale-[0.88]` does not compensate. Header is 95px (title wraps to four lines) and its Export button right edge is at x=444 on a 390px screen. [VERIFIED] 2026-10-02, `components/studio/CarouselStudio.tsx`, `app/globals.css`.
+13. **[Fixed in Faz M1, 2026-10-03]** Mobile edit panel no longer covers the photo: 0 overlap at 360×740, 390×844, 430×932 in all four modules (`docs/reports/2026-10-03-phases.md`). Original finding: **Mobile edit panel covers the photo (measured).** At 390×844 with the panel open and a preset selected: stage y=107–501, panel y=186–730 (545px tall), so about 80% of the stage is under the panel; with no preset the panel is 436px and covers about 53%. `.canvas-viewport-sheet-open` pads a fixed 280px regardless of panel height, and `scale-[0.88]` does not compensate. Header is 95px (title wraps to four lines) and its Export button right edge is at x=444 on a 390px screen. [VERIFIED] 2026-10-02, `components/studio/CarouselStudio.tsx`, `app/globals.css`.
 14. **Live preview runs the full color pipeline on the full-resolution original on the main thread.** Preview draws `originalUrl` into a canvas of natural size (4000×3000 in the test), then `getImageData`/preset/`putImageData`. Measured long tasks per preset switch on a 12 MP image: 500 ms (Warm Silhouette), 728 ms (Night Cinematic), 579 ms (Amber Grain), desktop CPU. Phone timings not measured. [VERIFIED] 2026-10-02.
 15. **Preview and export call `drawCarouselFrame` with different arguments.** Preview: `fitMode:"fill"` hardcoded, canvas at natural size, crop done by CSS `object-cover`. Export: real `fitMode`, 1080×1350 canvas, crop in canvas. Grain and halation depend on pixel resolution, and harmonize metrics are taken over different pixel sets. "Same function" is true, "same result" is not guaranteed. [VERIFIED] code read; pixel equality not rendered. [UNVERIFIED]
 16. **Hero Harmonize reads metrics from the preview canvas after the preset was applied** (`handleHeroHarmonize` calls `getImageData` on the already filtered canvas). [VERIFIED] code read.
@@ -92,7 +92,7 @@ Letterbox math in the daily log matches the formula in `getExportBlob`: a 1920×
 ---
 
 ## 3. Architecture (stack, structure, data flow, directory map)
-Last verified: 2026-10-02
+Last verified: 2026-10-03
 
 ### Stack
 
@@ -122,8 +122,10 @@ public/               icon.svg, manifest.json, reference-images/*.jfif
 design/               CURATE_DESIGN_SYSTEM.md, tokens.curate.json,
                       skills/ (apple-design, animate, improve-animations,
                       redesign-existing-projects)
-tests/                pipeline, upscale-slider, viewer-selection
+tests/                pipeline, upscale-slider, viewer-selection, reference-images
 ```
+
+Shared UI since Faz M1: `components/studio/StudioShell.tsx` (header / stage / bottom stack, `[data-stage]`, `[data-bottom-stack]`), `AddMenu.tsx`, `ReferencePicker.tsx`, `Filmstrip.tsx` (pointer reorder), `PerfHud.tsx` (`?perf=1`). Reference images: `lib/core/reference-images.ts`.
 
 No `app/api`, no `middleware`, no `prisma`, no `supabase`. [VERIFIED] `git ls-files`.
 
@@ -143,7 +145,7 @@ Largest application files: `CarouselStudio.tsx` 674 lines, `StoryStudio.tsx` 549
 Carousel preview and export share `drawCarouselFrame` but not its arguments (see §2 item 15). Story, Frame and Upscale preview do not share a render function with export. Fit-mode background color is `#0a0a0c`. [VERIFIED] code read.
 
 ### Worker, proxy, OffscreenCanvas — single status table
-Last verified: 2026-10-02
+Last verified: 2026-10-03
 
 | Piece | What exists | Who uses it | Tag |
 |---|---|---|---|
@@ -209,7 +211,7 @@ No paid API usage in code. Hosting cost is zero inside this repo. [VERIFIED]
 ---
 
 ## 6. Quality gates (tests, lint, build, typecheck: what exists, what actually passes)
-Last verified: 2026-10-02
+Last verified: 2026-10-03
 
 | Gate | Exists? | Status (2026-10-02) |
 |---|---|---|
@@ -218,7 +220,7 @@ Last verified: 2026-10-02
 | `npm run build` | `"build": "next build"` | Pass, exit 0 [VERIFIED] |
 | `npm test` | Added in Phase 5 via Vitest | Pass, exit 0, 24 tests pass (core pipeline, upscale, selection, 6 editorial presets, proxy items) [VERIFIED] |
 | CI | `.github/workflows/ci.yml` | Triggers: push to `main`, pull request to `main`, manual. Node 22: tsc, lint, test, build [VERIFIED] file read; run results not checked [UNVERIFIED] |
-| Visual / mobile viewport check | Required after UI changes (AGENTS.md §4, CDS §6.5) | Run once on 2026-10-02 (Carousel, 390×844): FAILS the "photo never under panel" rule (§2 item 13) [VERIFIED] |
+| Visual / mobile viewport check | Required after UI changes (AGENTS.md §4, CDS §6.5) | 2026-10-03 (Faz M1): Procedure 2 passes in all four modules at 360×740, 390×844, 430×932 (emulated, desktop CPU) [VERIFIED]; phone and landscape [UNVERIFIED] |
 
 ---
 
@@ -272,14 +274,14 @@ Last verified: 2026-10-02
 ---
 
 ## 10. Gaps (difference between stated intent and reality, ordered by severity)
-Last verified: 2026-10-02
+Last verified: 2026-10-03
 
 1. **Starting library state:** Starting with seed photos rather than empty library. [Addressed in Phase 5 Roadmap 2]
 2. **Docs consistency:** Spec §4.1 previously listed fixed defects. [Addressed in Phase 4]
 3. **Preview vs Export draw paths:** Upscale preview filter vs Lanczos export. [Addressed in Phase 5 Roadmap 4]
 4. **Worker and proxy cover only Upscale export and thumbnails:** Carousel preview/export stay on the main thread at full resolution (§3 table). Mobile is primary, so this is now a performance defect, not a roadmap item. [Audit report §2]
 5. **Audience:** Resolved 2026-10-02 (single user, mobile primary). **Preset targets:** code now holds the 6 target presets; owner confirmation pending.
-6. **Mobile stage lock is violated:** measured 2026-10-02 (§2 item 13). Root cause: absolute-positioned footer over a stage padded by a fixed 280px; root height `h-screen` (100vh).
+6. **Mobile stage lock:** fixed in Faz M1 (2026-10-03); flex column, `100dvh`, bottom stack ≤ 40dvh. Not verified on a real phone or in landscape.
 7. **README inaccuracies:** Interaction details and versioning. [Addressed in Phase 4]
 8. **Automated tests:** Missing test runner. [Addressed in Phase 5 Roadmap 6]
 9. **Reference photos in public repo:** 13 files tracked; owner decision 2026-10-02: they stay.
