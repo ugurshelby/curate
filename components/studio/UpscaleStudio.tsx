@@ -13,9 +13,11 @@ import {
   upscaleFactorAllowed,
   UPSCALE_MAX_LONG_EDGE,
   UPSCALE_MAX_PIXELS,
+  derivedLabel,
 } from "@/lib";
 import { QuickExportSheet } from "./QuickExportSheet";
 import { StudioShell, StageNote } from "./StudioShell";
+import { DerivedBadge } from "./NoticeToast";
 import { AddMenu } from "./AddMenu";
 import { ReferencePicker } from "./ReferencePicker";
 
@@ -257,9 +259,12 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
       stageToolbar={
         hasPhoto ? (
           <>
-            <StageNote>
-              Çıktı {outW} × {outH}
-            </StageNote>
+            <span className="flex items-center gap-1.5 min-w-0">
+              <StageNote>
+                Çıktı {outW} × {outH}
+              </StageNote>
+              {selectedItem?.derivedBy && <DerivedBadge label={derivedLabel(selectedItem.derivedBy) ?? ""} />}
+            </span>
             {!factorAllowed(4) && (
               <span role="status" className="text-xs text-[#f5a623] text-right">
                 {anyAllowed ? "4x: Bu boyut için çok büyük" : "Bu boyut için çok büyük"} (en çok {UPSCALE_MAX_LONG_EDGE} px kenar, {UPSCALE_MAX_PIXELS / 1_000_000} MP)

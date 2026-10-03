@@ -7,11 +7,20 @@
  * 4. Lossless Upscale (Lanczos-3)
  */
 
-import { StudioItem, StudioModule, StudioState, ActivePreset, CubeLUT, ColorMetrics, ImageDimensions, StoryCellTransform, EditParams, EditCrop } from './types';
+import { StudioItem, StudioModule, StudioState, ActivePreset, CubeLUT, ColorMetrics, ImageDimensions, StoryCellTransform, EditParams, EditCrop, DerivedKind } from './types';
 import { DEFAULT_EDIT_PARAMS } from '../engine/edit-geometry';
 import { revokeUrl, cleanupAllUrls, generateProxyImage, registerUrl } from '../engine/proxy';
 
 const INITIAL_ITEMS: StudioItem[] = [];
+
+/** Bellek sınırı: kaynak başına en çok 2 türetilmiş fotoğraf; üçüncüde en eskisi silinir */
+export const MAX_DERIVED_PER_SOURCE = 2;
+
+const DERIVED_LABEL: Record<DerivedKind, string> = { upscale: 'Büyütülmüş', ai: 'AI sonucu' };
+
+export function derivedLabel(kind: DerivedKind | undefined): string | null {
+  return kind ? DERIVED_LABEL[kind] : null;
+}
 
 const INITIAL_STATE: StudioState = {
   activeModule: 'carousel',
@@ -42,6 +51,7 @@ const INITIAL_STATE: StudioState = {
   isProcessing: false,
   processingProgress: 0,
   processingStatus: 'Hazır',
+  notice: null,
 };
 
 type Listener = (state: StudioState) => void;
@@ -96,24 +106,60 @@ class StudioStateMachine {
     });
   }
 
+  /**
+   * Siler. Türetilmiş silinirse yalnız o gider. Kaynak silinirse türetilmişleri kalır ve sourceId temizlenir.
+   * Her silmede URL'ler serbest bırakılır, kaydın Düzenle/Story ayarları temizlenir.
+   */
   public removeItem(id: string) {
+    this.setState((prev) => removeFromState(prev, [id]));
+  }
+
+  /**
+   * Ortak "sonuç ekle" yolu (Büyüt, ileride AI): türetilmiş kaydı kaynağın arkasına ekler ve seçer.
+   * Yeni kaydın ayarları sıfır başlar (kaynağın ayarları kaynakta kalır).
+   * Kaynağın zaten MAX_DERIVED_PER_SOURCE türetilmişi varsa en eskisi silinir ve bildirim yazılır.
+   * Dönüş: silinen eski kayıt (yoksa null).
+   */
+  public addResultItem(result: StudioItem, sourceId: string, derivedBy: DerivedKind): StudioItem | null {
+    let evicted: StudioItem | null = null;
     this.setState((prev) => {
-      const target = prev.items.find((i) => i.id === id);
-      if (target) {
-        revokeUrl(target.originalUrl);
-        revokeUrl(target.proxyUrl);
+      const source = prev.items.find((i) => i.id === sourceId);
+      const siblings = prev.items
+        .filter((i) => i.sourceId === sourceId)
+        .sort((a, b) => a.createdAt - b.createdAt);
+      let base: StudioState = prev;
+      if (siblings.length >= MAX_DERIVED_PER_SOURCE) {
+        evicted = siblings[0];
+        base = { ...prev, ...removeFromState(prev, [evicted.id]) };
       }
 
-      const items = prev.items.filter((i) => i.id !== id).map((item, idx) => ({
-        ...item,
-        order: idx,
-      }));
+      const entry: StudioItem = { ...result, sourceId: source ? sourceId : null, derivedBy };
+      const items = [...base.items];
+      // Kaynağın ve mevcut türetilmişlerinin hemen arkasına
+      let insertAt = items.length;
+      const srcIdx = items.findIndex((i) => i.id === sourceId);
+      if (srcIdx >= 0) {
+        insertAt = srcIdx + 1;
+        while (insertAt < items.length && items[insertAt].sourceId === sourceId) insertAt++;
+      }
+      items.splice(insertAt, 0, entry);
 
-      const selectedItemId =
-        prev.selectedItemId === id ? (items.length > 0 ? items[0].id : null) : prev.selectedItemId;
-
-      return { items, selectedItemId };
+      const edits = { ...base.edits };
+      delete edits[entry.id];
+      return {
+        items: items.map((item, idx) => ({ ...item, order: idx })),
+        selectedItemId: entry.id,
+        edits,
+        notice: evicted
+          ? `Bellek için en eski ${derivedLabel((evicted as StudioItem).derivedBy)?.toLocaleLowerCase('tr')} kopya silindi (en çok ${MAX_DERIVED_PER_SOURCE}).`
+          : base.notice,
+      };
     });
+    return evicted;
+  }
+
+  public setNotice(notice: string | null) {
+    this.setState({ notice });
   }
 
   public selectItem(id: string | null) {
@@ -253,7 +299,12 @@ class StudioStateMachine {
       revokeUrl(item.originalUrl);
       revokeUrl(item.proxyUrl);
     });
-    this.setState({ items: [], selectedItemId: null });
+    this.setState((prev) => ({
+      items: [],
+      selectedItemId: null,
+      edits: {},
+      storyLayout: { ...prev.storyLayout, cellTransforms: {} },
+    }));
   }
 
   public setUpscaleScale(scaleFactor: 2 | 4) {
@@ -277,6 +328,33 @@ class StudioStateMachine {
 }
 
 export const studioStore = new StudioStateMachine();
+
+/** Saf silme: URL'leri bırakır, ayarları temizler, kaynağı silinen türetilmişlerin sourceId'sini null yapar */
+function removeFromState(prev: StudioState, ids: string[]): Partial<StudioState> {
+  const gone = new Set(ids);
+  prev.items.forEach((i) => {
+    if (gone.has(i.id)) {
+      revokeUrl(i.originalUrl);
+      revokeUrl(i.proxyUrl);
+    }
+  });
+  const items = prev.items
+    .filter((i) => !gone.has(i.id))
+    .map((item, idx) => ({
+      ...item,
+      order: idx,
+      sourceId: item.sourceId && gone.has(item.sourceId) ? null : item.sourceId,
+    }));
+  const edits = { ...prev.edits };
+  const cellTransforms = { ...prev.storyLayout.cellTransforms };
+  ids.forEach((id) => {
+    delete edits[id];
+    delete cellTransforms[id];
+  });
+  const selectedItemId =
+    prev.selectedItemId && gone.has(prev.selectedItemId) ? (items.length > 0 ? items[0].id : null) : prev.selectedItemId;
+  return { items, selectedItemId, edits, storyLayout: { ...prev.storyLayout, cellTransforms } };
+}
 
 /**
  * Pure function providing single source of truth for photo presence and selection

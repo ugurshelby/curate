@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { PerfHud } from "@/components/studio/PerfHud";
+import { NoticeToast } from "@/components/studio/NoticeToast";
 
 export const metadata: Metadata = {
   title: "Curate Studio — Minimalist Photo Curation & Preset Engine",
@@ -29,6 +30,7 @@ export default function RootLayout({
       <body className="min-h-[100dvh] bg-black antialiased selection:bg-[#f5a623]/30 selection:text-[#f5f5f7]">
         {children}
         <PerfHud />
+        <NoticeToast />
       </body>
     </html>
   );

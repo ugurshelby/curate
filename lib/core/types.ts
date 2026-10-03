@@ -118,7 +118,13 @@ export interface StudioItem {
   harmonize: HarmonizeSettings;
   order: number;
   createdAt: number;
+  /** Türetilmiş fotoğraf: hangi kayıttan üretildi (kaynak silinirse null) */
+  sourceId?: string | null;
+  /** Nasıl türetildi; ileride "ai" */
+  derivedBy?: DerivedKind;
 }
+
+export type DerivedKind = 'upscale' | 'ai';
 
 export interface StudioState {
   activeModule: StudioModule;
@@ -147,6 +153,8 @@ export interface StudioState {
   isProcessing: boolean;
   processingProgress: number; // 0 - 100
   processingStatus: string;
+  /** Kısa kullanıcı bildirimi (ör. eski türetilmiş fotoğraf silindi); gösterildikten sonra temizlenir */
+  notice: string | null;
 }
 
 export type ExportPlatform = 'ig_post_4_5' | 'ig_story_9_16' | 'tiktok_9_16' | 'edit' | 'original';

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { StudioItem } from "@/lib";
+import { ZoomIn } from "lucide-react";
+import { StudioItem, derivedLabel } from "@/lib";
 
 interface FilmstripProps {
   items: StudioItem[];
@@ -183,7 +184,7 @@ export function Filmstrip({ items, activeId, onTap, onReorder, onContextMenu }: 
             }}
             role="button"
             tabIndex={0}
-            aria-label={`${index + 1}. kare: ${photo.name}`}
+            aria-label={`${index + 1}. kare: ${photo.name}${photo.derivedBy ? `, ${derivedLabel(photo.derivedBy)}` : ""}`}
             aria-current={isActive}
             onPointerDown={(e) => handlePointerDown(e, index)}
             onPointerMove={handlePointerMove}
@@ -222,6 +223,14 @@ export function Filmstrip({ items, activeId, onTap, onReorder, onContextMenu }: 
             <span className="absolute top-0.5 left-0.5 min-w-[20px] px-1 rounded bg-black/75 text-xs leading-5 text-center text-white font-semibold num-metric pointer-events-none">
               {index + 1}
             </span>
+            {photo.derivedBy && (
+              <span
+                title={derivedLabel(photo.derivedBy) ?? undefined}
+                className="absolute bottom-0.5 right-0.5 w-5 h-5 rounded-full bg-[#f5a623] text-black flex items-center justify-center pointer-events-none"
+              >
+                <ZoomIn className="w-3 h-3" />
+              </span>
+            )}
           </div>
         );
       })}

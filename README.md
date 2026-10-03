@@ -31,7 +31,7 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 - Günün tarihini taşıyan analog turuncu dijital tarih damgası toggle'ı.
 
 ### 4. Kayıpsız Upscale (Lanczos-3)
-- Güvenli sınır: çıktının uzun kenarı en çok 8192 px (varsayım); aşan çarpan kapanır ve "Bu boyut için çok büyük" yazar.
+- Güvenli sınır: çıktının uzun kenarı en çok 8192 px ve alanı en çok 16 MP (varsayım); aşan çarpan kapanır ve "Bu boyut için çok büyük" yazar.
 - Matematiksel $L(x) = \text{sinc}(x) \cdot \text{sinc}(x/3)$ 2-pass Lanczos konvolüsyon motoru (dışa aktarmada gerçek kayıpsız 2x ve 4x büyütme).
 - Kaydırılabilir Before/After Split View çizgisiyle keskinlik önizlemesi (önizleme hızlı kontrast simülasyonu, export anında tam Lanczos-3 render).
 
@@ -41,7 +41,7 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 - **Kırp:** Serbest, Orijinal, 1:1, 4:5, 9:16, 16:9; çerçeve sabit, fotoğraf altında sürüklenir ve iki parmakla yakınlaşır (Story ile ortak hareket kodu, kenarda rubber-band); Serbest oranda köşeden boyutlanır; 90° döndürme, −10°…+10° ufuk düzeltme, yatay çevirme.
 - **Önce/sonra:** Preset sekmesinde sahneye basılı tut → kırpılmamış, preset'siz orijinal.
 - **Export:** Tek dosya `duzenle_01.jpg`, kırpımın kendi çözünürlüğünde (uzun kenar en çok 4096 px, varsayım), JPEG %97, 8 MB üstünde basamaklı düşüş.
-- **Büyüt:** Düzenlenmiş hâli yeni fotoğraf olarak ekleyip Upscale'i onunla açar.
+- **Büyüt:** Düzenlenmiş hâli kaynağa bağlı yeni bir fotoğraf olarak ekleyip (rozet "Büyütülmüş", ayarları sıfır) Upscale'i onunla açar. Türetilmiş fotoğrafta "Kaynağa dön" kaynağı ayarlarıyla açar. Kaynak başına en çok 2 türetilmiş tutulur; üçüncüde en eskisi silinir ve kısa mesaj çıkar.
 - Düzeltme sekmesi (Faz D2) henüz yok.
 
 ## 🚀 Dışa Aktarma

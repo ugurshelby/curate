@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Wand2, RotateCw, FlipHorizontal2, RotateCcw, ZoomIn } from "lucide-react";
+import { Wand2, RotateCw, FlipHorizontal2, RotateCcw, ZoomIn, Undo2 } from "lucide-react";
 import {
   useStudio,
   getStudioSelection,
@@ -28,6 +28,7 @@ import {
   screenDeltaToImage,
   rubberband,
   upscaleFactorAllowed,
+  derivedLabel,
 } from "@/lib";
 import { StudioShell, StageNote } from "./StudioShell";
 import { AddMenu } from "./AddMenu";
@@ -37,6 +38,7 @@ import { ResettableSlider } from "./ResettableSlider";
 import { PresetStrip, usePresetThumbs } from "./PresetStrip";
 import { usePanPinch, PanPinchDelta } from "./usePanPinch";
 import { reportRenderTime } from "./PerfHud";
+import { DerivedBadge } from "./NoticeToast";
 
 type EditTab = "preset" | "crop" | "fix";
 
@@ -413,8 +415,8 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
       const file = new File([blob], "duzenle_buyut.png", { type: "image/png" });
       const newItem = createStudioItem(file, state.items.length);
       newItem.dimensions = { width: out.width, height: out.height, aspectRatio: out.width / out.height };
-      actions.addItems([newItem]);
-      actions.selectItem(newItem.id);
+      // Ortak "sonuç ekle" yolu: kaynağa bağlı kayıt, seçilir; ayarları sıfır başlar (çift preset olmaz)
+      if (item) actions.addResultItem(newItem, item.id, "upscale");
       onOpenModule("upscale");
     } finally {
       setIsEnlarging(false);
@@ -545,12 +547,35 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
     );
   }
 
+  // Türetilmiş fotoğraf: rozet ve "Kaynağa dön" (kaynak ayarlarıyla birlikte açılır)
+  const badge = item ? derivedLabel(item.derivedBy) : null;
+  const source = item?.sourceId ? state.items.find((i) => i.id === item.sourceId) ?? null : null;
+
   const stageToolbar = hasPhoto ? (
     <>
       <StageNote>{out ? `${out.width}×${out.height}` : "—"}</StageNote>
-      <span className="text-xs text-[#71717a] text-right truncate min-w-0">
-        {tab === "crop" ? "Sürükle, iki parmakla yakınlaştır" : "Basılı tut: orijinal"}
-      </span>
+      {badge || source ? (
+        <div className="flex items-center gap-1.5 min-w-0">
+          {badge && <DerivedBadge label={badge} />}
+          {source && (
+            <button
+              type="button"
+              onClick={() => {
+                endHold();
+                actions.selectItem(source.id);
+              }}
+              className="touch-target press shrink-0 h-11 px-3 rounded-xl text-sm font-semibold bg-white/10 text-white flex items-center gap-1.5"
+            >
+              <Undo2 className="w-4 h-4" />
+              <span>Kaynağa dön</span>
+            </button>
+          )}
+        </div>
+      ) : (
+        <span className="text-xs text-[#71717a] text-right truncate min-w-0">
+          {tab === "crop" ? "Sürükle, iki parmakla yakınlaştır" : "Basılı tut: orijinal"}
+        </span>
+      )}
     </>
   ) : undefined;
 
