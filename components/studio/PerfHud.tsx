@@ -70,7 +70,7 @@ export function PerfHud() {
   return (
     <div
       aria-hidden
-      className="fixed left-2 top-[calc(var(--safe-area-top)+64px)] z-[60] px-2 py-1 rounded-md bg-black/80 border border-white/15 text-xs text-[#f5f5f7] num-metric pointer-events-none leading-tight"
+      className="fixed left-2 top-[calc(var(--safe-area-top)+64px)] z-[60] px-2 py-1 rounded-md bg-base/80 border border-separator text-xs text-ink-1 num-metric pointer-events-none leading-tight"
     >
       <div>Kare {frameMs.toFixed(1)} ms · en kötü {worstFrameMs.toFixed(0)} ms</div>
       <div>Çizim {renderMs === null ? "—" : `${renderMs.toFixed(0)} ms`}</div>

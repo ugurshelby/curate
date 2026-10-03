@@ -9,12 +9,12 @@ interface TikTokOverlayProps {
 
 export function TikTokOverlay({ type = "story" }: TikTokOverlayProps) {
   return (
-    <div aria-hidden className="absolute inset-0 pointer-events-none z-20 flex flex-col justify-between p-4 text-white select-none">
+    <div aria-hidden className="absolute inset-0 pointer-events-none z-20 flex flex-col justify-between p-4 text-ink-1 select-none">
       {/* ÜST TAB: Takip Edilenler | Sizin İçin */}
       <div className="flex items-center justify-center gap-4 pt-2 text-sm font-semibold tracking-wide drop-shadow-md">
         <span className="text-white/60">Takip Edilenler</span>
         <span className="w-1 h-1 rounded-full bg-white/40" />
-        <span className="text-white border-b-2 border-white pb-0.5">Sizin İçin</span>
+        <span className="text-ink-1 border-b-2 border-white pb-0.5">Sizin İçin</span>
       </div>
 
       {/* ALT VE SAĞ ALAN */}
@@ -38,10 +38,10 @@ export function TikTokOverlay({ type = "story" }: TikTokOverlayProps) {
         <div className="flex flex-col items-center gap-3.5 shrink-0 drop-shadow-lg pb-1">
           {/* Avatar + Kırmızı Plus */}
           <div className="relative mb-1">
-            <div className="w-10 h-10 rounded-full border border-white bg-[#18181b] flex items-center justify-center font-bold text-xs text-[#f5a623] shadow-md">
+            <div className="w-10 h-10 rounded-full border border-white bg-black/60 flex items-center justify-center font-bold text-xs text-white shadow-md">
               C
             </div>
-            <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-[#fe2c55] flex items-center justify-center text-white text-xs font-bold shadow-sm">
+            <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white flex items-center justify-center text-black text-xs font-bold shadow-sm">
               <Plus className="w-3 h-3 stroke-[3]" />
             </div>
           </div>
@@ -79,7 +79,7 @@ export function TikTokOverlay({ type = "story" }: TikTokOverlayProps) {
           </div>
 
           {/* Dönen Vinil Plak İkonu */}
-          <div className="w-8 h-8 rounded-full border-2 border-[#18181b] bg-[#09090b] flex items-center justify-center animate-spin" style={{ animationDuration: '6s' }}>
+          <div className="w-8 h-8 rounded-full border-2 border-surface bg-base flex items-center justify-center animate-spin" style={{ animationDuration: '6s' }}>
             <div className="w-3 h-3 rounded-full bg-white/30" />
           </div>
         </div>

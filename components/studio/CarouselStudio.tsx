@@ -275,7 +275,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
     <div
       ref={stageRef}
       data-stage
-      className={`relative rounded-xl overflow-hidden border border-white/10 bg-[#0a0a0c] flex items-center justify-center ${
+      className={`relative rounded-xl overflow-hidden border border-separator bg-base flex items-center justify-center ${
         target === "tiktok"
           ? "aspect-[9/16] w-[min(100cqw,calc(100cqh*9/16))]"
           : "aspect-[4/5] w-[min(100cqw,calc(100cqh*4/5))]"
@@ -293,13 +293,13 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
           className="w-full h-full"
         />
       ) : (
-        <div className="flex flex-col items-center justify-center p-6 text-center text-[#71717a] gap-1">
-          <Layers className="w-8 h-8 text-[#3f3f46]" />
+        <div className="flex flex-col items-center justify-center p-6 text-center text-ink-3 gap-1">
+          <Layers className="w-8 h-8 text-disabled-ink" />
           <span className="text-sm">Seride henüz fotoğraf yok</span>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="touch-target px-3 text-sm text-[#f5a623]"
+            className="touch-target px-3 text-sm text-accent"
           >
             Fotoğraf Yükle
           </button>
@@ -314,7 +314,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
 
   const stageToolbar = (
     <>
-      <div role="radiogroup" aria-label="Hedef platform" className="flex p-0.5 rounded-xl bg-white/5 border border-white/10">
+      <div role="radiogroup" aria-label="Hedef platform" className="flex p-0.5 rounded-xl bg-surface-2 border border-separator">
         {(["instagram", "tiktok"] as const).map((t) => (
           <button
             key={t}
@@ -323,7 +323,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
             aria-checked={target === t}
             onClick={() => setTarget(t)}
             className={`press h-11 px-2.5 rounded-[10px] text-xs font-semibold ${
-              target === t ? "bg-[#f5a623] text-black" : "text-[#a1a1aa]"
+              target === t ? "bg-accent-fill text-on-accent" : "text-ink-2"
             }`}
           >
             {t === "instagram" ? "Instagram" : "TikTok"}
@@ -340,8 +340,8 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         aria-pressed={!showOverlay}
         aria-label={showOverlay ? "Arayüz katmanını gizle" : "Arayüz katmanını göster"}
         title={showOverlay ? "Arayüz katmanını gizle" : "Arayüz katmanını göster"}
-        className={`touch-target press shrink-0 rounded-xl border disabled:opacity-40 ${
-          showOverlay ? "bg-white/5 border-white/10 text-[#f5f5f7]" : "bg-[#f5a623]/15 border-[#f5a623] text-[#f5a623]"
+        className={`touch-target press shrink-0 rounded-xl border ${
+          showOverlay ? "bg-surface-2 border-separator text-ink-1" : "bg-accent/15 border-accent text-accent"
         }`}
       >
         {showOverlay ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
@@ -352,7 +352,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         onClick={() => setFitMode(fitMode === "fill" ? "fit" : "fill")}
         disabled={!hasPhoto}
         aria-label="Doldur veya sığdır"
-        className="press shrink-0 h-11 px-3 rounded-xl bg-white/5 border border-white/10 text-xs font-semibold text-[#f5f5f7] disabled:opacity-40"
+        className="press shrink-0 h-11 px-3 rounded-xl bg-surface-2 border border-separator text-xs font-semibold text-ink-1"
       >
         {fitMode === "fill" ? "Doldur" : "Sığdır"}
       </button>
@@ -400,12 +400,12 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
       )}
 
       {/* Araçlar: .cube LUT ve Hero Harmonize, varsayılan kapalı */}
-      <div className="flex flex-col border-t border-white/10 pt-1">
+      <div className="flex flex-col border-t border-separator pt-1">
         <button
           type="button"
           onClick={() => setIsToolsOpen((v) => !v)}
           aria-expanded={isToolsOpen}
-          className="h-11 flex items-center justify-between text-sm text-[#a1a1aa]"
+          className="h-11 flex items-center justify-between text-sm text-ink-2"
         >
           <span>Araçlar</span>
           <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isToolsOpen ? "rotate-180" : ""}`} />
@@ -418,8 +418,8 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
               onClick={() => lutInputRef.current?.click()}
               className={`press h-11 px-3 rounded-xl text-sm border flex items-center gap-2 ${
                 state.customLut
-                  ? "border-[#f5a623] bg-[#f5a623]/15 text-[#f5a623]"
-                  : "border-white/15 bg-white/5 text-[#f5f5f7]"
+                  ? "border-accent bg-accent/15 text-accent"
+                  : "border-separator bg-surface-2 text-ink-1"
               }`}
             >
               <FileCode className="w-4 h-4" />
@@ -433,7 +433,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
                 type="button"
                 onClick={() => actions.setCustomLut(null)}
                 aria-label="Yüklü LUT'u kaldır"
-                className="touch-target press rounded-xl text-[#a1a1aa]"
+                className="touch-target press rounded-xl text-ink-2"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -445,8 +445,8 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
                 onClick={() => handleHeroHarmonize(activePhoto.id)}
                 className={`press h-11 px-3 rounded-xl text-sm border flex items-center gap-2 ${
                   state.heroColorMetrics
-                    ? "border-[#f5a623] bg-[#f5a623]/15 text-[#f5a623]"
-                    : "border-white/15 bg-white/5 text-[#f5f5f7]"
+                    ? "border-accent bg-accent/15 text-accent"
+                    : "border-separator bg-surface-2 text-ink-1"
                 }`}
               >
                 <Palette className="w-4 h-4" />
@@ -480,7 +480,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         onClick={() => setIsEditSheetOpen(!isEditSheetOpen)}
         aria-expanded={isEditSheetOpen}
         className={`touch-target press shrink-0 h-11 px-3 rounded-xl text-sm font-semibold flex items-center gap-1.5 ${
-          isEditSheetOpen ? "bg-[#f5a623] text-black" : "bg-white/10 text-white"
+          isEditSheetOpen ? "bg-accent-fill text-on-accent" : "bg-surface-2 text-ink-1"
         }`}
       >
         <Sliders className="w-4 h-4" />
@@ -509,7 +509,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         <>
           <div className="fixed inset-0 z-40" onPointerDown={() => setContextMenu(null)} />
           <div
-            className="fixed z-50 rounded-xl bg-[#18181b] border border-white/15 p-1 shadow-2xl flex flex-col min-w-[200px] animate-panel-in"
+            className="fixed z-50 rounded-xl bg-surface border border-separator p-1 shadow-2xl flex flex-col min-w-[200px] animate-panel-in"
             style={{
               top: Math.max(8, Math.min(window.innerHeight - 160, contextMenu.y)),
               left: Math.max(8, Math.min(window.innerWidth - 208, contextMenu.x)),
@@ -518,24 +518,24 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
             <button
               type="button"
               onClick={() => handleMakeCover(contextMenu.id)}
-              className="h-11 px-3 text-left text-sm text-[#f5f5f7] hover:bg-white/10 rounded-lg flex items-center gap-2"
+              className="h-11 px-3 text-left text-sm text-ink-1 hover:bg-separator rounded-lg flex items-center gap-2"
             >
-              <Star className="w-4 h-4 text-[#f5a623]" />
+              <Star className="w-4 h-4 text-ink-2" />
               <span>Kapak yap</span>
             </button>
             <button
               type="button"
               onClick={() => handleHeroHarmonize(contextMenu.id)}
-              className="h-11 px-3 text-left text-sm text-[#f5f5f7] hover:bg-white/10 rounded-lg flex items-center gap-2"
+              className="h-11 px-3 text-left text-sm text-ink-1 hover:bg-separator rounded-lg flex items-center gap-2"
             >
-              <Palette className="w-4 h-4 text-[#f5a623]" />
+              <Palette className="w-4 h-4 text-ink-2" />
               <span>Seriyi bu renge eşitle</span>
             </button>
-            <div className="h-px bg-white/10 my-0.5" />
+            <div className="h-px bg-surface-2 my-0.5" />
             <button
               type="button"
               onClick={() => handleRemovePhoto(contextMenu.id)}
-              className="h-11 px-3 text-left text-sm text-rose-400 hover:bg-rose-500/10 rounded-lg flex items-center gap-2"
+              className="h-11 px-3 text-left text-sm text-danger hover:bg-danger/10 rounded-lg flex items-center gap-2"
             >
               <X className="w-4 h-4" />
               <span>Seriden çıkar</span>

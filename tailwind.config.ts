@@ -9,28 +9,29 @@ const config: Config = {
   darkMode: "class",
   theme: {
     extend: {
+      // Renkler yalnız app/globals.css'teki belirteçlerden gelir (tek kaynak); burada değer yok.
       colors: {
-        background: "#000000",
+        base: "rgb(var(--base) / <alpha-value>)",
         surface: {
-          base: "#000000",
-          elevated: "#0f0f11",
-          overlay: "#18181b",
-          subtle: "#27272a",
-          border: "rgba(255, 255, 255, 0.08)",
-          "border-hover": "rgba(255, 255, 255, 0.16)",
-          "border-active": "rgba(245, 166, 35, 0.35)",
+          DEFAULT: "rgb(var(--surface-1) / <alpha-value>)",
+          2: "rgb(var(--surface-2) / <alpha-value>)",
+        },
+        separator: "rgb(var(--separator) / <alpha-value>)",
+        ink: {
+          1: "rgb(var(--ink-1) / <alpha-value>)",
+          2: "rgb(var(--ink-2) / <alpha-value>)",
+          3: "rgb(var(--ink-3) / <alpha-value>)",
         },
         accent: {
-          DEFAULT: "#f5f5f7",
-          warm: "#f5f5f7",
-          amber: "#f5a623",
-          "amber-muted": "rgba(245, 166, 35, 0.12)",
+          DEFAULT: "rgb(var(--accent) / <alpha-value>)",
+          fill: "rgb(var(--accent-fill) / <alpha-value>)",
         },
-        content: {
-          primary: "#f5f5f7",
-          secondary: "#a1a1aa",
-          muted: "#71717a",
-          disabled: "#3f3f46",
+        "on-accent": "rgb(var(--on-accent) / <alpha-value>)",
+        danger: "rgb(var(--danger) / <alpha-value>)",
+        success: "rgb(var(--success) / <alpha-value>)",
+        disabled: {
+          DEFAULT: "rgb(var(--disabled-surface) / <alpha-value>)",
+          ink: "rgb(var(--disabled-ink) / <alpha-value>)",
         },
       },
       borderRadius: {
@@ -59,9 +60,7 @@ const config: Config = {
         ],
       },
       boxShadow: {
-        rim: "inset 0 1px 0 rgba(255, 255, 255, 0.12)",
-        glass: "inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 32px rgba(0, 0, 0, 0.5)",
-        "glow-amber": "0 0 20px rgba(245, 166, 35, 0.25)",
+        glass: "inset 0 1px 0 rgb(var(--ink-1) / 0.12), 0 8px 32px rgb(var(--base) / 0.5)",
       },
       backdropBlur: {
         xs: "2px",

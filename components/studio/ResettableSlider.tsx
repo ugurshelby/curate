@@ -33,9 +33,9 @@ export function ResettableSlider({
   return (
     <div className="flex flex-col w-full select-none">
       <div className="flex items-center justify-between gap-2 text-sm min-h-[28px]">
-        <span className="text-[#a1a1aa] truncate">{label}</span>
+        <span className="text-ink-2 truncate">{label}</span>
         <div className="flex items-center gap-1">
-          <span className="text-xs text-[#f5f5f7] num-metric">
+          <span className="text-xs text-ink-1 num-metric">
             {value > 0 && defaultValue === 0 ? `+${value}` : value}
             {unit}
           </span>
@@ -43,7 +43,7 @@ export function ResettableSlider({
             <button
               type="button"
               onClick={() => onChange(defaultValue)}
-              className="-my-2 h-11 px-2 text-xs text-[#f5a623]"
+              className="-my-2 h-11 px-2 text-xs text-ink-2"
               title="Varsayılana sıfırla"
             >
               Sıfırla
@@ -66,7 +66,7 @@ export function ResettableSlider({
         onPointerCancel={onInteractionEnd}
         onBlur={onInteractionEnd}
         onDoubleClick={() => onChange(defaultValue)}
-        className="w-full h-11 bg-transparent cursor-pointer accent-[#f5a623]"
+        className="w-full h-11 bg-transparent cursor-pointer accent-accent"
       />
     </div>
   );

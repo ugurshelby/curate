@@ -8,6 +8,7 @@ import { StudioShell, StageNote } from "./StudioShell";
 import { AddMenu } from "./AddMenu";
 import { ReferencePicker } from "./ReferencePicker";
 import { extractAdaptiveGradient, AdaptiveGradientResult, useStudio, getStudioSelection, createStudioItem, createExportCanvas, PLATFORM_SPECS } from "@/lib";
+import { EXPORT_COLORS } from "@/lib/ui/colors";
 
 interface FrameStudioProps {
   onBack: () => void;
@@ -118,7 +119,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
       grad.addColorStop(1, adaptiveGradient.colorBottom);
       ctx.fillStyle = grad;
     } else {
-      ctx.fillStyle = frameType === "polaroid" ? "#fbfbfa" : "#111214";
+      ctx.fillStyle = frameType === "polaroid" ? EXPORT_COLORS.framePolaroid : EXPORT_COLORS.frameMatte;
     }
     ctx.fillRect(0, 0, W, H);
 
@@ -171,7 +172,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
       if (frameType === "matte") {
         ctx.save();
         drawRoundedRect(ctx, photoX, photoY, photoW, photoH, innerRadius);
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+        ctx.strokeStyle = EXPORT_COLORS.frameMatteBorder;
         ctx.lineWidth = 2;
         ctx.stroke();
         ctx.restore();
@@ -183,8 +184,8 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
       const stampText = getTodayStamp();
       ctx.save();
       ctx.font = "bold 26px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
-      ctx.fillStyle = frameType === "polaroid" ? "#d96b27" : "#f5a623";
-      ctx.shadowColor = "rgba(245, 166, 35, 0.45)";
+      ctx.fillStyle = frameType === "polaroid" ? EXPORT_COLORS.stampOnLight : EXPORT_COLORS.stampOnDark;
+      ctx.shadowColor = EXPORT_COLORS.stampShadow;
       ctx.shadowBlur = 8;
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
@@ -209,22 +210,22 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
         borderRadius: `${borderRadius}px`,
         background: frameType === "gradient" && adaptiveGradient
           ? adaptiveGradient.cssLinear
-          : frameType === "polaroid" ? "#fbfbfa" : "#111214",
-        border: frameType === "matte" ? "1px solid rgba(255,255,255,0.1)" : "none",
+          : frameType === "polaroid" ? EXPORT_COLORS.framePolaroid : EXPORT_COLORS.frameMatte,
+        border: frameType === "matte" ? `1px solid ${EXPORT_COLORS.frameMatteBorder}` : "none",
       }}
     >
-      <div className="relative w-full h-full rounded-sm overflow-hidden flex items-center justify-center bg-black">
+      <div className="relative w-full h-full rounded-sm overflow-hidden flex items-center justify-center bg-base">
         {hasPhoto && photoPath ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={photoPath} alt="" draggable={false} className="w-full h-full object-cover" />
         ) : (
-          <div className="flex flex-col items-center justify-center p-4 text-center text-[#71717a] gap-1">
-            <Crop className="w-8 h-8 text-[#3f3f46]" />
+          <div className="flex flex-col items-center justify-center p-4 text-center text-ink-3 gap-1">
+            <Crop className="w-8 h-8 text-disabled-ink" />
             <span className="text-sm">Çerçeve için henüz fotoğraf yok</span>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="touch-target px-3 text-sm text-[#f5a623]"
+              className="touch-target px-3 text-sm text-accent"
             >
               Fotoğraf Yükle
             </button>
@@ -235,10 +236,8 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
       {/* Analog tarih damgası: görüntünün parçası (export'taki monospace çizimle aynı), arayüz metni değil */}
       {hasPhoto && showTimestamp && (
         <div
-          className={`absolute bottom-3 right-4 font-mono font-bold tracking-widest text-xs select-none ${
-            frameType === "polaroid" ? "text-[#d96b27]" : "text-[#f5a623]"
-          }`}
-          style={{ textShadow: "0 0 6px rgba(245,166,35,0.4)" }}
+          className="absolute bottom-3 right-4 font-mono font-bold tracking-widest text-xs select-none"
+          style={{ color: frameType === "polaroid" ? EXPORT_COLORS.stampOnLight : EXPORT_COLORS.stampOnDark, textShadow: `0 0 6px ${EXPORT_COLORS.stampShadow}` }}
         >
           {getTodayStamp()}
         </div>
@@ -276,7 +275,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
         onReference={() => setIsReferenceOpen(true)}
         onClear={state.items.length > 0 ? handleClear : undefined}
       />
-      <div role="radiogroup" aria-label="Çerçeve tipi" className="flex-1 min-w-0 flex p-0.5 rounded-xl bg-white/5 border border-white/10">
+      <div role="radiogroup" aria-label="Çerçeve tipi" className="flex-1 min-w-0 flex p-0.5 rounded-xl bg-surface-2 border border-separator">
         {(["polaroid", "matte", "gradient"] as const).map((t) => (
           <button
             key={t}
@@ -285,7 +284,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
             aria-checked={frameType === t}
             onClick={() => actions.setFrameConfig({ frameType: t })}
             className={`press flex-1 h-11 px-1 rounded-[10px] text-xs font-semibold ${
-              frameType === t ? "bg-[#f5a623] text-black" : "text-[#a1a1aa]"
+              frameType === t ? "bg-accent-fill text-on-accent" : "text-ink-2"
             }`}
           >
             {t === "polaroid" ? "Polaroid" : t === "matte" ? "Matte" : "Gradyan"}
@@ -298,7 +297,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
         aria-pressed={showTimestamp}
         aria-label="Tarih damgası"
         className={`touch-target press rounded-xl border ${
-          showTimestamp ? "border-[#f5a623] bg-[#f5a623]/15 text-[#f5a623]" : "border-white/10 text-[#71717a]"
+          showTimestamp ? "border-accent bg-accent/15 text-accent" : "border-separator text-ink-3"
         }`}
       >
         <Calendar className="w-5 h-5" />

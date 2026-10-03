@@ -65,11 +65,11 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 
 ## 🎨 Tasarım Sistemi: Curate Design System (CDS)
 
-- **60:30:10 Kuralı:** %60 OLED Siyah (`#000000`), %30 Yükseltilmiş Panel (`#0f0f11` / `#18181b`), %10 Nötr Vurgu (Apple Sıcak Beyaz / Minimal Amber `#f5a623`).
-- **Liquid Glass:** `backdrop-blur-xl`, `border-white/10`, rim light yansıması `inset 0 1px 0 rgba(255,255,255,0.12)`.
+- **Renk (Faz C):** OLED siyah zemin (`#000000`), nötr yüzeyler (`#1C1C1E`, `#2C2C2E`), tek ince ayırıcı (`#38383A`), yazı `#FFFFFF` / `#AEAEB2` / `#8E8E93` ve tek vurgu iOS mavisi (`#0A84FF`; dolgu zemini `#0071E3`). Vurgu yalnız seçili öğede, kaydırıcı dolgusunda, ana eylemde ve odak halkasında; fotoğraf üstündeki her katman renksiz.
+- **Liquid Glass:** `backdrop-blur-xl`, ayırıcı kenar, rim light yansıması (ekranda en çok 3 cam yüzey).
 - **Tipografi:** Yalnızca Apple HIG standart sans-serif (`-apple-system, BlinkMacSystemFont, SF Pro, Inter`). Asla rastgele monospace font kullanılmaz.
 - **Ergonomi:** Minimum 44×44px dokunma hedefleri (`touch-target`).
-- **Renk Kaynağı:** Renk paletinin koddaki mutlak tek kaynağı `tailwind.config.ts` ve `app/globals.css` dosyalarıdır. `design/tokens.curate.json` referans amaçlıdır.
+- **Renk Kaynağı:** Renk paletinin koddaki mutlak tek kaynağı `app/globals.css` `:root` değişkenleridir (`tailwind.config.ts` yalnız bunlara bağlanır); export içeriği renkleri `lib/ui/colors.ts`'tedir. `design/tokens.curate.json` referans amaçlıdır.
 
 ---
 

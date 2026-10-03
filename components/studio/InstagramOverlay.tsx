@@ -9,23 +9,23 @@ interface InstagramOverlayProps {
 }
 
 export function InstagramOverlay({ type, isDarkBg = true }: InstagramOverlayProps) {
-  const textColor = isDarkBg ? "text-white" : "text-zinc-900";
-  const mutedText = isDarkBg ? "text-white/70" : "text-zinc-600";
+  const textColor = isDarkBg ? "text-white" : "text-black";
+  const mutedText = isDarkBg ? "text-white/70" : "text-black/60";
   const progressBg = isDarkBg ? "bg-white/40" : "bg-black/25";
-  const progressActive = isDarkBg ? "bg-white" : "bg-black";
-  const inputBorder = isDarkBg ? "border-white/40 text-white/80" : "border-black/30 text-zinc-900";
+  const progressActive = isDarkBg ? "bg-white" : "bg-base";
+  const inputBorder = isDarkBg ? "border-white/40 text-white/80" : "border-black/30 text-black";
 
   if (type === "post") {
     return (
-      <div aria-hidden className="absolute inset-0 pointer-events-none z-20 flex flex-col justify-between p-3 text-white select-none">
+      <div aria-hidden className="absolute inset-0 pointer-events-none z-20 flex flex-col justify-between p-3 text-ink-1 select-none">
         {/* Yalnız üst ve alt bantlarda hafif karartma: fotoğrafın rengi ortada değişmez */}
         <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/45 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/50 to-transparent" />
         {/* Üst Bar */}
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-500 to-fuchsia-600 p-[1.5px]">
-              <div className="w-full h-full rounded-full bg-black flex items-center justify-center text-xs font-bold text-white">
+            <div className="w-7 h-7 rounded-full bg-white/70 p-[1.5px]">
+              <div className="w-full h-full rounded-full bg-base flex items-center justify-center text-xs font-bold text-ink-1">
                 C
               </div>
             </div>
@@ -65,7 +65,7 @@ export function InstagramOverlay({ type, isDarkBg = true }: InstagramOverlayProp
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-[#f5a623] flex items-center justify-center text-black font-bold text-xs">
+            <div className="w-6 h-6 rounded-full bg-white/90 flex items-center justify-center text-black font-bold text-xs">
               C
             </div>
             <span className="text-xs font-semibold">curatestudio</span>

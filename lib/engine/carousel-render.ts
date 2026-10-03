@@ -14,11 +14,12 @@ import { drawEditGeometry, editCropKey } from './edit-geometry';
 import { calculateAspectCrop } from '../export/platform-specs';
 import { applyHarmonizeSync, extractColorMetrics } from './harmonize';
 import { applyCubeLutToImageData, applyPresetToImageData, CURATE_PRESETS } from './presets';
+import { EXPORT_COLORS } from '../ui/colors';
 
 /** Export width the look is calibrated for (grain grid). */
 export const CAROUSEL_OUTPUT_WIDTH = 1080;
 export const HERO_HARMONIZE_STRENGTH = 0.2;
-export const FIT_BACKGROUND = '#0a0a0c';
+export const FIT_BACKGROUND = EXPORT_COLORS.fitBackground;
 
 export interface CarouselRenderOptions {
   fitMode: 'fit' | 'fill';

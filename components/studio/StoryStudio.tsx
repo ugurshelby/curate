@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { EXPORT_COLORS } from "@/lib/ui/colors";
 import { Sparkles, Smartphone, ImagePlus, RotateCcw } from "lucide-react";
 import { ResettableSlider } from "./ResettableSlider";
 import { InstagramOverlay } from "./InstagramOverlay";
@@ -244,12 +245,12 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
   }, [actions]);
 
   // Zemin (önizleme) — export aynı renkleri tuvale çizer
-  const gradientTop = adaptiveGradient ? adaptiveGradient.colorTop : "#2e201b";
-  const gradientBottom = adaptiveGradient ? adaptiveGradient.colorBottom : "#141113";
+  const gradientTop = adaptiveGradient ? adaptiveGradient.colorTop : EXPORT_COLORS.storyCharcoal;
+  const gradientBottom = adaptiveGradient ? adaptiveGradient.colorBottom : EXPORT_COLORS.storyBlack;
   const backgroundStyle: React.CSSProperties =
     backgroundMode === "adaptive-gradient"
       ? { background: `linear-gradient(180deg, ${gradientTop} 0%, ${gradientBottom} 100%)` }
-      : { backgroundColor: backgroundMode === "white" ? "#ffffff" : backgroundMode === "charcoal" ? "#18181b" : "#000000" };
+      : { backgroundColor: backgroundMode === "white" ? EXPORT_COLORS.storyWhite : backgroundMode === "charcoal" ? EXPORT_COLORS.storyCharcoal : EXPORT_COLORS.storyBlack };
 
   const isDarkBg = backgroundMode !== "white";
 
@@ -283,7 +284,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
       grad.addColorStop(1, gradientBottom);
       ctx.fillStyle = grad;
     } else {
-      ctx.fillStyle = backgroundMode === "white" ? "#ffffff" : backgroundMode === "charcoal" ? "#18181b" : "#000000";
+      ctx.fillStyle = backgroundMode === "white" ? EXPORT_COLORS.storyWhite : backgroundMode === "charcoal" ? EXPORT_COLORS.storyCharcoal : EXPORT_COLORS.storyBlack;
     }
     ctx.fillRect(0, 0, W, H);
 
@@ -313,19 +314,19 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
       style={{
         ...backgroundStyle,
         containerType: "inline-size",
-        boxShadow: "0 0 0 6px #121215, 0 0 0 9px #27272a",
+        boxShadow: "0 0 0 6px rgb(var(--base)), 0 0 0 9px rgb(var(--surface-2))",
       }}
     >
       {/* Dynamic Island: üst güvenli alanın içinde süs */}
-      <div className="absolute top-[1.2%] left-1/2 -translate-x-1/2 z-30 w-[28%] h-[2.6%] rounded-full bg-black pointer-events-none" />
+      <div className="absolute top-[1.2%] left-1/2 -translate-x-1/2 z-30 w-[28%] h-[2.6%] rounded-full bg-base pointer-events-none" />
 
       {count > 0 && <InstagramOverlay type="story" isDarkBg={isDarkBg} />}
 
       {count === 0 ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center text-[#71717a] gap-1">
-          <Smartphone className="w-8 h-8 text-[#3f3f46]" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center text-ink-3 gap-1">
+          <Smartphone className="w-8 h-8 text-disabled-ink" />
           <span className="text-sm">Story için en az 2 fotoğraf ekle</span>
-          <button type="button" onClick={() => fileInputRef.current?.click()} className="touch-target px-3 text-sm text-[#f5a623]">
+          <button type="button" onClick={() => fileInputRef.current?.click()} className="touch-target px-3 text-sm text-accent">
             Fotoğraf Yükle
           </button>
         </div>
@@ -337,7 +338,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
             alt=""
             className="w-1/2 aspect-[4/5] object-cover rounded-xl opacity-60"
           />
-          <span className={`text-sm ${isDarkBg ? "text-white" : "text-zinc-900"}`}>Bir fotoğraf daha ekle</span>
+          <span className={`text-sm ${isDarkBg ? "text-ink-1" : "text-black"}`}>Bir fotoğraf daha ekle</span>
         </div>
       ) : (
         cells.map((cell, idx) => {
@@ -373,7 +374,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
                   handleCellTap(idx);
                 }
               }}
-              className={`absolute overflow-hidden cursor-grab ${isSelected ? "ring-2 ring-[#f5a623] z-10" : ""}`}
+              className={`absolute overflow-hidden cursor-grab ${isSelected ? "ring-2 ring-white z-10" : ""}`}
               style={{
                 left: pct(cell.x, STORY_W),
                 top: pct(cell.y, STORY_H),
@@ -419,11 +420,11 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
         {STORY_W} × {STORY_H} · 9:16
       </StageNote>
       {statusText ? (
-        <span role="status" className="text-xs text-[#f5a623] text-right truncate min-w-0">
+        <span role="status" className="text-xs text-ink-2 text-right truncate min-w-0">
           {statusText}
         </span>
       ) : (
-        <span className="text-xs text-[#71717a] text-right truncate min-w-0">Sürükle, iki parmakla yakınlaştır</span>
+        <span className="text-xs text-ink-3 text-right truncate min-w-0">Sürükle, iki parmakla yakınlaştır</span>
       )}
     </>
   );
@@ -434,11 +435,11 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
     <div className="flex flex-col gap-2 p-3">
       {selectedItem && (
         <div className="flex items-center gap-2 animate-panel-in">
-          <span className="text-sm text-[#f5a623] mr-auto num-metric">{(selectedIdx ?? 0) + 1}. hücre</span>
+          <span className="text-sm text-ink-1 mr-auto num-metric">{(selectedIdx ?? 0) + 1}. hücre</span>
           <button
             type="button"
             onClick={() => replaceInputRef.current?.click()}
-            className="press h-11 px-3 rounded-xl text-sm border border-white/15 bg-white/5 text-[#f5f5f7] flex items-center gap-2"
+            className="press h-11 px-3 rounded-xl text-sm border border-separator bg-surface-2 text-ink-1 flex items-center gap-2"
           >
             <ImagePlus className="w-4 h-4" />
             <span>Değiştir</span>
@@ -446,7 +447,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
           <button
             type="button"
             onClick={() => actions.setStoryCellTransform(selectedItem.id, null)}
-            className="press h-11 px-3 rounded-xl text-sm border border-white/15 bg-white/5 text-[#f5f5f7] flex items-center gap-2"
+            className="press h-11 px-3 rounded-xl text-sm border border-separator bg-surface-2 text-ink-1 flex items-center gap-2"
           >
             <RotateCcw className="w-4 h-4" />
             <span>Sıfırla</span>
@@ -455,14 +456,14 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
       )}
 
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm text-[#a1a1aa]">Zemin</span>
+        <span className="text-sm text-ink-2">Zemin</span>
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => actions.setStoryLayout({ backgroundMode: "adaptive-gradient" })}
             aria-pressed={backgroundMode === "adaptive-gradient"}
             className={`press h-11 px-3 rounded-xl text-sm flex items-center gap-1.5 ${
-              backgroundMode === "adaptive-gradient" ? "bg-[#f5a623] text-black font-semibold" : "text-[#a1a1aa] bg-white/5"
+              backgroundMode === "adaptive-gradient" ? "bg-accent-fill text-on-accent font-semibold" : "text-ink-2 bg-surface-2"
             }`}
           >
             <Sparkles className="w-4 h-4" />
@@ -479,8 +480,8 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
             >
               <span
                 className={`w-6 h-6 rounded-full border ${
-                  backgroundMode === m ? "ring-2 ring-[#f5a623] border-transparent" : "border-white/25"
-                } ${m === "black" ? "bg-black" : m === "white" ? "bg-white" : "bg-[#18181b]"}`}
+                  backgroundMode === m ? "ring-2 ring-accent border-transparent" : "border-separator"
+                } ${m === "black" ? "bg-base" : m === "white" ? "bg-white" : "bg-surface"}`}
               />
             </button>
           ))}
@@ -506,7 +507,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
         onClear={library.length > 0 ? handleClear : undefined}
         addDisabledReason={room <= 0 ? `Story en fazla ${STORY_MAX_PHOTOS} fotoğraf alır.` : undefined}
       />
-      <span className="ml-auto pr-2 text-sm text-[#a1a1aa] num-metric">
+      <span className="ml-auto pr-2 text-sm text-ink-2 num-metric">
         {count}/{STORY_MAX_PHOTOS} fotoğraf · grid otomatik
       </span>
     </div>

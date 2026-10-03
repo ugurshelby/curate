@@ -70,6 +70,7 @@ Every procedure run must conclude with these steps in exact order:
      glass: [...document.querySelectorAll('.glass-panel')].filter(visible).length });
   ```
   Required: `overlap` false, `hScroll` false, `offscreen`, `smallTargets` and `tinyText` empty, `glass` ≤ 3.
+  Automated runner (Faz C): `node scripts/audit-ui.mjs` (puppeteer-core + local Chrome, dev server on :3101) runs this script plus a computed text-contrast check on 14 screens at 360/390/430 and mocks `/api/ai`; `node scripts/capture-screens.mjs <label>` writes 390-wide screenshots to `screenshots/<label>/` (untracked).
   Düzenle "AI ile onar" (Faz AI1): the sheet is `[data-ai-sheet]` (must fit the viewport without inner scroll; 44px targets, 12px text); the full-screen review marks `[data-review-header]`, `[data-review-stage]`, `[data-review-bar]` (stage between header and bar, inside the viewport). Mock `/api/ai` in the page (override `fetch`) so no paid call is made; finish CSS animations (`document.getAnimations().forEach(a => a.finish())`) before measuring in the hidden pane. Items inside a horizontal scroller (preset row, filmstrip) are excluded from `offscreen`; they are clipped by the scroller, not the page.
   Notes: wait for the panel animation (≈250 ms) before measuring; in the in-app browser, transitions only advance while the pane is rendered, so take a screenshot first.
 - **May Change:** CSS classes, layout padding, responsive flex/grid wrappers.

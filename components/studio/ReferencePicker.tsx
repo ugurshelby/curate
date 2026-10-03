@@ -64,7 +64,7 @@ export function ReferencePicker({ open, onClose, onConfirm, maxSelect }: Referen
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 animate-panel-in"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-base/70 animate-panel-in"
       onPointerDown={(e) => {
         if (e.target === e.currentTarget && !busy) onClose();
       }}
@@ -73,12 +73,12 @@ export function ReferencePicker({ open, onClose, onConfirm, maxSelect }: Referen
         role="dialog"
         aria-modal="true"
         aria-label="Referans görsel seç"
-        className="w-full max-w-lg max-h-[85dvh] flex flex-col rounded-t-[28px] sm:rounded-[28px] bg-[#18181b] border border-white/10 shadow-2xl pb-[var(--safe-area-bottom)]"
+        className="w-full max-w-lg max-h-[85dvh] flex flex-col rounded-t-[28px] sm:rounded-[28px] bg-surface border border-separator shadow-2xl pb-[var(--safe-area-bottom)]"
       >
         <div className="shrink-0 flex items-center justify-between gap-2 pl-5 pr-2 pt-2">
           <div className="flex flex-col py-2">
-            <span className="text-[15px] font-semibold text-[#f5f5f7]">Referans Görsel Yükle</span>
-            <span className="text-xs text-[#71717a]">
+            <span className="text-[15px] font-semibold text-ink-1">Referans Görsel Yükle</span>
+            <span className="text-xs text-ink-3">
               {maxSelect <= 0
                 ? "Bu modülde yer kalmadı."
                 : single
@@ -91,7 +91,7 @@ export function ReferencePicker({ open, onClose, onConfirm, maxSelect }: Referen
             onClick={onClose}
             disabled={busy}
             aria-label="Kapat"
-            className="touch-target press rounded-full text-[#a1a1aa] hover:text-white"
+            className="touch-target press rounded-full text-ink-2 hover:text-ink-1"
           >
             <X className="w-5 h-5" />
           </button>
@@ -111,8 +111,8 @@ export function ReferencePicker({ open, onClose, onConfirm, maxSelect }: Referen
                   aria-pressed={isOn}
                   aria-label={ref.label}
                   className={`press relative aspect-[4/5] rounded-xl overflow-hidden border-2 ${
-                    isOn ? "border-[#f5a623]" : "border-transparent"
-                  } disabled:opacity-40`}
+                    isOn ? "border-accent" : "border-transparent"
+                  }`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -123,7 +123,7 @@ export function ReferencePicker({ open, onClose, onConfirm, maxSelect }: Referen
                     className="w-full h-full object-cover pointer-events-none"
                   />
                   {isOn && (
-                    <span className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-[#f5a623] text-black flex items-center justify-center">
+                    <span className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-accent-fill text-on-accent flex items-center justify-center">
                       <Check className="w-4 h-4" />
                     </span>
                   )}
@@ -133,7 +133,7 @@ export function ReferencePicker({ open, onClose, onConfirm, maxSelect }: Referen
           </div>
         </div>
 
-        {error && <p className="px-5 pt-2 text-xs text-rose-400">{error}</p>}
+        {error && <p className="px-5 pt-2 text-xs text-danger">{error}</p>}
 
         <div className="shrink-0 flex items-center gap-2 p-4">
           {!single && maxSelect > 0 && (
@@ -141,7 +141,7 @@ export function ReferencePicker({ open, onClose, onConfirm, maxSelect }: Referen
               type="button"
               onClick={selectAll}
               disabled={busy}
-              className="touch-target press h-11 px-4 rounded-xl bg-white/10 text-sm text-[#f5f5f7]"
+              className="touch-target press h-11 px-4 rounded-xl bg-surface-2 text-sm text-ink-1"
             >
               {maxSelect >= REFERENCE_IMAGES.length ? "Hepsi" : `İlk ${maxSelect}`}
             </button>
@@ -150,7 +150,7 @@ export function ReferencePicker({ open, onClose, onConfirm, maxSelect }: Referen
             type="button"
             onClick={confirm}
             disabled={busy || selected.length === 0}
-            className="touch-target press flex-1 h-11 rounded-xl bg-[#f5a623] text-black text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-40"
+            className="touch-target press flex-1 h-11 rounded-xl bg-accent-fill text-on-accent text-sm font-semibold flex items-center justify-center gap-2"
           >
             {busy && <RefreshCw className="w-4 h-4 animate-spin" />}
             <span>{busy ? "Yükleniyor" : `Ekle (${selected.length})`}</span>

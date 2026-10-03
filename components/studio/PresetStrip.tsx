@@ -3,16 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { CURATE_PRESETS, calculateAspectCrop, applyPresetToImageData } from "@/lib";
 
-/** Fotoğraf yokken preset kartı yedeği (atmosfer rengi) */
-const PRESET_SWATCHES: Record<string, string> = {
-  moody_teal: "from-teal-600/40 via-cyan-950/40 to-zinc-900",
-  warm_silhouette: "from-orange-500/40 via-amber-800/40 to-zinc-900",
-  night_cinematic: "from-cyan-400/30 via-rose-950/40 to-black",
-  muted_coastal: "from-sky-300/30 via-stone-500/20 to-zinc-900",
-  amber_grain: "from-amber-400/40 via-yellow-900/30 to-zinc-900",
-  monochrome_noir: "from-zinc-200/30 via-zinc-800/60 to-black",
-};
-
 const PRESET_TAGS: Record<string, string> = {
   moody_teal: "Mimari & Teal",
   warm_silhouette: "Siluet & Ters Işık",
@@ -92,16 +82,14 @@ export function PresetStrip({ thumbs, activeId, onSelect }: PresetStripProps) {
             title={p.tag}
             aria-pressed={isActive}
             onClick={() => onSelect(p.id)}
-            className={`press relative shrink-0 snap-start rounded-xl overflow-hidden border-2 bg-gradient-to-br ${
-              (p.id && PRESET_SWATCHES[p.id]) || "from-zinc-800 to-zinc-900"
-            } ${isActive ? "border-[#f5a623]" : "border-white/10"}`}
+            className={`press relative shrink-0 snap-start rounded-xl overflow-hidden border-2 bg-surface-2 ${isActive ? "border-accent" : "border-separator"}`}
             style={{ width: PRESET_THUMB_W, height: PRESET_THUMB_H }}
           >
             {thumb && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={thumb} alt="" draggable={false} className="absolute inset-0 w-full h-full object-cover" />
             )}
-            <span className="absolute inset-x-0 bottom-0 px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/85 to-transparent text-left text-xs font-semibold leading-tight text-white">
+            <span className="absolute inset-x-0 bottom-0 px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/85 to-transparent text-left text-xs font-semibold leading-tight text-ink-1">
               {p.name}
             </span>
           </button>

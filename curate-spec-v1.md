@@ -96,7 +96,8 @@ Faz sırası: **K** (bu kararların dokümana işlenmesi, ölü kod temizliği) 
 | K2 | **Story: en az 2, en fazla 6 fotoğraf.** Grid sayısı fotoğraf sayısına eşit ve otomatik; kullanıcı seçmez (grid seçici kalkar). 2'den az fotoğrafta Export pasif + kısa ipucu: "En az 2 fotoğraf ekle". 6 doluyken ekleme yolu kapanır, fazlası alınmaz, kısa uyarı verilir. Tek fotoğraflık Story bu modülün işi değildir; tek kare için Çerçeve (ve planlanan Düzenle modülü, bkz. §10 soru 4). | S | **Uygulandı (S)**: grid seçici kaldırıldı, `lib/engine/story-layout.ts`, testli |
 | K3 | **Referans görseller kalır, test yükleme eklenir.** `public/reference-images/` altındaki 13 görsel repoda kalır. Ana sayfada ikincil görünümde "Referans Görsel Yükle": küçük önizleme ızgarası, çoklu seçim, "Hepsi" kısayolu; seçilenler kütüphaneye eklenir. Modül içinde de alt çubuktaki "+" menüsünde aynı eylem; modül sınırlarına uyar (Story 2–6, Çerçeve ve Upscale tek görsel). Yükleme aynı kökten `fetch` → `Blob` (`.jfif` için tür açıkça `image/jpeg`) → `createObjectURL`; görseller hiçbir yere gönderilmez. Kütüphane boş başlar; referanslar yalnız kullanıcı isteyince girer. | M1 | **Uygulandı (M1)**: `lib/core/reference-images.ts`, `ReferencePicker.tsx`, testli |
 | K4 | **Panorama kalıcı olarak kapatıldı.** | K | Uygulandı (bu commit) |
-| K5 | Durum renkleri amber/nötr (yeşil "Hero aktif" ve TikTok kırmızısı kalkar). Frame export 1080×1350 kalır. | M1 (renk), — (Frame: değişiklik yok) | **Uygulandı (M1)** |
+| K5 | Durum renkleri amber/nötr (yeşil "Hero aktif" ve TikTok kırmızısı kalkar). Frame export 1080×1350 kalır. | M1 (renk), — (Frame: değişiklik yok) | **Uygulandı (M1)**; amber Faz C ile iOS mavisine geçti (K6) |
+| K6 | **Renk sistemi (sahip kararı 2026-10-03, Faz C):** amber (`#f5a623`) kalkar; zemin `#000000`, yüzeyler `#1C1C1E`/`#2C2C2E`, ayırıcı `#38383A`, yazı `#FFFFFF`/`#AEAEB2`/`#8E8E93`, vurgu `#0A84FF`, hata `#FF453A`, başarı `#30D158`. Vurgu yalnız seçili öğe, kaydırıcı dolgusu, ana eylem, odak halkası. Fotoğraf üstü her katman renksiz. Yeşil yalnız başarı, kırmızı yalnız hata/silme. Tek kaynak `app/globals.css`. Dolgu zemini `#0071E3` (beyaz yazı 4,7:1; `#0A84FF` ile 3,65:1), sahip onayı 2026-10-03. | C | **Uygulandı (C)** |
 | M1-a | Mobil panel yeniden tasarımı onaylandı: preset'ler yatay kaydırmalı tek satır; `.cube` LUT ve Hero Harmonize "Araçlar" altında kapalı bölümde. | M1 | **Uygulandı (M1)** |
 | M2-a | Önizleme render hattı: denetim raporu §2 seçenek **A** (CPU, doğru çözünürlük, export ile aynı fonksiyon ve parametre şeması). WebGL ve worker bu fazda yok. | M2 | **Uygulandı (M2)**; telefon ölçümü sonrası C değerlendirilecek (`docs/reports/2026-10-03-phases.md`) |
 | S-a | Story'de Instagram/TikTok geçişi kalkar; fotoğraflar story güvenli alanına (üst ilerleme çubuğu/hesap satırı, alt mesaj çubuğu) yerleşir ve export aynı geometriyi kullanır; hücre başına yer değiştirme, görsel değiştirme, sürükleyerek konumlandırma ve iki parmakla yakınlaştırma; konum/zoom export'a birebir yansır. | S | **Uygulandı (S)**: güvenli alan 250/250 px (sahip onayı 2026-10-03; telefonda karşılaştırılmadı), `computeCellDraw` önizleme ve export'ta ortak |
@@ -188,6 +189,7 @@ Bunlar bilinçli olarak dışarıda bırakılıyor — "madem elimizdeyiz" diye 
 | **Faz S — Story ve Export** | K1, K2, S-a, S-b | Export boyutları/MIME ve tek/çoklu indirme testlerle doğrulanır; parite korunur |
 | **Faz D1 — Düzenle: iskelet, Preset, Kırp** | §4.5 E1, E4–E9 | Prosedür 2 Düzenle'de 360/390/430'da geçer; kırpma matematiği, export boyut/MIME ve parite testleri |
 | **Faz AI1 — Düzenle: AI ile onar** | §4.5 E12 | Sahte fetch'le istek şeması, eşlemeler, şifre/kota/4 MB/JPEG/görsel yok testleri; build çıktısında sır yok (`npm run check:secrets`); Prosedür 2 yeni sayfaları 360/390/430'da geçer |
+| **Faz C — Renk sistemi** | §4.4 K6 | Kodda `#f5a623` ve türevi 0; sabit renk yalnız `app/globals.css` ve `lib/ui/colors.ts`; kontrast tablosu; Prosedür 2 beş modül ve yeni sayfalarda 360/390/430'da değişmeden geçer |
 | **Faz D2 — Düzenle: Düzeltme sekmesi** | §4.5 E3, E10 | Sentetik görsellerle ölçülebilir kabul (spec dışı prompt `prompt-D2.md`), parite testi |
 | **Faz 5+ — Nice-to-have** | Otomatik preset önerisi, 9:16 dump kolajı iyileştirmeleri, vb. | Ayrı değerlendirilir, bu fazlar tamamlanmadan başlanmaz |
 
@@ -219,6 +221,7 @@ Buna göre her faz için prompt şöyle yazılır:
 7. ~~Story ve 6'dan fazla fotoğraflı kütüphane~~ **KAPANDI (sahip onayı 2026-10-03):** Story ilk 6'sını kullanır ve bunu uyarıyla gösterir.
 8. ~~8 MB sınırı ve Upscale~~ **KAPANDI (sahip onayı 2026-10-03):** Sınır yalnız platform hedeflerine (post, story, TikTok, Çerçeve) uygulanır; Upscale'e uygulanmaz.
 9. ~~Story güvenli alan bandı~~ **KAPANDI (sahip onayı 2026-10-03):** 250 px üst ve alt. Telefonda Instagram arayüzüyle karşılaştırma hâlâ yapılmadı.
+11. ~~Faz C vurgu dolgusu~~ **KAPANDI (sahip onayı 2026-10-03):** `#0071E3`. Tarih damgası turuncu kalır.
 10. **(Uğur)** AI1: Vercel'de gerçek süre ve zaman aşımı, telefonda akış, gerçek maliyet (Billing) ve sayacın dağıtık çalışması doğrulanmadı; ₺ tahminleri üçüncü taraf fiyatlarıdır.
 
 ---

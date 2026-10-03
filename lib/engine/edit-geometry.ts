@@ -9,6 +9,7 @@
  */
 
 import { EditAspect, EditCrop, EditParams } from '../core/types';
+import { EXPORT_COLORS } from '../ui/colors';
 
 export const EDIT_MAX_LONG_EDGE = 4096;
 export const EDIT_PREVIEW_LONG_EDGE = 1350;
@@ -142,7 +143,7 @@ export function drawEditGeometry(
   const s = TW / g.cw;
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = '#000000';
+  ctx.fillStyle = EXPORT_COLORS.editMatte;
   ctx.fillRect(0, 0, TW, TH);
   ctx.translate(TW / 2, TH / 2);
   if (crop.flipH) ctx.scale(-1, 1);

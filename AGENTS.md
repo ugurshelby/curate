@@ -26,6 +26,7 @@ Design authority is `design/CURATE_DESIGN_SYSTEM.md`; UI rule order is in `.agen
 - No default or seed photos, mock EXIF strings, or debug labels (`Acik`, `Kapali`, proxy dimensions) in the UI. The library starts empty; the 13 owner-approved files in `public/reference-images/` enter it only through an explicit user action (same-origin fetch, never sent anywhere).
 - Export targets live as data in `lib/export/platform-specs.ts`. Owner decisions and their phases (K, M1, M2, S) are in `curate-spec-v1.md` §4.4.
 - Do not label a CSS filter as Lanczos.
+- UI colors come only from the tokens in `app/globals.css` (palette and single iOS-blue accent: `design/CURATE_DESIGN_SYSTEM.md` §2). No hex/rgb literals or chromatic Tailwind palette classes in code; export-content colors live only in `lib/ui/colors.ts`. Anything laid over a photo is colorless (white/black with alpha). `tests/color-tokens.test.ts` enforces this.
 - Preview and export must call the same draw function.
 
 ## 4. Verification Rule

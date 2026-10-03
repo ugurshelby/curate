@@ -210,7 +210,7 @@ export function Filmstrip({ items, activeId, onTap, onReorder, onContextMenu }: 
               touchAction: "pan-x",
             }}
             className={`relative w-14 h-16 rounded-xl overflow-hidden shrink-0 border-2 cursor-pointer ${
-              isActive ? "border-[#f5a623]" : "border-white/15 opacity-80"
+              isActive ? "border-accent" : "border-separator opacity-80"
             } ${isDragged ? "shadow-2xl opacity-100" : ""}`}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -220,13 +220,13 @@ export function Filmstrip({ items, activeId, onTap, onReorder, onContextMenu }: 
               draggable={false}
               className="w-full h-full object-cover pointer-events-none"
             />
-            <span className="absolute top-0.5 left-0.5 min-w-[20px] px-1 rounded bg-black/75 text-xs leading-5 text-center text-white font-semibold num-metric pointer-events-none">
+            <span className="absolute top-0.5 left-0.5 min-w-[20px] px-1 rounded bg-black/75 text-xs leading-5 text-center text-ink-1 font-semibold num-metric pointer-events-none">
               {index + 1}
             </span>
             {photo.derivedBy && (
               <span
                 title={derivedLabel(photo.derivedBy) ?? undefined}
-                className="absolute bottom-0.5 right-0.5 w-5 h-5 rounded-full bg-[#f5a623] text-black flex items-center justify-center pointer-events-none"
+                className="absolute bottom-0.5 right-0.5 w-5 h-5 rounded-full bg-surface-2 text-accent flex items-center justify-center pointer-events-none"
               >
                 {photo.derivedBy === "ai" ? <Sparkles className="w-3 h-3" /> : <ZoomIn className="w-3 h-3" />}
               </span>

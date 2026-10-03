@@ -42,7 +42,7 @@ export function StudioShell({
   const chromeWidth = "mx-3 sm:mx-auto sm:w-[min(42rem,calc(100%-24px))]";
 
   return (
-    <div className="studio-root bg-black text-[#f5f5f7] select-none">
+    <div className="studio-root bg-base text-ink-1 select-none">
       <header
         className={`${chromeWidth} shrink-0 mt-[calc(var(--safe-area-top)+8px)] h-[52px] px-1 flex items-center gap-1 rounded-2xl glass-panel`}
       >
@@ -50,12 +50,12 @@ export function StudioShell({
           type="button"
           onClick={onBack}
           aria-label="Stüdyoya dön"
-          className="touch-target press rounded-xl text-[#a1a1aa] hover:text-white"
+          className="touch-target press rounded-xl text-ink-2 hover:text-ink-1"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
 
-        <h1 className="flex-1 min-w-0 truncate text-center text-[15px] font-semibold tracking-[-0.01em] text-[#f5f5f7]">
+        <h1 className="flex-1 min-w-0 truncate text-center text-[15px] font-semibold tracking-[-0.01em] text-ink-1">
           {title}
         </h1>
 
@@ -64,7 +64,7 @@ export function StudioShell({
             type="button"
             onClick={onExport}
             disabled={exportDisabled}
-            className="touch-target press shrink-0 h-11 px-4 rounded-xl bg-[#f5a623] text-black text-sm font-semibold flex items-center gap-1.5 disabled:bg-white/10 disabled:text-white/40"
+            className="touch-target press shrink-0 h-11 px-4 rounded-xl bg-accent-fill text-on-accent text-sm font-semibold flex items-center gap-1.5"
           >
             <Download className="w-4 h-4" />
             <span>{exportLabel}</span>
@@ -100,5 +100,5 @@ export function StudioShell({
 
 /** Sahne altındaki küçük, cam olmayan boyut notu */
 export function StageNote({ children }: { children: React.ReactNode }) {
-  return <span className="text-xs text-[#71717a] num-metric whitespace-nowrap">{children}</span>;
+  return <span className="text-xs text-ink-3 num-metric whitespace-nowrap">{children}</span>;
 }

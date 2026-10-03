@@ -147,7 +147,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     <div
       ref={containerRef}
       data-stage
-      className="relative aspect-[4/5] w-[min(100cqw,calc(100cqh*4/5))] rounded-xl overflow-hidden border border-white/10 bg-[#0f0f11] cursor-ew-resize select-none"
+      className="relative aspect-[4/5] w-[min(100cqw,calc(100cqh*4/5))] rounded-xl overflow-hidden border border-separator bg-surface cursor-ew-resize select-none"
       onPointerDown={hasPhoto ? handleContainerPointerDown : undefined}
       style={{ touchAction: "none" }}
     >
@@ -157,7 +157,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
           <div className="absolute inset-0 pointer-events-none">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photoPath} alt="" draggable={false} className="w-full h-full object-cover" />
-            <span className="absolute bottom-2 left-2 text-xs bg-black/75 px-2 py-0.5 rounded text-[#a1a1aa] pointer-events-none">
+            <span className="absolute bottom-2 left-2 text-xs bg-black/75 px-2 py-0.5 rounded text-ink-2 pointer-events-none">
               1x orijinal
             </span>
           </div>
@@ -175,7 +175,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
               className="w-full h-full object-cover"
               style={{ filter: "contrast(1.04) brightness(1.02)" }}
             />
-            <span className="absolute bottom-2 right-2 text-xs bg-black/75 px-2 py-0.5 rounded text-[#f5a623] pointer-events-none">
+            <span className="absolute bottom-2 right-2 text-xs bg-black/75 px-2 py-0.5 rounded text-white pointer-events-none">
               Önizleme kontrast ({scaleFactor}x)
             </span>
           </div>
@@ -194,23 +194,23 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
             onPointerMove={handleDividerPointerMove}
             onPointerUp={handleDividerPointerUp}
             onPointerCancel={handleDividerPointerUp}
-            className="absolute top-0 bottom-0 z-30 w-11 -ml-[22px] flex items-center justify-center cursor-ew-resize outline-none focus-visible:ring-2 focus-visible:ring-[#f5a623] select-none"
+            className="absolute top-0 bottom-0 z-30 w-11 -ml-[22px] flex items-center justify-center cursor-ew-resize outline-none focus-visible:ring-2 focus-visible:ring-white select-none"
             style={{ left: `${splitPos}%`, touchAction: "none" }}
           >
-            <div className="w-[2px] h-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)] pointer-events-none" />
+            <div className="w-[2px] h-full bg-white shadow-[0_0_10px_rgb(var(--ink-1)/0.8)] pointer-events-none" />
             <div className="absolute top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white shadow-xl flex items-center justify-center text-black text-sm font-bold select-none pointer-events-none">
               ↔
             </div>
           </div>
         </>
       ) : (
-        <div className="flex flex-col items-center justify-center h-full text-center text-[#71717a] gap-1 p-4">
-          <ZoomIn className="w-8 h-8 text-[#3f3f46]" />
+        <div className="flex flex-col items-center justify-center h-full text-center text-ink-3 gap-1 p-4">
+          <ZoomIn className="w-8 h-8 text-disabled-ink" />
           <span className="text-sm">Büyütülecek fotoğraf henüz seçilmedi</span>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="touch-target px-3 text-sm text-[#f5a623]"
+            className="touch-target px-3 text-sm text-accent"
           >
             Fotoğraf Yükle
           </button>
@@ -226,8 +226,8 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
         onReference={() => setIsReferenceOpen(true)}
         onClear={state.items.length > 0 ? handleClear : undefined}
       />
-      <span className="ml-auto text-sm text-[#a1a1aa]">Büyütme</span>
-      <div role="radiogroup" aria-label="Büyütme oranı" className="flex p-0.5 rounded-xl bg-white/5 border border-white/10">
+      <span className="ml-auto text-sm text-ink-2">Büyütme</span>
+      <div role="radiogroup" aria-label="Büyütme oranı" className="flex p-0.5 rounded-xl bg-surface-2 border border-separator">
         {([2, 4] as const).map((f) => (
           <button
             key={f}
@@ -238,8 +238,8 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
             title={hasPhoto && !factorAllowed(f) ? "Bu boyut için çok büyük" : undefined}
             onClick={() => actions.setUpscaleScale(f)}
             className={`press w-14 h-11 rounded-[10px] text-sm num-metric ${
-              scaleFactor === f ? "bg-[#f5a623] text-black font-semibold" : "text-[#a1a1aa]"
-            } disabled:opacity-40 disabled:line-through`}
+              scaleFactor === f ? "bg-accent-fill text-on-accent font-semibold" : "text-ink-2"
+            } disabled:line-through`}
           >
             {f}x
           </button>
@@ -266,7 +266,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
               {selectedItem?.derivedBy && <DerivedBadge label={derivedLabel(selectedItem.derivedBy) ?? ""} />}
             </span>
             {!factorAllowed(4) && (
-              <span role="status" className="text-xs text-[#f5a623] text-right">
+              <span role="status" className="text-xs text-ink-2 text-right">
                 {anyAllowed ? "4x: Bu boyut için çok büyük" : "Bu boyut için çok büyük"} (en çok {UPSCALE_MAX_LONG_EDGE} px kenar, {UPSCALE_MAX_PIXELS / 1_000_000} MP)
               </span>
             )}

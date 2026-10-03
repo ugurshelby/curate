@@ -1,81 +1,81 @@
 {
   "$schema": "https://design-tokens.github.io/community-group/format/",
   "name": "Curate Design System Tokens",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "surface": {
     "base": {
       "value": "#000000",
       "type": "color",
-      "description": "60% Base Canvas — Deep OLED Black"
+      "description": "Zemin (OLED siyah)"
     },
-    "elevated": {
-      "value": "#0f0f11",
+    "surface1": {
+      "value": "#1C1C1E",
       "type": "color",
-      "description": "30% Elevated Panels, Cards & Bento containers"
+      "description": "Yüzey 1: kart, panel, sheet"
     },
-    "overlay": {
-      "value": "#18181b",
+    "surface2": {
+      "value": "#2C2C2E",
       "type": "color",
-      "description": "Modals, Popovers, Floating Sheets"
+      "description": "Yüzey 2: çip, giriş, ikincil düğme (basılı: ayırıcı tonu)"
     },
-    "subtle": {
-      "value": "#27272a",
+    "separator": {
+      "value": "#38383A",
       "type": "color",
-      "description": "Input wells, pressed state, slider tracks"
-    },
-    "border": {
-      "value": "rgba(255, 255, 255, 0.08)",
-      "type": "color",
-      "description": "1px hairline divider & container border"
-    },
-    "borderHover": {
-      "value": "rgba(255, 255, 255, 0.16)",
-      "type": "color",
-      "description": "Hover state rim border"
-    },
-    "borderActive": {
-      "value": "rgba(245, 166, 35, 0.35)",
-      "type": "color",
-      "description": "Accent active selection border"
+      "description": "Ayırıcı: tek ince çizgi"
     }
   },
   "accent": {
-    "warmWhite": {
-      "value": "#f5f5f7",
+    "accent": {
+      "value": "#0A84FF",
       "type": "color",
-      "description": "Apple Warm White — Primary contrast punctuation"
+      "description": "Vurgu: çizgi, kaydırıcı dolgusu, ikon, odak halkası (2 px), koyu zeminde yazı"
     },
-    "amber": {
-      "value": "#f5a623",
+    "accentFill": {
+      "value": "#0071E3",
       "type": "color",
-      "description": "10% Minimal Amber — Single focal action & status indicator"
+      "description": "Vurgu dolgu zemini (beyaz yazı 4,7:1; #0A84FF ile 3,65:1). Sahip onayı 2026-10-03"
     },
-    "amberMuted": {
-      "value": "rgba(245, 166, 35, 0.12)",
+    "onAccent": {
+      "value": "#FFFFFF",
       "type": "color",
-      "description": "Subtle amber wash for active tabs & badges"
+      "description": "Vurgu üstü yazı"
+    },
+    "danger": {
+      "value": "#FF453A",
+      "type": "color",
+      "description": "Hata ve silme"
+    },
+    "success": {
+      "value": "#30D158",
+      "type": "color",
+      "description": "Başarı"
     }
   },
   "text": {
-    "primary": {
-      "value": "#f5f5f7",
+    "ink1": {
+      "value": "#FFFFFF",
       "type": "color",
-      "description": "Primary high-contrast label"
+      "description": "Yazı 1"
     },
-    "secondary": {
-      "value": "#a1a1aa",
+    "ink2": {
+      "value": "#AEAEB2",
       "type": "color",
-      "description": "Secondary neutral reading copy"
+      "description": "Yazı 2"
     },
-    "muted": {
-      "value": "#71717a",
+    "ink3": {
+      "value": "#8E8E93",
       "type": "color",
-      "description": "Muted captions, metadata & placeholders"
+      "description": "Yazı 3 (yüzey 2 üstünde 4,27:1: yalnız zemin ve yüzey 1 üstünde kullan)"
     },
-    "disabled": {
-      "value": "#3f3f46",
+    "disabledSurface": {
+      "value": "#2C2C2E",
       "type": "color",
-      "description": "Inactive/disabled UI elements"
+      "description": "Devre dışı yüzey"
+    },
+    "disabledInk": {
+      "value": "#636366",
+      "type": "color",
+      "description": "Devre dışı yazı"
     }
   },
   "radius": {
@@ -138,14 +138,14 @@
   },
   "glass": {
     "fill": {
-      "value": "rgba(15, 15, 17, 0.72)",
+      "value": "rgba(28, 28, 30, 0.72)",
       "type": "color",
-      "description": "Liquid glass background fill"
+      "description": "Liquid glass background fill (yüzey 1, %72)"
     },
     "border": {
-      "value": "rgba(255, 255, 255, 0.08)",
+      "value": "#38383A",
       "type": "color",
-      "description": "1px hairline glass border"
+      "description": "1px hairline glass border (ayırıcı)"
     },
     "blur": {
       "value": "20px",

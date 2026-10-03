@@ -5,6 +5,7 @@
  */
 
 import { AdaptiveGradientResult } from '../core/types';
+import { EXPORT_COLORS } from '../ui/colors';
 
 function rgbToHex(r: number, g: number, b: number): string {
   const toHex = (n: number) => {
@@ -73,7 +74,7 @@ export function extractAdaptiveGradient(imageData: ImageData): AdaptiveGradientR
 
   // Softened ambient versions for deep background immersion
   const cssLinear = `linear-gradient(180deg, ${hexTop} 0%, ${hexBottom} 100%)`;
-  const cssRadial = `radial-gradient(circle at 50% 50%, ${hexTop} 0%, ${hexBottom} 70%, #000000 100%)`;
+  const cssRadial = `radial-gradient(circle at 50% 50%, ${hexTop} 0%, ${hexBottom} 70%, ${EXPORT_COLORS.storyBlack} 100%)`;
 
   return {
     colorTop: hexTop,

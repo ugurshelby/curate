@@ -517,10 +517,10 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
   let stage: React.ReactNode;
   if (!hasPhoto || !item) {
     stage = (
-      <div data-stage className="relative w-[min(100cqw,calc(100cqh*4/5))] aspect-[4/5] rounded-xl border border-white/10 bg-[#0a0a0c] flex flex-col items-center justify-center gap-1 p-4 text-center text-[#71717a]">
-        <Wand2 className="w-8 h-8 text-[#3f3f46]" />
+      <div data-stage className="relative w-[min(100cqw,calc(100cqh*4/5))] aspect-[4/5] rounded-xl border border-separator bg-base flex flex-col items-center justify-center gap-1 p-4 text-center text-ink-3">
+        <Wand2 className="w-8 h-8 text-disabled-ink" />
         <span className="text-sm">Düzenlemek için bir fotoğraf ekle</span>
-        <button type="button" onClick={() => fileInputRef.current?.click()} className="touch-target px-3 text-sm text-[#f5a623]">
+        <button type="button" onClick={() => fileInputRef.current?.click()} className="touch-target px-3 text-sm text-accent">
           Fotoğraf Yükle
         </button>
       </div>
@@ -554,7 +554,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
       <div
         ref={cropBoxRef}
         data-stage
-        className="relative w-full h-full overflow-hidden rounded-xl bg-[#0a0a0c] cursor-grab"
+        className="relative w-full h-full overflow-hidden rounded-xl bg-base cursor-grab"
         style={{ touchAction: "none" }}
         {...cropGesture.bind("crop")}
       >
@@ -562,7 +562,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
         {frame && (
           <div
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border border-white/90 pointer-events-none"
-            style={{ width: fw, height: fh, boxShadow: "0 0 0 9999px rgba(0,0,0,0.6)" }}
+            style={{ width: fw, height: fh, boxShadow: "0 0 0 9999px rgb(var(--base) / 0.6)" }}
           >
             {/* Üçler kuralı çizgileri */}
             <div className="absolute inset-y-0 left-1/3 w-px bg-white/30" />
@@ -590,7 +590,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
                     touchAction: "none",
                   }}
                 >
-                  <span className="w-4 h-4 rounded-full bg-white border-2 border-[#f5a623]" />
+                  <span className="w-4 h-4 rounded-full bg-white border-2 border-black/50" />
                 </div>
               ))}
           </div>
@@ -602,7 +602,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
     stage = (
       <div
         data-stage
-        className="relative rounded-xl overflow-hidden border border-white/10 bg-[#0a0a0c]"
+        className="relative rounded-xl overflow-hidden border border-separator bg-base"
         style={{ aspectRatio: `${ratio}`, width: `min(100cqw, calc(100cqh * ${ratio}))` }}
         onPointerDown={startHold}
         onPointerUp={endHold}
@@ -612,10 +612,10 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
       >
         <canvas ref={canvasRef} className="w-full h-full" />
         {showOriginal && (
-          <div className="absolute inset-0 bg-black flex items-center justify-center">
+          <div className="absolute inset-0 bg-base flex items-center justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={item.proxyUrl || item.originalUrl} alt="" draggable={false} className="max-w-full max-h-full object-contain" />
-            <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 text-xs text-white">Orijinal</span>
+            <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 text-xs text-ink-1">Orijinal</span>
           </div>
         )}
       </div>
@@ -639,7 +639,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
                 endHold();
                 actions.selectItem(source.id);
               }}
-              className="touch-target press shrink-0 h-11 px-3 rounded-xl text-sm font-semibold bg-white/10 text-white flex items-center gap-1.5"
+              className="touch-target press shrink-0 h-11 px-3 rounded-xl text-sm font-semibold bg-surface-2 text-ink-1 flex items-center gap-1.5"
             >
               <Undo2 className="w-4 h-4" />
               <span>Kaynağa dön</span>
@@ -647,7 +647,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
           )}
         </div>
       ) : (
-        <span className="text-xs text-[#71717a] text-right truncate min-w-0">
+        <span className="text-xs text-ink-3 text-right truncate min-w-0">
           {tab === "crop" ? "Sürükle, iki parmakla yakınlaştır" : "Basılı tut: orijinal"}
         </span>
       )}
@@ -658,7 +658,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
 
   const panel = (
     <div className="flex flex-col gap-3 p-3">
-      <div role="tablist" aria-label="Düzenle sekmeleri" className="flex p-0.5 rounded-xl bg-white/5 border border-white/10">
+      <div role="tablist" aria-label="Düzenle sekmeleri" className="flex p-0.5 rounded-xl bg-surface-2 border border-separator">
         {TABS.filter((t) => t.visible).map((t) => (
           <button
             key={t.id}
@@ -670,7 +670,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
               setTab(t.id);
             }}
             className={`press flex-1 h-11 rounded-[10px] text-sm font-semibold ${
-              tab === t.id ? "bg-[#f5a623] text-black" : "text-[#a1a1aa]"
+              tab === t.id ? "bg-accent-fill text-on-accent" : "text-ink-2"
             }`}
           >
             {t.label}
@@ -720,7 +720,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
                   })
                 }
                 className={`press shrink-0 h-11 min-w-[56px] px-3 rounded-xl text-sm font-semibold border ${
-                  crop.aspect === a.id ? "bg-[#f5a623] text-black border-[#f5a623]" : "bg-white/5 text-[#a1a1aa] border-white/10"
+                  crop.aspect === a.id ? "bg-accent-fill text-on-accent border-accent-fill" : "bg-surface-2 text-ink-2 border-separator"
                 }`}
               >
                 {a.label}
@@ -739,7 +739,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
                   panY: 0,
                 })
               }
-              className="press h-11 px-3 rounded-xl text-sm border border-white/15 bg-white/5 text-[#f5f5f7] flex items-center gap-2"
+              className="press h-11 px-3 rounded-xl text-sm border border-separator bg-surface-2 text-ink-1 flex items-center gap-2"
             >
               <RotateCw className="w-4 h-4" />
               <span>90°</span>
@@ -749,7 +749,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
               aria-pressed={crop.flipH}
               onClick={() => setCrop({ flipH: !crop.flipH })}
               className={`press h-11 px-3 rounded-xl text-sm border flex items-center gap-2 ${
-                crop.flipH ? "border-[#f5a623] bg-[#f5a623]/15 text-[#f5a623]" : "border-white/15 bg-white/5 text-[#f5f5f7]"
+                crop.flipH ? "border-accent bg-accent/15 text-accent" : "border-separator bg-surface-2 text-ink-1"
               }`}
             >
               <FlipHorizontal2 className="w-4 h-4" />
@@ -758,7 +758,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
             <button
               type="button"
               onClick={() => setCrop(DEFAULT_EDIT_CROP)}
-              className="press ml-auto h-11 px-3 rounded-xl text-sm border border-white/15 bg-white/5 text-[#f5f5f7] flex items-center gap-2"
+              className="press ml-auto h-11 px-3 rounded-xl text-sm border border-separator bg-surface-2 text-ink-1 flex items-center gap-2"
             >
               <RotateCcw className="w-4 h-4" />
               <span>Sıfırla</span>
@@ -793,20 +793,20 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
           setIsAiOpen(true);
         }}
         disabled={!hasPhoto || !srcDims}
-        className="press ml-auto h-11 px-3 rounded-xl text-sm font-semibold bg-white/10 text-white flex items-center gap-1.5 disabled:opacity-40"
+        className="press ml-auto h-11 px-3 rounded-xl text-sm font-semibold bg-surface-2 text-ink-1 flex items-center gap-1.5"
       >
-        <Sparkles className="w-4 h-4 text-[#f5a623]" />
+        <Sparkles className="w-4 h-4 text-ink-2" />
         <span>AI ile onar</span>
       </button>
       {out && !canEnlarge && (
-        <span className="text-xs text-[#f5a623] text-right">Büyütmek için çok büyük</span>
+        <span className="text-xs text-ink-2 text-right">Büyütmek için çok büyük</span>
       )}
       <button
         type="button"
         onClick={handleEnlarge}
         disabled={!hasPhoto || !out || isEnlarging || !canEnlarge}
         title={out && !canEnlarge ? "Bu boyut için çok büyük" : undefined}
-        className={`press h-11 px-3 rounded-xl text-sm font-semibold bg-white/10 text-white flex items-center gap-1.5 disabled:opacity-40`}
+        className={`press h-11 px-3 rounded-xl text-sm font-semibold bg-surface-2 text-ink-1 flex items-center gap-1.5`}
       >
         <ZoomIn className="w-4 h-4" />
         <span>{isEnlarging ? "Hazırlanıyor" : "Büyüt"}</span>

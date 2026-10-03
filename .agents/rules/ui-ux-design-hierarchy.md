@@ -5,7 +5,7 @@ description: Curate Studio UI/UX ve frontend tasarım otorite sırası. UI, stil
 
 # Curate Studio — UI/UX Otorite Sırası
 
-Curate tek kişilik, **mobil öncelikli** (390×844) kişisel bir araçtır. Kimlik: OLED siyah + amber vurgu. Bu dosya yalnızca **repoda gerçekten var olan** kaynakları sıralar. Ürün kararlarını (özellik, öncelik) değiştirmez; onlar `curate-spec-v1.md` ve `AGENTS.md`'dedir.
+Curate tek kişilik, **mobil öncelikli** (390×844) kişisel bir araçtır. Kimlik: OLED siyah + nötr yüzeyler + iOS mavisi vurgu (Faz C). Bu dosya yalnızca **repoda gerçekten var olan** kaynakları sıralar. Ürün kararlarını (özellik, öncelik) değiştirmez; onlar `curate-spec-v1.md` ve `AGENTS.md`'dedir.
 
 ## 1. Öncelik sırası (çelişkide üstteki kazanır)
 
@@ -30,7 +30,7 @@ Curate tek kişilik, **mobil öncelikli** (390×844) kişisel bir araçtır. Kim
 
 1. Değişiklik düzen/panel/stage'e dokunuyorsa `design/CURATE_DESIGN_SYSTEM.md` §6'yı oku ve şu ölçülebilir kuralı koru: **görsel header'ın, panelin ya da filmstrip'in altında/arkasında kalmaz** (`stage.top ≥ header.bottom`, `stage.bottom ≤ bottomStack.top`).
 2. Hareket ekliyorsan önce `animate/SKILL.md` Adım 1 (sıklık kapısı). Sık yapılan eylemde animasyon yazma.
-3. Etkileşimli her öğe ≥ 44×44px; hiçbir okunan metin 11px altında değil; yeni renk ekleme (tek vurgu: amber).
+3. Etkileşimli her öğe ≥ 44×44px; hiçbir okunan metin 11px altında değil; yeni renk ekleme (tek vurgu: iOS mavisi; renkler yalnız `app/globals.css` belirteçlerinden, canvas içeriği renkleri `lib/ui/colors.ts`'ten gelir; kodda hex/rgb yazılmaz).
 4. Bitirince 390×844'te ölçüm yap (CDS §6.5). Tarayıcı yoksa "doğrulanmadı" yaz; koddan çıkarım yapma (AGENTS.md §2).
 
 ## 5. Ürün tercihleri

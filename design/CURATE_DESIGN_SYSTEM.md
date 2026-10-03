@@ -8,7 +8,7 @@
 
 Curate **tek kişilik, kişisel bir araçtır; birincil kullanım mobildir** (sahip kararı, 2026-10-02). Referans cihaz: 390×844 (Redmi Note 12 Pro 5G sınıfı, Chrome Android). Masaüstü ikincildir ve mobil düzenin genişlemiş hâlidir.
 
-Kimlik: **OLED siyah zemin + tek amber vurgu.** Apple'ın *kurallarını* (yay fiziği, anlık geri bildirim, tipografi, cam malzeme, sadelik) bu paleti koruyarak uyarlarız; Apple'ın *renklerini* almayız.
+Kimlik: **OLED siyah zemin + nötr yüzeyler + tek vurgu: iOS mavisi** (Faz C, sahip kararı 2026-10-03; amber fotoğraflarla yarıştığı için kalktı). Apple'ın *kurallarını* (yay fiziği, anlık geri bildirim, tipografi, cam malzeme, sadelik) bu paleti koruyarak uyarlarız; Apple'ın *renklerini* almayız.
 
 Bu dosyanın dayandığı gerçek dosyalar:
 
@@ -20,7 +20,7 @@ Bu dosyanın dayandığı gerçek dosyalar:
 | `design/skills/redesign-existing-projects/SKILL.md` | Yalnız denetim merceği. Bölüm 10'daki istisnalara bakın. |
 | `design/tokens.curate.json` | Token referansı (koda import edilmez). Kod doğruluk kaynağı: `tailwind.config.ts`, `app/globals.css`. |
 
-**Curate'e ait OLMAYANLAR:** `apple-design/SKILL.md` §18 (Rosso marka bölümü: mor vurgu, "Rosso projesi"), `apple-design/DESIGN.md`, `theme.css`, `variables.css`, `tokens.json` (açık tema, Apple Blue `#0071e3`, Frost/Carbon paleti, 980px hap buton). Bunlar Curate'e uygulanmaz. Yalnız şu fikirler alınır: tipografide boyuta bağlı tracking, gölge yerine ince kenar çizgisi, tek kromatik vurgu.
+**Curate'e ait OLMAYANLAR:** `apple-design/SKILL.md` §18 (Rosso marka bölümü: mor vurgu, "Rosso projesi"), `apple-design/DESIGN.md`, `theme.css`, `variables.css`, `tokens.json` (açık tema, Frost/Carbon paleti, 980px hap buton). Curate'in mavisi bu dosyalardan değil, Apple koyu sistem mavisinden (`#0A84FF`) gelir ve yalnız aşağıdaki tabloyla tanımlıdır. Bunlar Curate'e uygulanmaz. Yalnız şu fikirler alınır: tipografide boyuta bağlı tracking, gölge yerine ince kenar çizgisi, tek kromatik vurgu.
 
 ---
 
@@ -34,20 +34,50 @@ Bu dosyanın dayandığı gerçek dosyalar:
 
 ---
 
-## 2. Renk (60:30:10) — DEĞİŞMEZ
+## 2. Renk (Faz C) — DEĞİŞMEZ
 
-| Oran | Token | Değer | Kullanım |
+**Tek kaynak: `app/globals.css` `:root` değişkenleri** ("R G B" kanalı, Tailwind `rgb(var(--x) / <alpha-value>)` ile bağlanır; `tailwind.config.ts`'te değer yok). Canvas/export içeriği renkleri (arayüz paleti değil) `lib/ui/colors.ts`'te. `tests/color-tokens.test.ts` paleti, kontrast eşiklerini ve "başka yerde sabit renk yok" kuralını denetler.
+
+| Rol | Değişken | Tailwind | Değer |
 |---|---|---|---|
-| %60 | `surface-base` | `#000000` | Zemin, canvas, ana viewport |
-| %30 | `surface-elevated` / `surface-overlay` | `#0f0f11` / `#18181b` | Kartlar, paneller, sheet |
-| %10 | `accent-amber` / `accent-warm` | `#f5a623` / `#f5f5f7` | Aktif seçim, birincil eylem, durum |
+| Zemin | `--base` | `bg-base` | `#000000` |
+| Yüzey 1 (kart, panel, sheet) | `--surface-1` | `bg-surface` | `#1C1C1E` |
+| Yüzey 2 (çip, giriş, ikincil düğme) | `--surface-2` | `bg-surface-2` | `#2C2C2E` |
+| Ayırıcı (tek ince çizgi) | `--separator` | `border-separator` | `#38383A` |
+| Yazı 1 / 2 / 3 | `--ink-1/2/3` | `text-ink-1/2/3` | `#FFFFFF` / `#AEAEB2` / `#8E8E93` |
+| Vurgu (çizgi, kaydırıcı, ikon, odak, koyu zeminde yazı) | `--accent` | `text-accent`, `border-accent`, `accent-accent` | `#0A84FF` |
+| Vurgu dolgusu (düğme/seçili segment zemini) | `--accent-fill` | `bg-accent-fill` | `#0071E3` (sahip onayı 2026-10-03) |
+| Vurgu üstü yazı | `--on-accent` | `text-on-accent` | `#FFFFFF` |
+| Hata / silme | `--danger` | `text-danger`, `bg-danger/10` | `#FF453A` |
+| Başarı | `--success` | `text-success` | `#30D158` |
+| Devre dışı | `--disabled-surface`, `--disabled-ink` | `bg-disabled`, `text-disabled-ink` | `#2C2C2E`, `#636366` |
 
-Metin: primary `#f5f5f7`, secondary `#a1a1aa`, muted `#71717a`, disabled `#3f3f46`. Mikro sınır: `rgba(255,255,255,0.08)`.
+**Vurgu yalnız:** seçili öğe (preset çipi, sekme/segment, seçili kare), kaydırıcı dolgusu, ana eylem (Export, Kullan, İndir, Devam), odak halkası (2 px). Başka hiçbir yerde: simge, başlık, uyarı metni, rozet zemini, kart üzerine gelme rengi vurgu almaz.
 
 Kurallar:
-- **Tek kromatik vurgu: amber.** Yalnız yıkıcı eylem (sil/temizle) için kırmızı-pembe (`rose`) istisnadır. Başka renkli durum rengi (yeşil "aktif", TikTok kırmızısı vb.) eklenmez; aktif durum amber ile gösterilir.
-- Apple "ışık yakalayan 1px kenar" kuralı: cam yüzeylerde `inset 0 1px 0 rgba(255,255,255,0.12)`.
-- Gölge yerine kenar çizgisi ve yüzey tonu tercih edilir (derinlik hiyerarşisi).
+- **Yeşil yalnız başarı, kırmızı yalnız hata/silme.** Platform seçimi ve Instagram/TikTok etiketleri nötr gri/beyaz veya vurgu ile gösterilir; TikTok kırmızısı ve durum olarak yeşil yoktur.
+- **Fotoğrafın üstüne binen her şey renksiz:** kırp çerçevesi ve tutamaklar beyaz, üçler çizgileri beyaz %30, Story güvenli alan bantları ve seçili hücre halkası beyaz/siyah ve yarı saydam, Instagram/TikTok katmanları beyaz/siyah. Bunlar Tailwind `white`/`black` (+ alfa) olarak kalır; kromatik palet sınıfı (amber, rose, zinc vb.) ve hex/rgb sabiti yoktur.
+- **Rozetler** ("Büyütülmüş", "AI sonucu"): nötr gri zemin; küçük simge rozetinde simge mavi.
+- **Durumlar:** basma = vurgu dolgusunda %80 opaklık, yüzeyde bir kademe açık (yüzey 2 → ayırıcı tonu, yüzey 1 → yüzey 2) ve `scale(0.97)`; odak = 2 px vurgu halkası (`:focus-visible`); devre dışı = yüzey `#2C2C2E` + yazı `#636366` (`button:disabled`, opaklık düşürme yok).
+- Apple "ışık yakalayan 1px kenar" kuralı: cam yüzeylerde `inset 0 1px 0` beyaz %12 (`--ink-1` ile).
+- Gölge yerine kenar çizgisi ve yüzey tonu tercih edilir (derinlik hiyerarşisi). `color-scheme: dark` yerel denetimleri (kaydırıcı izi) koyu çizer.
+
+**Kontrast (WCAG 2.1, ölçüm 2026-10-03; normal yazı ≥ 4,5:1, büyük yazı ve bileşen ≥ 3:1):**
+
+| Ön plan | Zemin | Oran | Sonuç |
+|---|---|---|---|
+| Yazı 1 `#FFFFFF` | zemin / yüzey 1 / yüzey 2 | 21,00 / 17,01 / 13,94 | geçer |
+| Yazı 2 `#AEAEB2` | zemin / yüzey 1 / yüzey 2 | 9,50 / 7,69 / 6,30 | geçer |
+| Yazı 3 `#8E8E93` | zemin / yüzey 1 / yüzey 2 | 6,44 / 5,22 / **4,27** | yüzey 2 üstünde 4,5 altı: yazı 3 yalnız zemin ve yüzey 1 üstünde kullanılır |
+| Vurgu `#0A84FF` | zemin / yüzey 1 / yüzey 2 | 5,76 / 4,66 / **3,82** | zemin ve yüzey 1 üstünde yazı olur; yüzey 2 üstünde yalnız çizgi, ikon, kaydırıcı (≥ 3) |
+| Beyaz yazı | vurgu dolgusu `#0A84FF` | **3,65** | normal yazı için 4,5 altı |
+| Beyaz yazı | vurgu dolgusu `#0071E3` | 4,70 | geçer |
+| Hata `#FF453A` | zemin / yüzey 1 | 6,16 / 4,99 | geçer |
+| Başarı `#30D158` | zemin / yüzey 1 | 10,39 / 8,42 | geçer |
+| Devre dışı `#636366` | yüzey 2 | 2,33 | devre dışı öğeler WCAG'de muaf |
+| Ayırıcı `#38383A` | zemin / yüzey 1 | 1,79 / 1,45 | süs çizgisi; çip/düğme kenarı 3:1'in altında, kontrolü etiketi ve dolgusu tanıtır |
+
+Canlı denetim: `node scripts/audit-ui.mjs` ekranlardaki her metni hesaplanmış renk ve arka planla ölçer (42 ekran, en düşük oran 4,70).
 
 ---
 
@@ -77,13 +107,13 @@ Kurallar:
 
 ## 5. Malzeme: Liquid Glass (apple-design §12)
 
-- Dolgu `rgba(15,15,17,0.72)`, `backdrop-filter: blur(20px)`, 1px `rgba(255,255,255,0.08)` kenar, üstte rim light.
+- Dolgu yüzey 1 %72 (`--surface-1`), `backdrop-filter: blur(20px)`, 1px ayırıcı kenar, üstte rim light.
 - **Ekranda aynı anda en çok 3 cam yüzey.** Cam üstüne cam konmaz (okunabilirlik çöker). Sayım mobil düzenleme modunda yapılır: header + panel + filmstrip = 3; fotoğraf üstündeki küçük kontroller (Fit/Fill) cam değil, düz `bg-black/60` + kenar kullanır.
 - Büyük yüzey daha kalın okunur (daha güçlü blur + daha derin kenar); küçük çip daha hafif.
 - Fotoğraf sahnesi (stage) cam altında **bulanıklaştırılmaz**; cam yalnız kromun kendisindedir.
 - Erişilebilirlik (apple-design §14):
-  - `@media (prefers-reduced-transparency: reduce)` → cam yüzey opak `#18181b`, blur yok.
-  - `@media (prefers-contrast: more)` → opak yüzey + `rgba(255,255,255,0.32)` kenar.
+  - `@media (prefers-reduced-transparency: reduce)` → cam yüzey opak yüzey 1 (`--surface-1`), blur yok.
+  - `@media (prefers-contrast: more)` → opak yüzey + yazı 2 renginde kenar.
 
 ---
 
@@ -166,11 +196,11 @@ Kurallar:
 
 | Tasarım | Tailwind | CSS değişkeni / sınıf |
 |---|---|---|
-| Zemin | `bg-surface-base` | `--surface-base` |
-| Panel | `bg-surface-elevated` | `--surface-elevated` |
-| Sheet/popover | `bg-surface-overlay` | `--surface-overlay` |
-| Mikro sınır | `border-border-subtle` | `--border-subtle` |
-| Amber | `text-accent-amber`, `bg-accent-amber` | `--accent-amber` |
+| Zemin | `bg-base` | `--base` |
+| Panel, sheet | `bg-surface` | `--surface-1` |
+| Çip, giriş, ikincil düğme | `bg-surface-2` | `--surface-2` |
+| Ayırıcı | `border-separator` | `--separator` |
+| Vurgu | `text-accent`, `border-accent`, `bg-accent-fill` | `--accent`, `--accent-fill` |
 | Cam | `glass-panel` | `.glass-panel` |
 | Dokunma hedefi | `touch-target` | `.touch-target` |
 | Stüdyo kökü (100dvh, flex sütun) | — | `.studio-root` |
@@ -186,4 +216,4 @@ Kurallar:
 
 ## 11. Kalibrasyon Seti
 
-Test fotoğrafları `public/reference-images/` altındadır (eski `design/reference-images/` yolu yoktur). Parlak sahne (`gun-batimi-gunese-dokunan-eleman`, `gol-evi`) üstünde cam/kontrol okunabilirliği; koyu sahne (`ic-mekan-bar`, `sehir-isiklari-otoyol`) üstünde amber vurgu; mimari/portre (`tabela`, `kovboy`) üstünde çerçeve şeffaflığı bu karelerle denenir. Bu bölümdeki okunabilirlik iddiaları 2026-10-02'de yeniden ölçülmedi.
+Test fotoğrafları `public/reference-images/` altındadır (eski `design/reference-images/` yolu yoktur). Parlak sahne (`gun-batimi-gunese-dokunan-eleman`, `gol-evi`) üstünde cam/kontrol okunabilirliği; koyu sahne (`ic-mekan-bar`, `sehir-isiklari-otoyol`) üstünde mavi vurgu ve fotoğraf üstü beyaz katmanlar; mimari/portre (`tabela`, `kovboy`) üstünde çerçeve şeffaflığı bu karelerle denenir. Bu bölümdeki okunabilirlik iddiaları 2026-10-02'de yeniden ölçülmedi.

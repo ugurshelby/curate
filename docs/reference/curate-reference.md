@@ -222,8 +222,9 @@ Last verified: 2026-10-03
 | `npx tsc --noEmit` | Required by rules | Pass, exit 0 [VERIFIED] |
 | `npm run lint` | `"lint": "next lint"` | Pass, no warnings [VERIFIED] |
 | `npm run build` | `"build": "next build"` | Pass, exit 0 [VERIFIED] |
-| `npm test` | Added in Phase 5 via Vitest | Pass, exit 0, 12 files / 118 tests (2026-10-03, Faz AI1) [VERIFIED] |
+| `npm test` | Added in Phase 5 via Vitest | Pass, exit 0, 13 files / 127 tests (2026-10-03, Faz C; includes `tests/color-tokens.test.ts`) [VERIFIED] |
 | `npm run check:secrets` | `scripts/check-bundle-secrets.mjs`, run after build | 0 findings (2026-10-03) [VERIFIED] |
+| `node scripts/audit-ui.mjs` | Procedure 2 invariants plus computed text contrast, puppeteer-core + local Chrome, 360/390/430 | 2026-10-03 (Faz C): 42 screens `pass: true`, lowest text contrast 4.70 (emulated; phone and real screen brightness [UNVERIFIED]) |
 | CI | `.github/workflows/ci.yml` | Triggers: push to `main`, pull request to `main`, manual. Node 22: tsc, lint, test, build [VERIFIED] file read; run results not checked [UNVERIFIED] |
 | Visual / mobile viewport check | Required after UI changes (AGENTS.md §4, CDS §6.5) | 2026-10-03 (Faz D1): Procedure 2 passes in all five modules at 360×740, 390×844, 430×932 (emulated, desktop CPU) [VERIFIED]; phone and landscape [UNVERIFIED] |
 
@@ -240,6 +241,7 @@ Last verified: 2026-10-03
 6. **Design tokens agreement:** Palette values agree across tokens file, Tailwind config, and CSS variables. [VERIFIED]
 7. **Canvas re-encode as privacy boundary:** Coupled with JPEG APP marker zeroing. [VERIFIED]
 8. **Single-page module switch:** Hub and studios coexist on a single route sharing store state. [VERIFIED]
+9. **Color tokens (Faz C):** UI colors come only from `app/globals.css` `:root` variables (iOS blue accent `#0A84FF`, fill `#0071E3`, neutral surfaces); Tailwind binds to them; export-content colors live in `lib/ui/colors.ts`; `tests/color-tokens.test.ts` forbids hex/rgb literals and chromatic Tailwind classes elsewhere. [VERIFIED]
 
 ---
 
@@ -270,7 +272,7 @@ Last verified: 2026-10-02
 | `curate-spec-v1.md` | Product spec and owner intent | Updated in Phase 4 (defects closed) | Conflicts noted |
 | `docs/reference/curate-reference.md` | Living canonical reference | Active (this document) | None |
 | `docs/procedures.md` | Reusable procedure runbooks | Added in Phase 3 | None |
-| `design/CURATE_DESIGN_SYSTEM.md` | CDS v2.0.0 design authority (rewritten 2026-10-02) | Current | Code deviates from §6 (see audit report) |
+| `design/CURATE_DESIGN_SYSTEM.md` | CDS v2.0.0 design authority (rewritten 2026-10-02; §2 colors rewritten for iOS blue in Faz C, 2026-10-03) | Current | None known |
 | `design/skills/*` | apple-design, animate, improve-animations, redesign-existing-projects | Added by owner 2026-10-02 | `apple-design` §18 and `DESIGN.md`/tokens are not Curate's (CDS §0) |
 | `docs/reports/2026-10-02-audit.md` | Audit and design cleanup report | Current | None |
 | `design/tokens.curate.json` | DTCG tokens duplicate | Maintained as token reference | Not imported by code |
@@ -338,6 +340,7 @@ Last verified: 2026-10-03
 15. TikTok 1080×1920 to be confirmed on phone. (spec §10 q6)
 16. ~~Story with more than 6 library photos~~ **Resolved 2026-10-03:** first 6 with a warning.
 17. ~~8 MB limit for Upscale~~ **Resolved 2026-10-03:** not applied.
+20. ~~Accent fill tone (Faz C)~~ **Resolved 2026-10-03:** `#0071E3` (white text 4.70:1); date stamp stays orange.
 18. ~~Vertex key vs "no secrets / no pixels off-device"~~ **Resolved 2026-10-03 (Faz AI1):** owner-approved single exception, recorded in spec §3.5, §7.2, §4.5 E12 and AGENTS.md §2–§3.
 19. AI1 not verified: real duration and timeout on Vercel, phone flow, real cost (Billing), counter under distributed load.
 18. ~~Story safe band~~ **Resolved 2026-10-03:** 250 px approved; phone comparison still not done.

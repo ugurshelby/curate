@@ -3,24 +3,27 @@
 @tailwind utilities;
 
 :root {
-  /* Curate Design System (CDS) Core Variables */
-  --surface-base: #000000;
-  --surface-elevated: #0f0f11;
-  --surface-overlay: #18181b;
-  --surface-subtle: #27272a;
+  color-scheme: dark; /* yerel denetimler (kaydırıcı izi, kaydırma çubuğu) koyu çizilir */
 
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(255, 255, 255, 0.16);
-  --border-active: rgba(245, 166, 35, 0.35);
-
-  --accent-warm: #f5f5f7;
-  --accent-amber: #f5a623;
-  --accent-amber-muted: rgba(245, 166, 35, 0.12);
-
-  --text-primary: #f5f5f7;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
-  --text-disabled: #3f3f46;
+  /*
+   * Renk belirteçleri (Faz C, tek kaynak). Tailwind (tailwind.config.ts) bu değişkenlere bağlanır.
+   * Değerler "R G B" kanalları (Tailwind opaklık eki /15 çalışsın diye); yanındaki hex okunabilirlik içindir.
+   * Vurgu yalnız: seçili öğe, kaydırıcı dolgusu, ana eylem, odak halkası (design/CURATE_DESIGN_SYSTEM.md §2).
+   */
+  --base: 0 0 0; /* #000000 zemin */
+  --surface-1: 28 28 30; /* #1C1C1E */
+  --surface-2: 44 44 46; /* #2C2C2E */
+  --separator: 56 56 58; /* #38383A tek ince çizgi */
+  --ink-1: 255 255 255; /* #FFFFFF */
+  --ink-2: 174 174 178; /* #AEAEB2 */
+  --ink-3: 142 142 147; /* #8E8E93 */
+  --accent: 10 132 255; /* #0A84FF çizgi, kaydırıcı, ikon, odak halkası, koyu zeminde yazı */
+  --accent-fill: 0 113 227; /* #0071E3 dolgu zemini (beyaz yazı 4,7:1; #0A84FF ile 3,7:1) */
+  --on-accent: 255 255 255; /* #FFFFFF vurgu üstü yazı */
+  --danger: 255 69 58; /* #FF453A hata, silme */
+  --success: 48 209 88; /* #30D158 başarı */
+  --disabled-surface: 44 44 46; /* #2C2C2E */
+  --disabled-ink: 99 99 102; /* #636366 */
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -38,8 +41,8 @@
 /* Base resets & typography */
 html,
 body {
-  background-color: var(--surface-base);
-  color: var(--text-primary);
+  background-color: rgb(var(--base));
+  color: rgb(var(--ink-1));
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -55,11 +58,11 @@ body {
 @layer utilities {
   /* 1. Liquid Glass Panel (ekranda en çok 3 adet, CDS §5) */
   .glass-panel {
-    background-color: rgba(15, 15, 17, 0.72);
+    background-color: rgb(var(--surface-1) / 0.72);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 32px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgb(var(--separator));
+    box-shadow: inset 0 1px 0 rgb(var(--ink-1) / 0.12), 0 8px 32px rgb(var(--base) / 0.5);
     transform: translate3d(0, 0, 0);
   }
 
@@ -132,8 +135,8 @@ body {
 /* Hover vs Touch Interaction Ergonomics */
 @media (hover: hover) and (pointer: fine) {
   .interactive-hover:hover {
-    background-color: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.16);
+    background-color: rgb(var(--surface-2));
+    border-color: rgb(var(--separator));
     transition: background-color 150ms ease, border-color 150ms ease;
   }
 }
@@ -154,7 +157,7 @@ body {
 
 @media (prefers-reduced-transparency: reduce) {
   .glass-panel {
-    background-color: #18181b;
+    background-color: rgb(var(--surface-1));
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
@@ -162,7 +165,38 @@ body {
 
 @media (prefers-contrast: more) {
   .glass-panel {
-    background-color: #18181b;
-    border-color: rgba(255, 255, 255, 0.32);
+    background-color: rgb(var(--surface-1));
+    border-color: rgb(var(--ink-2));
   }
+}
+
+/*
+ * Etkileşim durumları (Faz C): basma, odak, devre dışı.
+ * Basma: vurgu dolgusu %80 opaklık; yüzey bir kademe açık (yüzey 2 → ayırıcı tonu, yüzey 1 → yüzey 2).
+ * Odak: 2 px vurgu halkası. Devre dışı: yüzey #2C2C2E, yazı #636366.
+ */
+.bg-accent-fill:active {
+  background-color: rgb(var(--accent-fill) / 0.8);
+}
+.bg-surface-2:active {
+  background-color: rgb(var(--separator));
+}
+.bg-surface:active {
+  background-color: rgb(var(--surface-2));
+}
+
+button:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible,
+[role="radio"]:focus-visible,
+[role="slider"]:focus-visible,
+input:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+}
+
+button:disabled {
+  background-color: rgb(var(--disabled-surface));
+  color: rgb(var(--disabled-ink));
+  opacity: 1;
 }

@@ -124,53 +124,53 @@ export function QuickExportSheet({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-base/70 animate-fade-in">
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Dışa aktar"
-        className="w-full max-w-lg rounded-t-sheet sm:rounded-sheet bg-[#18181b] p-5 pb-[calc(var(--safe-area-bottom)+20px)] border border-white/10 shadow-2xl animate-panel-in flex flex-col gap-4"
+        className="w-full max-w-lg rounded-t-sheet sm:rounded-sheet bg-surface p-5 pb-[calc(var(--safe-area-bottom)+20px)] border border-separator shadow-2xl animate-panel-in flex flex-col gap-4"
       >
         <div className="flex items-center justify-between">
-          <span className="text-[17px] font-semibold text-[#f5f5f7]">Dışa aktar</span>
+          <span className="text-[17px] font-semibold text-ink-1">Dışa aktar</span>
           <button
             type="button"
             onClick={onClose}
             disabled={isExporting}
             aria-label="Kapat"
-            className="touch-target press rounded-full text-[#a1a1aa] hover:text-white"
+            className="touch-target press rounded-full text-ink-2 hover:text-ink-1"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <dl className="rounded-xl bg-white/5 border border-white/10 divide-y divide-white/10 text-sm">
+        <dl className="rounded-xl bg-surface-2 border border-separator divide-y divide-separator text-sm">
           <div className="flex items-center justify-between gap-3 px-3 h-11">
-            <dt className="text-[#a1a1aa]">Hedef</dt>
-            <dd className="text-[#f5f5f7] num-metric truncate">
+            <dt className="text-ink-2">Hedef</dt>
+            <dd className="text-ink-1 num-metric truncate">
               {spec.name} · {targetLabel}
             </dd>
           </div>
           <div className="flex items-center justify-between gap-3 px-3 h-11">
-            <dt className="text-[#a1a1aa]">Görsel</dt>
-            <dd className="text-[#f5f5f7] num-metric">{count}</dd>
+            <dt className="text-ink-2">Görsel</dt>
+            <dd className="text-ink-1 num-metric">{count}</dd>
           </div>
           <div className="flex items-center justify-between gap-3 px-3 h-11">
-            <dt className="text-[#a1a1aa]">Dosya</dt>
-            <dd className="text-[#f5f5f7] num-metric truncate">
+            <dt className="text-ink-2">Dosya</dt>
+            <dd className="text-ink-1 num-metric truncate">
               {plan ? (plan.kind === "single" ? plan.fileName : `${plan.zipName} (${count} dosya)`) : "—"}
             </dd>
           </div>
           <div className="flex items-center justify-between gap-3 px-3 h-11">
-            <dt className="text-[#a1a1aa]">Kalite</dt>
-            <dd className="text-[#f5f5f7] num-metric">
+            <dt className="text-ink-2">Kalite</dt>
+            <dd className="text-ink-1 num-metric">
               {format === "png" ? "PNG (kayıpsız)" : `JPEG %${Math.round(spec.quality * 100)}`}
             </dd>
           </div>
         </dl>
 
         {!spec.verified && (
-          <p className="text-xs text-[#f5a623]">
+          <p className="text-xs text-ink-2">
             {spec.name} boyutu ({spec.width} × {spec.height}) telefonda henüz doğrulanmadı.
           </p>
         )}
@@ -180,13 +180,13 @@ export function QuickExportSheet({
             type="button"
             onClick={() => setIsAdvancedOpen((v) => !v)}
             aria-expanded={isAdvancedOpen}
-            className="h-11 flex items-center justify-between text-sm text-[#a1a1aa]"
+            className="h-11 flex items-center justify-between text-sm text-ink-2"
           >
             <span>Gelişmiş</span>
             <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isAdvancedOpen ? "rotate-180" : ""}`} />
           </button>
           {isAdvancedOpen && (
-            <div role="radiogroup" aria-label="Format" className="flex p-0.5 rounded-xl bg-white/5 border border-white/10 animate-panel-in">
+            <div role="radiogroup" aria-label="Format" className="flex p-0.5 rounded-xl bg-surface-2 border border-separator animate-panel-in">
               {(["jpeg", "png"] as const).map((f) => (
                 <button
                   key={f}
@@ -195,7 +195,7 @@ export function QuickExportSheet({
                   aria-checked={format === f}
                   onClick={() => setFormat(f)}
                   className={`press flex-1 h-11 rounded-[10px] text-sm font-semibold flex items-center justify-center gap-1.5 ${
-                    format === f ? "bg-[#f5a623] text-black" : "text-[#a1a1aa]"
+                    format === f ? "bg-accent-fill text-on-accent" : "text-ink-2"
                   }`}
                 >
                   {format === f && <Check className="w-4 h-4" />}
@@ -206,30 +206,30 @@ export function QuickExportSheet({
           )}
         </div>
 
-        <p className="text-xs text-[#71717a]">Konum ve cihaz bilgisi (EXIF) dosyadan çıkarılır.</p>
+        <p className="text-xs text-ink-3">Konum ve cihaz bilgisi (EXIF) dosyadan çıkarılır.</p>
 
         {result && (
-          <div role="status" className="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-[#f5f5f7] flex flex-col gap-0.5">
+          <div role="status" className="rounded-xl bg-surface-2 border border-separator px-3 py-2 text-sm text-ink-1 flex flex-col gap-0.5">
             <span className="num-metric break-all">
               İndirildi: {result.fileName} · {formatBytes(result.bytes)}
             </span>
             {result.reduced && result.quality !== null && (
-              <span className="text-xs text-[#f5a623] num-metric">
+              <span className="text-xs text-ink-2 num-metric">
                 8 MB sınırı için JPEG kalitesi %{Math.round(result.quality * 100)}&apos;e düşürüldü.
               </span>
             )}
             {result.overLimit && (
-              <span className="text-xs text-[#f5a623]">Dosya en düşük basamakta bile 8 MB&apos;ı aşıyor.</span>
+              <span className="text-xs text-ink-1">Dosya en düşük basamakta bile 8 MB&apos;ı aşıyor.</span>
             )}
           </div>
         )}
-        {error && <p className="text-xs text-rose-400">{error}</p>}
+        {error && <p className="text-xs text-danger">{error}</p>}
 
         <button
           type="button"
           onClick={result ? onClose : handleDownload}
           disabled={isExporting || count === 0}
-          className="touch-target press w-full h-12 rounded-xl bg-[#f5a623] text-black font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+          className="touch-target press w-full h-12 rounded-xl bg-accent-fill text-on-accent font-semibold text-sm flex items-center justify-center gap-2"
         >
           {isExporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : !result && <Download className="w-4 h-4" />}
           <span className="num-metric">
