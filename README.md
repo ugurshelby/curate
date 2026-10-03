@@ -12,14 +12,14 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 - **Sahne Mimarisi:** Varsayılan 4:5 Fill modu, tek tıkla Fit/Fill geçişi, izole wheel zoom.
 - **Platform Safe-Zone:** Yarı saydam göz ikonuyla Instagram Post arayüz (profil başlığı, kaydetme/beğeni butonları) katmanı.
 - **Filmstrip & İşlem Menüsü:** Kart üzerinde masaüstünde sağ tık, mobilde çift dokunma (~320ms) ile `Kapak yap`, `Seriyi bu renge eşitle (Hero Harmonize)` ve `Seriden çıkar`. Sıralama: dokunmatikte basılı tut (350ms) ve sürükle, farede sürükle.
-- **Düzenleme Paneli:** Preset'ler yatay kaydırmalı tek satır, kartlarda seçili fotoğrafın küçük önizlemesi; `.cube` LUT ve Hero Harmonize kapalı "Araçlar" bölümünde. Instagram/TikTok hedef geçişi sahnenin altında (varsayılan Instagram).
+- **Düzenleme Paneli:** Preset'ler yatay kaydırmalı tek satır, kartlarda seçili fotoğrafın küçük önizlemesi; `.cube` LUT ve Hero Harmonize kapalı "Araçlar" bölümünde. Instagram/TikTok hedef geçişi sahnenin altında (varsayılan Instagram); göz düğmesi platform arayüz katmanını gizler/gösterir (katman export'a hiçbir zaman yazılmaz).
 - **Hero Renk Eşitleme:** Seçili karenin renk ve pozlama dengesini tüm seriye nazikçe (%20) işler; asla aşırı deformasyon yapmaz.
 - **Kutsal Viewport Kuralı:** Görsel, düzenleme panelinin/header'ın/filmstrip'in altında kalmaz (`design/CURATE_DESIGN_SYSTEM.md` §6). Faz M1'de 360×740, 390×844 ve 430×932'de dört modülde ölçüldü, örtüşme 0 (`docs/reports/2026-10-03-phases.md`). Telefonda doğrulanmadı.
 
 ### 2. Story Dump (9:16)
 - **iPhone Mockup Sahnesi:** Dynamic Island ve yuvarlatılmış kasa sınırlarıyla dikey telefon ekranı; sahneye sığacak şekilde ölçeklenir. Instagram story güvenli alanı gösterilir (platform geçişi yok).
 - **Otomatik Grid:** Story en az 2, en fazla 6 fotoğraf alır; grid sayısı fotoğraf sayısına eşittir (kullanıcı seçmez). 2'den azsa Export kapalıdır ("En az 2 fotoğraf ekle"); 6 doluyken ekleme kapanır, fazlası alınmaz.
-- **Güvenli Alan:** Hücreler Story'nin üst (ilerleme çubuğu, hesap satırı) ve alt (mesaj çubuğu) bantlarının dışında kalır; export aynı geometriyi kullanır (bant yüksekliği 250 px, telefonda doğrulanmadı).
+- **Güvenli Alan:** Hücreler Story'nin üst (ilerleme çubuğu, hesap satırı) ve alt (mesaj çubuğu) bantlarının dışında kalır; export aynı geometriyi kullanır (bant yüksekliği 250 px, sahip onaylı; telefonda karşılaştırılmadı).
 - **Hücre Başına Kadraj:** Sürükleyerek konumlandırma, iki parmakla yakınlaştırma (kenarda rubber-band), seçili hücrede "Değiştir" ve "Sıfırla". Konum ve yakınlaştırma export'a birebir yansır.
 - **Boşluk:** Tek bir slider ile fotoğrafların hem kendi aralarındaki hem telefon kenarlarındaki boşluklarını yönetme.
 - **Akıllı Gradyan:** Fotoğrafların kenar piksellerinden otomatik türetilen organik arka plan gradyanı; siyah, beyaz ve antrasit zemin seçenekleri.

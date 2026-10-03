@@ -10,7 +10,7 @@ export const STORY_W = 1080;
 export const STORY_H = 1920;
 /**
  * Safe area kept free for platform UI: top = progress bar + account row, bottom = message bar.
- * VARSAYIM: 250 px (≈%13) each, commonly cited for 1080×1920 stories; not measured on a phone.
+ * 250 px (≈%13) each: owner-approved 2026-10-03; not compared against the Instagram UI on a phone.
  */
 export const STORY_SAFE_TOP = 250;
 export const STORY_SAFE_BOTTOM = 250;

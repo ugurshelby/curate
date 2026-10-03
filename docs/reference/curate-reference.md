@@ -331,8 +331,9 @@ Last verified: 2026-10-03
 11. ~~Frame aspect~~ **Resolved 2026-10-02:** Frame stays 1080×1350.
 12. Where are `curate-preset-spec.md`, `referans-gorsel-yonergesi.md`, `fotografcilik_karakterim.md`, and `curate-camera-app.md` located?
 13. The "new Düzenle module" named in decision K2 does not exist in code or in the phase plan. What is it and which phase? (spec §10 q4)
-14. Carousel IG/TikTok toggle: does an "overlay off" state remain, and can the safe-area overlay be hidden? (spec §10 q5)
+14. ~~Carousel overlay off state~~ **Resolved 2026-10-03:** one target always selected; overlay can be hidden with the eye toggle.
 15. TikTok 1080×1920 to be confirmed on phone. (spec §10 q6)
-16. Story with more than 6 library photos: currently uses the first 6 with a warning; K2 only covers adding. (spec §10 q7)
-17. Should the 8 MB limit apply to Upscale output? Currently not. (spec §10 q8)
-18. Confirm the 250 px Story safe band on a phone. (spec §10 q9)
+16. ~~Story with more than 6 library photos~~ **Resolved 2026-10-03:** first 6 with a warning.
+17. ~~8 MB limit for Upscale~~ **Resolved 2026-10-03:** not applied.
+18. ~~Story safe band~~ **Resolved 2026-10-03:** 250 px approved; phone comparison still not done.
+19. ~~Overlay hide control~~ **Resolved 2026-10-03:** eye toggle under the Carousel stage, default visible.

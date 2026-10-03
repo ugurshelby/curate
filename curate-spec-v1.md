@@ -99,8 +99,8 @@ Faz sırası: **K** (bu kararların dokümana işlenmesi, ölü kod temizliği) 
 | K5 | Durum renkleri amber/nötr (yeşil "Hero aktif" ve TikTok kırmızısı kalkar). Frame export 1080×1350 kalır. | M1 (renk), — (Frame: değişiklik yok) | **Uygulandı (M1)** |
 | M1-a | Mobil panel yeniden tasarımı onaylandı: preset'ler yatay kaydırmalı tek satır; `.cube` LUT ve Hero Harmonize "Araçlar" altında kapalı bölümde. | M1 | **Uygulandı (M1)** |
 | M2-a | Önizleme render hattı: denetim raporu §2 seçenek **A** (CPU, doğru çözünürlük, export ile aynı fonksiyon ve parametre şeması). WebGL ve worker bu fazda yok. | M2 | **Uygulandı (M2)**; telefon ölçümü sonrası C değerlendirilecek (`docs/reports/2026-10-03-phases.md`) |
-| S-a | Story'de Instagram/TikTok geçişi kalkar; fotoğraflar story güvenli alanına (üst ilerleme çubuğu/hesap satırı, alt mesaj çubuğu) yerleşir ve export aynı geometriyi kullanır; hücre başına yer değiştirme, görsel değiştirme, sürükleyerek konumlandırma ve iki parmakla yakınlaştırma; konum/zoom export'a birebir yansır. | S | **Uygulandı (S)**: güvenli alan 250/250 px [VARSAYIM, telefonda doğrulanmadı], `computeCellDraw` önizleme ve export'ta ortak |
-| S-b | Export: tek görsel her zaman doğrudan dosya iner, zip yalnız çoklu Carousel serisinde. Varsayılan en yüksek kalite: tam hedef boyut, sRGB, JPEG 0.97; dosya 8 MB'ı aşarsa kalite kademeli düşer ve kullanıcıya gösterilir. PNG ve format seçimi "Gelişmiş" altında. Export sayfasında jargon yok; hedef olarak gerçek boyut (örn. 1080×1350) yazılır. | S | **Uygulandı (S)**: `lib/export/export-plan.ts`, testli. 8 MB sınırı platform hedeflerine (post, story, TikTok, Çerçeve) uygulanır; Upscale'e uygulanmaz (yorum, §10 soru 8) |
+| S-a | Story'de Instagram/TikTok geçişi kalkar; fotoğraflar story güvenli alanına (üst ilerleme çubuğu/hesap satırı, alt mesaj çubuğu) yerleşir ve export aynı geometriyi kullanır; hücre başına yer değiştirme, görsel değiştirme, sürükleyerek konumlandırma ve iki parmakla yakınlaştırma; konum/zoom export'a birebir yansır. | S | **Uygulandı (S)**: güvenli alan 250/250 px (sahip onayı 2026-10-03; telefonda karşılaştırılmadı), `computeCellDraw` önizleme ve export'ta ortak |
+| S-b | Export: tek görsel her zaman doğrudan dosya iner, zip yalnız çoklu Carousel serisinde. Varsayılan en yüksek kalite: tam hedef boyut, sRGB, JPEG 0.97; dosya 8 MB'ı aşarsa kalite kademeli düşer ve kullanıcıya gösterilir. PNG ve format seçimi "Gelişmiş" altında. Export sayfasında jargon yok; hedef olarak gerçek boyut (örn. 1080×1350) yazılır. | S | **Uygulandı (S)**: `lib/export/export-plan.ts`, testli. 8 MB sınırı platform hedeflerine (post, story, TikTok, Çerçeve) uygulanır; Upscale'e uygulanmaz (sahip onayı, §10 soru 8) |
 
 Geçersiz kılınan taslak satırlar: önceki Faz S taslağındaki "1 fotoğraf tam kadraj" ve "6'dan fazlasında ilk 6'sı" K2 ile geçersizdir; "TikTok seçiliyken dışa aktarım boyutu: sahip kararı bekliyor" K1 ile kapanmıştır (varsayım + telefonda doğrulama). Bu satırlar spec'e hiç işlenmemişti.
 
@@ -194,11 +194,11 @@ Buna göre her faz için prompt şöyle yazılır:
 2. ~~Mobil kullanım önceliği~~ **KAPANDI (2026-10-02):** Birincil kullanım mobil. Worker/proxy/render hattı kapsamı `docs/reports/2026-10-02-audit.md` §2'deki seçeneklerden sahip tarafından seçilir.
 3. ~~`.CUBE` LUT yeri~~ **KAPANDI (2026-10-02):** "Araçlar" altında kapalı bölüm (M1-a).
 4. **Ertelendi (sahip kararı 2026-10-03):** K2'de anılan "yeni Düzenle modülü" bu fazlardan (K, M1, M2, S) sonraya bırakıldı.
-5. ~~Carousel hedef geçişi~~ **KAPANDI (2026-10-03):** Her zaman bir hedef seçili, varsayılan Instagram. Açık kalan: güvenli alan katmanının gizlenebilmesi istenir mi?
+5. ~~Carousel hedef geçişi~~ **KAPANDI (2026-10-03):** Her zaman bir hedef seçili, varsayılan Instagram. Arayüz katmanı sahne altındaki göz düğmesiyle gizlenebilir (varsayılan görünür; export'a hiçbir durumda yazılmaz).
 6. **(Uğur)** K1: TikTok 1080×1920 boyutu telefonda doğrulanacak.
-7. **(Uğur)** Kütüphane (Carousel'den gelen) 6'dan fazla fotoğraf içerirken Story'ye girilirse ne olmalı? Şu an Story ilk 6'sını kullanıyor ve bunu uyarıyla gösteriyor; K2 yalnız eklemeyi tanımlıyor.
-8. **(Uğur)** 8 MB sınırı Upscale çıktısına da uygulansın mı? Şu an uygulanmıyor (2x/4x büyütme çoğu zaman 8 MB'ı aşar ve kalite düşerdi).
-9. **(Uğur)** Story güvenli alan bandı 250 px (üst ve alt) telefonda Instagram arayüzüyle karşılaştırılıp onaylanmalı.
+7. ~~Story ve 6'dan fazla fotoğraflı kütüphane~~ **KAPANDI (sahip onayı 2026-10-03):** Story ilk 6'sını kullanır ve bunu uyarıyla gösterir.
+8. ~~8 MB sınırı ve Upscale~~ **KAPANDI (sahip onayı 2026-10-03):** Sınır yalnız platform hedeflerine (post, story, TikTok, Çerçeve) uygulanır; Upscale'e uygulanmaz.
+9. ~~Story güvenli alan bandı~~ **KAPANDI (sahip onayı 2026-10-03):** 250 px üst ve alt. Telefonda Instagram arayüzüyle karşılaştırma hâlâ yapılmadı.
 
 ---
 

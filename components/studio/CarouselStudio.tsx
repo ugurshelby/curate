@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Sliders, Star, Palette, X, FileCode, ChevronDown, Layers } from "lucide-react";
+import { Sliders, Star, Palette, X, FileCode, ChevronDown, Layers, Eye, EyeOff } from "lucide-react";
 import {
   useStudio,
   getStudioSelection,
@@ -79,6 +79,8 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   const [fitMode, setFitMode] = useState<"fill" | "fit">("fill");
   // Sahip kararı: her zaman bir hedef seçili, varsayılan Instagram (export hedefi Faz S'de bağlanır)
   const [target, setTarget] = useState<"instagram" | "tiktok">("instagram");
+  // Platform arayüz katmanı yalnız önizlemede; renk değerlendirmesi için gizlenebilir (sahip kararı 2026-10-03)
+  const [showOverlay, setShowOverlay] = useState<boolean>(true);
   const [zoomScale, setZoomScale] = useState<number>(1);
   const [isEditSheetOpen, setIsEditSheetOpen] = useState<boolean>(false);
   const [isToolsOpen, setIsToolsOpen] = useState<boolean>(false);
@@ -358,9 +360,9 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         </div>
       )}
 
-      {hasPhoto && target === "instagram" && <InstagramOverlay type="post" />}
+      {hasPhoto && showOverlay && target === "instagram" && <InstagramOverlay type="post" />}
       {/* TikTok arayüz güvenli alanı yalnız önizlemede; export'a yazılmaz */}
-      {hasPhoto && target === "tiktok" && <TikTokOverlay type="story" />}
+      {hasPhoto && showOverlay && target === "tiktok" && <TikTokOverlay type="story" />}
     </div>
   );
 
@@ -374,7 +376,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
             role="radio"
             aria-checked={target === t}
             onClick={() => setTarget(t)}
-            className={`press h-11 px-3 rounded-[10px] text-xs font-semibold ${
+            className={`press h-11 px-2.5 rounded-[10px] text-xs font-semibold ${
               target === t ? "bg-[#f5a623] text-black" : "text-[#a1a1aa]"
             }`}
           >
@@ -383,14 +385,28 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         ))}
       </div>
 
-      <StageNote>{FULL_W} × {FULL_H} · {spec.aspectRatio}</StageNote>
+      <StageNote>{FULL_W}×{FULL_H}</StageNote>
+
+      <button
+        type="button"
+        onClick={() => setShowOverlay((v) => !v)}
+        disabled={!hasPhoto}
+        aria-pressed={!showOverlay}
+        aria-label={showOverlay ? "Arayüz katmanını gizle" : "Arayüz katmanını göster"}
+        title={showOverlay ? "Arayüz katmanını gizle" : "Arayüz katmanını göster"}
+        className={`touch-target press shrink-0 rounded-xl border disabled:opacity-40 ${
+          showOverlay ? "bg-white/5 border-white/10 text-[#f5f5f7]" : "bg-[#f5a623]/15 border-[#f5a623] text-[#f5a623]"
+        }`}
+      >
+        {showOverlay ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+      </button>
 
       <button
         type="button"
         onClick={() => setFitMode(fitMode === "fill" ? "fit" : "fill")}
         disabled={!hasPhoto}
         aria-label="Doldur veya sığdır"
-        className="press h-11 px-3 rounded-xl bg-white/5 border border-white/10 text-xs font-semibold text-[#f5f5f7] disabled:opacity-40"
+        className="press shrink-0 h-11 px-3 rounded-xl bg-white/5 border border-white/10 text-xs font-semibold text-[#f5f5f7] disabled:opacity-40"
       >
         {fitMode === "fill" ? "Doldur" : "Sığdır"}
       </button>
