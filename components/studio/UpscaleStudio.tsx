@@ -12,6 +12,7 @@ import {
   createExportCanvas,
   upscaleFactorAllowed,
   UPSCALE_MAX_LONG_EDGE,
+  UPSCALE_MAX_PIXELS,
 } from "@/lib";
 import { QuickExportSheet } from "./QuickExportSheet";
 import { StudioShell, StageNote } from "./StudioShell";
@@ -132,7 +133,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     return outC;
   };
 
-  // Güvenli sınır: çıktının uzun kenarı en çok 8192 px (VARSAYIM); aşan çarpan kapanır
+  // Güvenli sınır: uzun kenar ≤ 8192 px ve alan ≤ 16 MP (VARSAYIM); aşan çarpan kapanır
   const srcW = selectedItem ? selectedItem.dimensions.width : 0;
   const srcH = selectedItem ? selectedItem.dimensions.height : 0;
   const factorAllowed = (f: 2 | 4) => !!selectedItem && upscaleFactorAllowed(srcW, srcH, f);
@@ -261,7 +262,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
             </StageNote>
             {!factorAllowed(4) && (
               <span role="status" className="text-xs text-[#f5a623] text-right">
-                {anyAllowed ? "4x: Bu boyut için çok büyük" : "Bu boyut için çok büyük"} (en çok {UPSCALE_MAX_LONG_EDGE} px)
+                {anyAllowed ? "4x: Bu boyut için çok büyük" : "Bu boyut için çok büyük"} (en çok {UPSCALE_MAX_LONG_EDGE} px kenar, {UPSCALE_MAX_PIXELS / 1_000_000} MP)
               </span>
             )}
           </>

@@ -168,11 +168,10 @@ describe('Düzenle export target and Upscale safe limit (spec §4.5 E8, E9)', ()
     expect(mimeForFormat('jpeg')).toBe('image/jpeg');
   });
 
-  it('Upscale factor is closed when the output long edge would pass 8192', () => {
+  it('Upscale factor is closed when the output long edge would pass 8192 (area rule: tests/upscale-limit.test.ts)', () => {
     expect(UPSCALE_MAX_LONG_EDGE).toBe(8192);
-    expect(upscaleFactorAllowed(4096, 3000, 2)).toBe(true);
-    expect(upscaleFactorAllowed(4096, 3000, 4)).toBe(false);
-    expect(upscaleFactorAllowed(2048, 1536, 4)).toBe(true);
-    expect(upscaleFactorAllowed(5000, 3000, 2)).toBe(false);
+    expect(upscaleFactorAllowed(4096, 900, 2)).toBe(true);
+    expect(upscaleFactorAllowed(4096, 900, 4)).toBe(false);
+    expect(upscaleFactorAllowed(5000, 300, 2)).toBe(false);
   });
 });

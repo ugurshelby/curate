@@ -7,13 +7,17 @@
 const PI = Math.PI;
 
 /**
- * Upscale güvenli sınırı: çıktının uzun kenarı en çok 8192 px (spec §4.5, VARSAYIM).
- * Daha büyük çıktı mobil tarayıcıda bellek sınırını aşabilir; o çarpan arayüzde kapatılır.
+ * Upscale güvenli sınırı (spec §4.5, VARSAYIM, telefonda ölçülmedi):
+ * çıktının uzun kenarı en çok 8192 px VE toplam alanı en çok 16 MP (16.000.000 piksel).
+ * Biri aşılırsa çarpan arayüzde kapatılır (mobil canvas belleği).
  */
 export const UPSCALE_MAX_LONG_EDGE = 8192;
+export const UPSCALE_MAX_PIXELS = 16_000_000;
 
 export function upscaleFactorAllowed(width: number, height: number, factor: number): boolean {
-  return Math.max(width, height) * factor <= UPSCALE_MAX_LONG_EDGE;
+  const outW = Math.round(width * factor);
+  const outH = Math.round(height * factor);
+  return Math.max(outW, outH) <= UPSCALE_MAX_LONG_EDGE && outW * outH <= UPSCALE_MAX_PIXELS;
 }
 
 function sinc(x: number): number {

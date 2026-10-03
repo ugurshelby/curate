@@ -27,6 +27,7 @@ import {
   panLimits,
   screenDeltaToImage,
   rubberband,
+  upscaleFactorAllowed,
 } from "@/lib";
 import { StudioShell, StageNote } from "./StudioShell";
 import { AddMenu } from "./AddMenu";
@@ -401,6 +402,8 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
   };
 
   // Büyüt: düzenlenmiş hâl yeni fotoğraf olarak eklenir ve Upscale onunla açılır (spec §4.5 E9)
+  // Upscale'in en küçük çarpanı (2x) bile güvenli sınırı aşıyorsa Büyüt kapalı
+  const canEnlarge = !!out && upscaleFactorAllowed(out.width, out.height, 2);
   const handleEnlarge = async () => {
     if (!out) return;
     setIsEnlarging(true);
@@ -683,11 +686,15 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
         onReference={() => setIsReferenceOpen(true)}
         onClear={state.items.length > 0 ? handleClear : undefined}
       />
+      {out && !canEnlarge && (
+        <span className="ml-auto text-xs text-[#f5a623] text-right">Büyütmek için çok büyük</span>
+      )}
       <button
         type="button"
         onClick={handleEnlarge}
-        disabled={!hasPhoto || !out || isEnlarging}
-        className="press ml-auto h-11 px-3 rounded-xl text-sm font-semibold bg-white/10 text-white flex items-center gap-1.5 disabled:opacity-40"
+        disabled={!hasPhoto || !out || isEnlarging || !canEnlarge}
+        title={out && !canEnlarge ? "Bu boyut için çok büyük" : undefined}
+        className={`press ${out && !canEnlarge ? "" : "ml-auto"} h-11 px-3 rounded-xl text-sm font-semibold bg-white/10 text-white flex items-center gap-1.5 disabled:opacity-40`}
       >
         <ZoomIn className="w-4 h-4" />
         <span>{isEnlarging ? "Hazırlanıyor" : "Büyüt"}</span>

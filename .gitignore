@@ -16,8 +16,8 @@ next-env.d.ts
 
 # Environment Variables
 .env
-.env*.local
-.env.production
+.env*
+!.env.example
 
 # Vercel
 .vercel
