@@ -11,6 +11,9 @@ interface ResettableSliderProps {
   defaultValue?: number;
   unit?: string;
   onChange: (value: number) => void;
+  /** Sürükleme başladı/bitti (önizleme sürüklerken taslak çözünürlükte çizer) */
+  onInteractionStart?: () => void;
+  onInteractionEnd?: () => void;
 }
 
 export function ResettableSlider({
@@ -22,6 +25,8 @@ export function ResettableSlider({
   defaultValue = 0,
   unit = "",
   onChange,
+  onInteractionStart,
+  onInteractionEnd,
 }: ResettableSliderProps) {
   const isDefault = value === defaultValue;
 
@@ -56,6 +61,10 @@ export function ResettableSlider({
         value={value}
         aria-label={label}
         onChange={(e) => onChange(parseFloat(e.target.value))}
+        onPointerDown={onInteractionStart}
+        onPointerUp={onInteractionEnd}
+        onPointerCancel={onInteractionEnd}
+        onBlur={onInteractionEnd}
         onDoubleClick={() => onChange(defaultValue)}
         className="w-full h-11 bg-transparent cursor-pointer accent-[#f5a623]"
       />

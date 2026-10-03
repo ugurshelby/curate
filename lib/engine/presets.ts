@@ -264,10 +264,21 @@ function lerp(start: number, end: number, t: number): number {
 /**
  * Applies a preset to ImageData with intensity interpolation (0.0 to 1.0)
  */
+export interface PresetRenderOptions {
+  /**
+   * Output pixels represented by one pixel of this ImageData (export width / render width).
+   * 1 = export resolution. 2 = half-size preview. Grain is sampled on the export-resolution grid,
+   * so a preview pixel shows the grain value of the export pixel it stands for.
+   * Halation is a per-pixel threshold and needs no scaling.
+   */
+  resolutionScale?: number;
+}
+
 export function applyPresetToImageData(
   imageData: ImageData,
   preset: PresetProfile,
-  intensity: number = 1.0
+  intensity: number = 1.0,
+  options: PresetRenderOptions = {}
 ): ImageData {
   const t = Math.max(0, Math.min(1, intensity));
   if (t === 0) return imageData; // No change if intensity is 0
@@ -294,6 +305,9 @@ export function applyPresetToImageData(
 
   const data = imageData.data;
   const len = data.length;
+  const width = imageData.width;
+  const resolutionScale = options.resolutionScale ?? 1;
+  const refWidth = Math.round(width * resolutionScale);
 
   for (let i = 0; i < len; i += 4) {
     let r = data[i];
@@ -358,7 +372,14 @@ export function applyPresetToImageData(
 
     // 8. 35mm Analog Film Grain (organic silver halide noise for Amber Grain)
     if (effGrain > 0) {
-      const hash = ((i * 1664525 + 1013904223) >>> 16) / 65535;
+      let grainIndex = i;
+      if (resolutionScale !== 1) {
+        const p = i >> 2;
+        const x = p % width;
+        const y = (p - x) / width;
+        grainIndex = (Math.floor(y * resolutionScale) * refWidth + Math.floor(x * resolutionScale)) * 4;
+      }
+      const hash = ((grainIndex * 1664525 + 1013904223) >>> 16) / 65535;
       const gNoise = (hash - 0.5) * (effGrain * 0.40);
       r += gNoise;
       g += gNoise;

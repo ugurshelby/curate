@@ -73,9 +73,9 @@ Aşağıdaki çelişkiler açıkta olup agent'lar tarafından karara bağlanamaz
 
 | # | Eksik | Etki |
 |---|---|---|
-| 5 | **[Faz M2: seçenek A; worker bu fazda yok]** Worker yalnız Upscale export'unda kullanılıyor (`workerBridge.upscaleLanczos`). Preset/harmonize/metrik/gradyan köprü metotları hiçbir yerden çağrılmıyor; Carousel önizleme ve export ana thread'de | Carousel preset değişiminde ana thread kilidi: 12MP fotoğrafta preset başına 500–728ms uzun görev (masaüstü tarayıcı, 2026-10-02 ölçümü) |
+| 5 | **[Faz M2 tamam: seçenek A, worker yok]** Carousel önizlemesi artık tam çözünürlükte değil (bkz. #11); ana thread'de kalıyor. Worker hâlâ yalnız Upscale export'unda kullanılıyor (`workerBridge.upscaleLanczos`). Preset/harmonize/metrik/gradyan köprü metotları hiçbir yerden çağrılmıyor; Carousel önizleme ve export ana thread'de | Carousel preset değişiminde ana thread kilidi: 12MP fotoğrafta preset başına 500–728ms uzun görev (masaüstü tarayıcı, 2026-10-02 ölçümü) |
 | 6 | UpscaleStudio önizlemesi CSS filtresi (etiket artık Lanczos demiyor); export gerçek Lanczos-3 | Önizleme ile export farklıdır; etiket dürüst, kusur bilinen sınırdır |
-| 7 | **[Faz M2]** Proxy (≤1080 px) üretiliyor ama yalnız filmstrip küçük resimlerinde kullanılıyor; önizleme ve export tam çözünürlüklü `originalUrl` yüklüyor | Önizleme 4000×3000 tuvalde işleniyor; bellek ve CPU maliyeti |
+| 7 | **[Faz M2]** Önizleme orijinali bir kez çözüp 1080×1350 kırpılmış tabanı önbellekliyor (proxy pariteyi bozacağı için kullanılmadı). Proxy (≤1080 px) üretiliyor ama yalnız filmstrip küçük resimlerinde kullanılıyor; önizleme ve export tam çözünürlüklü `originalUrl` yüklüyor | Önizleme 4000×3000 tuvalde işleniyor; bellek ve CPU maliyeti |
 | 8 | ~~PNG seçimi etkisiz~~ **KAPANDI** (`f73fa6b`): PNG gerçek PNG üretir | — |
 
 ### 4.3 — Açık Hatalar (2026-10-02 ölçümü; faz bağlantısı §4.4)
@@ -84,7 +84,7 @@ Aşağıdaki çelişkiler açıkta olup agent'lar tarafından karara bağlanamaz
 |---|---|---|
 | 9 | ~~**[Faz M1]** Mobil düzenleme paneli görseli kapatıyor~~ **KAPANDI (M1, 2026-10-03):** 360×740, 390×844, 430×932'de örtüşme 0 (`docs/reports/2026-10-03-phases.md`). Eski ölçüm: 390×844'te panel açık + preset seçili: sahne y=107–501, panel y=186–730; görselin ≈%80'i panelin altında. Panel preset yokken bile görselin ≈%53'ünü örter | `docs/reports/2026-10-02-audit.md` §1 |
 | 10 | ~~**[Faz M1]** Mobil header tek satıra sığmıyor~~ **KAPANDI (M1, 2026-10-03):** header 52px tek satır. Eski ölçüm: (95px, 4 satıra kırılan başlık, Export düğmesi sağ kenarı 444px'e taşıyor, ekran 390) | aynı rapor |
-| 11 | **[Faz M2]** Canlı önizleme tam çözünürlükte işleniyor; önizleme ve export aynı fonksiyonu **farklı parametrelerle** çağırıyor (önizleme `fitMode:"fill"` sabit ve tam boyutlu tuval; export 1080×1350). Gren/halation çözünürlüğe bağlı olduğundan eşitlik garanti değil | aynı rapor |
+| 11 | ~~**[Faz M2]**~~ **KAPANDI (M2, 2026-10-03):** önizleme 1080×1350 (sürüklerken 540×675), export ile aynı fonksiyon ve parametre şeması; parite testi 0 bayt fark; preset değişimi 500–728 ms → 54–68 ms (masaüstü). Eski bulgu: Canlı önizleme tam çözünürlükte işleniyor; önizleme ve export aynı fonksiyonu **farklı parametrelerle** çağırıyor (önizleme `fitMode:"fill"` sabit ve tam boyutlu tuval; export 1080×1350). Gren/halation çözünürlüğe bağlı olduğundan eşitlik garanti değil | aynı rapor |
 
 ### 4.4 — Sahip Kararları (2026-10-02) ve Faz Bağlantısı
 
@@ -98,7 +98,7 @@ Faz sırası: **K** (bu kararların dokümana işlenmesi, ölü kod temizliği) 
 | K4 | **Panorama kalıcı olarak kapatıldı.** | K | Uygulandı (bu commit) |
 | K5 | Durum renkleri amber/nötr (yeşil "Hero aktif" ve TikTok kırmızısı kalkar). Frame export 1080×1350 kalır. | M1 (renk), — (Frame: değişiklik yok) | **Uygulandı (M1)** |
 | M1-a | Mobil panel yeniden tasarımı onaylandı: preset'ler yatay kaydırmalı tek satır; `.cube` LUT ve Hero Harmonize "Araçlar" altında kapalı bölümde. | M1 | **Uygulandı (M1)** |
-| M2-a | Önizleme render hattı: denetim raporu §2 seçenek **A** (CPU, doğru çözünürlük, export ile aynı fonksiyon ve parametre şeması). WebGL ve worker bu fazda yok. | M2 | Kod yok |
+| M2-a | Önizleme render hattı: denetim raporu §2 seçenek **A** (CPU, doğru çözünürlük, export ile aynı fonksiyon ve parametre şeması). WebGL ve worker bu fazda yok. | M2 | **Uygulandı (M2)**; telefon ölçümü sonrası C değerlendirilecek (`docs/reports/2026-10-03-phases.md`) |
 | S-a | Story'de Instagram/TikTok geçişi kalkar; fotoğraflar story güvenli alanına (üst ilerleme çubuğu/hesap satırı, alt mesaj çubuğu) yerleşir ve export aynı geometriyi kullanır; hücre başına yer değiştirme, görsel değiştirme, sürükleyerek konumlandırma ve iki parmakla yakınlaştırma; konum/zoom export'a birebir yansır. | S | Kod yok |
 | S-b | Export: tek görsel her zaman doğrudan dosya iner, zip yalnız çoklu Carousel serisinde. Varsayılan en yüksek kalite: tam hedef boyut, sRGB, JPEG 0.97; dosya 8 MB'ı aşarsa kalite kademeli düşer ve kullanıcıya gösterilir. PNG ve format seçimi "Gelişmiş" altında. Export sayfasında jargon yok; hedef olarak gerçek boyut (örn. 1080×1350) yazılır. | S | Kod yok (bugün JPEG 0.92) |
 

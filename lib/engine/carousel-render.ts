@@ -1,13 +1,23 @@
 /**
  * Curate Engine — Unified Carousel Render Pipeline
- * Single source of truth for both live preview and high-res export rendering.
- * Enforces 100% parity between stage display and exported JPEG/PNG files.
+ * Single source of truth for both live preview and export rendering (spec §4.4 M2-a, option A).
+ *
+ * Two steps, same functions for preview and export:
+ *   1. base  = background + crop/fit draw + hero harmonize   (renderCarouselBase)
+ *   2. look  = .cube LUT or editorial preset on a copy of base (applyCarouselLook)
+ * Export calls drawCarouselFrame (1 + 2 in one go). The preview calls the same two steps through
+ * CarouselPreviewRenderer, which caches step 1 so a slider only recomputes step 2.
  */
 
 import { ColorMetrics, CubeLUT } from '../core/types';
 import { calculateAspectCrop } from '../export/platform-specs';
-import { applyHarmonizeSync } from './harmonize';
+import { applyHarmonizeSync, extractColorMetrics } from './harmonize';
 import { applyCubeLutToImageData, applyPresetToImageData, CURATE_PRESETS } from './presets';
+
+/** Export width the look is calibrated for (grain grid). */
+export const CAROUSEL_OUTPUT_WIDTH = 1080;
+export const HERO_HARMONIZE_STRENGTH = 0.2;
+export const FIT_BACKGROUND = '#0a0a0c';
 
 export interface CarouselRenderOptions {
   fitMode: 'fit' | 'fill';
@@ -15,71 +25,182 @@ export interface CarouselRenderOptions {
   customLut?: CubeLUT | null;
   presetId?: string | null;
   presetIntensity?: number;
+  /** Export width this render stands for. Defaults to the render width (export). */
+  outputWidth?: number;
 }
 
-export function drawCarouselFrame(
-  ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement | ImageBitmap,
+export interface CarouselBase {
+  /** Harmonized pixels of the image rectangle (before LUT/preset) */
+  imageData: ImageData;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+type CarouselSource = HTMLImageElement | ImageBitmap | HTMLCanvasElement;
+
+function sourceSize(img: CarouselSource): { w: number; h: number } {
+  const w = (img as HTMLImageElement).naturalWidth || img.width;
+  const h = (img as HTMLImageElement).naturalHeight || img.height;
+  return { w, h };
+}
+
+function cloneImageData(src: ImageData): ImageData {
+  const data = new Uint8ClampedArray(src.data);
+  if (typeof ImageData !== 'undefined') {
+    return new ImageData(data, src.width, src.height);
+  }
+  return { width: src.width, height: src.height, data, colorSpace: 'srgb' } as ImageData;
+}
+
+/** Image rectangle inside the target for the given fit mode. */
+export function carouselImageRect(
+  imgW: number,
+  imgH: number,
   targetW: number,
   targetH: number,
-  options: CarouselRenderOptions
-): void {
-  const { fitMode, heroColorMetrics, customLut, presetId, presetIntensity = 1.0 } = options;
+  fitMode: 'fit' | 'fill'
+): { x: number; y: number; w: number; h: number } {
+  if (fitMode === 'fill') return { x: 0, y: 0, w: targetW, h: targetH };
+  const targetRatio = targetW / targetH;
+  const imgRatio = imgW / imgH;
+  if (imgRatio > targetRatio) {
+    const h = Math.round(targetW / imgRatio);
+    return { x: 0, y: Math.round((targetH - h) / 2), w: targetW, h };
+  }
+  const w = Math.round(targetH * imgRatio);
+  return { x: Math.round((targetW - w) / 2), y: 0, w, h: targetH };
+}
 
-  let targetX = 0;
-  let targetY = 0;
-  let targetDrawW = targetW;
-  let targetDrawH = targetH;
-
-  const imgW = (img as HTMLImageElement).naturalWidth || img.width;
-  const imgH = (img as HTMLImageElement).naturalHeight || img.height;
-
+function paintBackground(ctx: CanvasRenderingContext2D, targetW: number, targetH: number, fitMode: 'fit' | 'fill') {
   if (fitMode === 'fit') {
-    // Letterbox / pillarbox background color matching preview
-    ctx.fillStyle = '#0a0a0c';
+    ctx.fillStyle = FIT_BACKGROUND;
     ctx.fillRect(0, 0, targetW, targetH);
+  }
+}
 
-    const targetRatio = targetW / targetH;
-    const imgRatio = imgW / imgH;
+/** Step 1: background + crop/fit draw + hero harmonize. Draws on ctx and returns the harmonized rectangle. */
+export function renderCarouselBase(
+  ctx: CanvasRenderingContext2D,
+  img: CarouselSource,
+  targetW: number,
+  targetH: number,
+  options: Pick<CarouselRenderOptions, 'fitMode' | 'heroColorMetrics'>
+): CarouselBase {
+  const { w: imgW, h: imgH } = sourceSize(img);
+  const rect = carouselImageRect(imgW, imgH, targetW, targetH, options.fitMode);
 
-    if (imgRatio > targetRatio) {
-      targetDrawW = targetW;
-      targetDrawH = Math.round(targetW / imgRatio);
-      targetX = 0;
-      targetY = Math.round((targetH - targetDrawH) / 2);
-    } else {
-      targetDrawH = targetH;
-      targetDrawW = Math.round(targetH * imgRatio);
-      targetX = Math.round((targetW - targetDrawW) / 2);
-      targetY = 0;
-    }
-
-    ctx.drawImage(img, 0, 0, imgW, imgH, targetX, targetY, targetDrawW, targetDrawH);
+  paintBackground(ctx, targetW, targetH, options.fitMode);
+  if (options.fitMode === 'fit') {
+    ctx.drawImage(img, 0, 0, imgW, imgH, rect.x, rect.y, rect.w, rect.h);
   } else {
-    // Fill mode: 4:5 aspect cover crop
     const crop = calculateAspectCrop(imgW, imgH, targetW, targetH);
     ctx.drawImage(img, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, targetW, targetH);
   }
 
-  // Color pipeline processing
-  let imgData = ctx.getImageData(targetX, targetY, targetDrawW, targetDrawH);
-
-  // 1. Hero harmonize sync
-  if (heroColorMetrics) {
-    imgData = applyHarmonizeSync(imgData, heroColorMetrics, 0.20);
+  let imageData = ctx.getImageData(rect.x, rect.y, rect.w, rect.h);
+  if (options.heroColorMetrics) {
+    imageData = applyHarmonizeSync(imageData, options.heroColorMetrics, HERO_HARMONIZE_STRENGTH);
   }
+  return { imageData, ...rect };
+}
 
-  // 2. Custom 3D LUT (.CUBE)
+/** Step 2: LUT or preset on a copy of the base. The base is never mutated (it is cached by the preview). */
+export function applyCarouselLook(
+  base: ImageData,
+  options: Pick<CarouselRenderOptions, 'customLut' | 'presetId' | 'presetIntensity'>,
+  resolutionScale: number = 1
+): ImageData {
+  const { customLut, presetId, presetIntensity = 1.0 } = options;
+  const out = cloneImageData(base);
+
   if (customLut && presetId === 'custom_lut') {
-    imgData = applyCubeLutToImageData(imgData, customLut, presetIntensity);
+    return applyCubeLutToImageData(out, customLut, presetIntensity);
   }
-  // 3. Editorial Preset
-  else if (presetId && presetId !== 'custom_lut') {
+  if (presetId && presetId !== 'custom_lut') {
     const preset = CURATE_PRESETS.find((p) => p.id === presetId);
-    if (preset) {
-      imgData = applyPresetToImageData(imgData, preset, presetIntensity);
+    if (preset) return applyPresetToImageData(out, preset, presetIntensity, { resolutionScale });
+  }
+  return out;
+}
+
+function resolutionScaleFor(targetW: number, options: CarouselRenderOptions): number {
+  return (options.outputWidth ?? targetW) / targetW;
+}
+
+/** Export path: step 1 + step 2 in one call. */
+export function drawCarouselFrame(
+  ctx: CanvasRenderingContext2D,
+  img: CarouselSource,
+  targetW: number,
+  targetH: number,
+  options: CarouselRenderOptions
+): void {
+  const base = renderCarouselBase(ctx, img, targetW, targetH, options);
+  const look = applyCarouselLook(base.imageData, options, resolutionScaleFor(targetW, options));
+  ctx.putImageData(look, base.x, base.y);
+}
+
+/**
+ * Hero harmonize reference metrics come from the raw frame (crop/fit only, no harmonize, no LUT/preset).
+ * Regression guard for audit finding #5.
+ */
+export function extractHeroMetrics(
+  ctx: CanvasRenderingContext2D,
+  img: CarouselSource,
+  targetW: number,
+  targetH: number,
+  fitMode: 'fit' | 'fill'
+): ColorMetrics {
+  const base = renderCarouselBase(ctx, img, targetW, targetH, { fitMode, heroColorMetrics: null });
+  return extractColorMetrics(base.imageData);
+}
+
+function metricsKey(m: ColorMetrics | null | undefined): string {
+  if (!m) return 'none';
+  return [m.avgR, m.avgG, m.avgB, m.luminance].map((v) => v.toFixed(4)).join(',');
+}
+
+/**
+ * Preview renderer: same steps as drawCarouselFrame, with step 1 cached per (image, size, fit, hero).
+ * At the export size its output equals drawCarouselFrame pixel for pixel (tests/carousel-parity.test.ts).
+ */
+export class CarouselPreviewRenderer {
+  private cache = new Map<string, CarouselBase>();
+  private imageKey = '';
+
+  render(
+    ctx: CanvasRenderingContext2D,
+    img: CarouselSource,
+    imageKey: string,
+    targetW: number,
+    targetH: number,
+    options: CarouselRenderOptions
+  ): void {
+    if (imageKey !== this.imageKey) {
+      this.cache.clear();
+      this.imageKey = imageKey;
     }
+    const key = `${targetW}x${targetH}|${options.fitMode}|${metricsKey(options.heroColorMetrics)}`;
+    let base = this.cache.get(key);
+    if (!base) {
+      base = renderCarouselBase(ctx, img, targetW, targetH, options);
+      // Keep at most the full and the draft size
+      if (this.cache.size >= 2) {
+        const first = this.cache.keys().next().value;
+        if (first !== undefined) this.cache.delete(first);
+      }
+      this.cache.set(key, base);
+    } else {
+      paintBackground(ctx, targetW, targetH, options.fitMode);
+    }
+    const look = applyCarouselLook(base.imageData, options, resolutionScaleFor(targetW, options));
+    ctx.putImageData(look, base.x, base.y);
   }
 
-  ctx.putImageData(imgData, targetX, targetY);
+  reset() {
+    this.cache.clear();
+    this.imageKey = '';
+  }
 }

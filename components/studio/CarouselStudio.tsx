@@ -6,7 +6,6 @@ import {
   useStudio,
   getStudioSelection,
   CURATE_PRESETS,
-  extractColorMetrics,
   parseCubeLUT,
   PLATFORM_SPECS,
   StudioItem,
@@ -14,6 +13,10 @@ import {
   createStudioItem,
   calculateAspectCrop,
   applyPresetToImageData,
+  CarouselPreviewRenderer,
+  CarouselRenderOptions,
+  CAROUSEL_OUTPUT_WIDTH,
+  extractHeroMetrics,
 } from "@/lib";
 import { InstagramOverlay } from "./InstagramOverlay";
 import { TikTokOverlay } from "./TikTokOverlay";
@@ -46,6 +49,24 @@ const PRESET_TAGS: Record<string, string> = {
 
 const THUMB_W = 100;
 const THUMB_H = 76;
+
+/** Önizleme çözünürlükleri: tam = export (1080×1350), taslak = slider sürüklenirken (540×675) */
+const FULL_W = PLATFORM_SPECS.ig_post_4_5.width;
+const FULL_H = PLATFORM_SPECS.ig_post_4_5.height;
+const DRAFT_W = FULL_W / 2;
+const DRAFT_H = FULL_H / 2;
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    if (!src.startsWith("data:") && !src.startsWith("blob:")) {
+      img.crossOrigin = "anonymous";
+    }
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Görsel yüklenemedi"));
+    img.src = src;
+  });
+}
 
 interface CarouselStudioProps {
   onBack: () => void;
@@ -80,36 +101,90 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   const selectedPresetId = state.globalPreset?.id ?? null;
   const itemIntensity = Math.round((state.globalPreset?.intensity ?? 1.0) * 100);
 
-  // Aktif görseli canvas üzerinde çiz ve filtreleri uygula (Tekil Render Çekirdeği)
-  useEffect(() => {
-    if (!activePhoto) return;
-    const img = new window.Image();
-    const photoSrc = activePhoto.originalUrl || activePhoto.proxyUrl;
-    if (!photoSrc.startsWith("data:") && !photoSrc.startsWith("blob:")) {
-      img.crossOrigin = "anonymous";
+  /**
+   * Önizleme ve export için TEK parametre şeması (spec §4.4 M2-a).
+   * Export: aynı seçeneklerle drawCarouselFrame, 1080×1350.
+   * Önizleme: aynı seçeneklerle CarouselPreviewRenderer, 1080×1350 (sürüklerken 540×675).
+   */
+  const buildRenderOptions = (item: StudioItem | null): CarouselRenderOptions => ({
+    fitMode,
+    heroColorMetrics: state.heroColorMetrics,
+    customLut: state.customLut,
+    presetId: item?.preset?.id ?? state.globalPreset?.id ?? null,
+    presetIntensity: item?.preset?.intensity ?? state.globalPreset?.intensity ?? 1.0,
+    outputWidth: CAROUSEL_OUTPUT_WIDTH,
+  });
+
+  const rendererRef = useRef(new CarouselPreviewRenderer());
+  const sourceRef = useRef<{ key: string; img: HTMLImageElement } | null>(null);
+  const optionsRef = useRef<CarouselRenderOptions>(buildRenderOptions(activePhoto));
+  optionsRef.current = buildRenderOptions(activePhoto);
+  const draggingRef = useRef(false);
+  const rafRef = useRef<number | null>(null);
+
+  // Kare başına en çok bir çizim: bekleyen istekler birleşir, her zaman en güncel durum çizilir
+  const flushRef = useRef<() => void>(() => {});
+  flushRef.current = () => {
+    rafRef.current = null;
+    const canvas = canvasRef.current;
+    const source = sourceRef.current;
+    if (!canvas || !source) return;
+    const draft = draggingRef.current;
+    const W = draft ? DRAFT_W : FULL_W;
+    const H = draft ? DRAFT_H : FULL_H;
+    if (canvas.width !== W || canvas.height !== H) {
+      canvas.width = W;
+      canvas.height = H;
     }
-    img.src = photoSrc;
-    img.onload = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      if (!ctx) return;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+    const t0 = performance.now();
+    rendererRef.current.render(ctx, source.img, source.key, W, H, optionsRef.current);
+    reportRenderTime(performance.now() - t0);
+  };
+  const scheduleRender = () => {
+    if (rafRef.current === null) {
+      rafRef.current = requestAnimationFrame(() => flushRef.current());
+    }
+  };
 
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-
-      const t0 = performance.now();
-      // Hem önizleme hem export aynı tekil çizim fonksiyonunu çağırır (Single Draw Call Parity)
-      drawCarouselFrame(ctx, img, canvas.width, canvas.height, {
-        fitMode: "fill",
-        heroColorMetrics: state.heroColorMetrics,
-        customLut: state.customLut,
-        presetId: selectedPresetId,
-        presetIntensity: itemIntensity / 100,
+  // Aktif fotoğrafın orijinali bir kez çözülür; kırpılmış taban renderer içinde önbelleklenir
+  const activeSrc = activePhoto ? activePhoto.originalUrl || activePhoto.proxyUrl : null;
+  useEffect(() => {
+    if (!activeSrc) {
+      sourceRef.current = null;
+      rendererRef.current.reset();
+      return;
+    }
+    let cancelled = false;
+    loadImage(activeSrc)
+      .then((img) => {
+        if (cancelled) return;
+        sourceRef.current = { key: activeSrc, img };
+        scheduleRender();
+      })
+      .catch(() => {
+        /* görsel çözülemedi: sahne boş kalır */
       });
-      reportRenderTime(performance.now() - t0);
+    return () => {
+      cancelled = true;
     };
-  }, [activePhoto, selectedPresetId, state.customLut, itemIntensity, state.heroColorMetrics]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSrc]);
+
+  // Görünüm parametreleri değişince yeniden çiz (rAF ile birleşir)
+  useEffect(() => {
+    scheduleRender();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fitMode, state.heroColorMetrics, state.customLut, selectedPresetId, itemIntensity, hasPhoto]);
+
+  useEffect(() => {
+    return () => {
+      // StrictMode effect'i iki kez çalıştırır: iptalden sonra ref sıfırlanmazsa sonraki çizimler kilitlenir
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    };
+  }, []);
 
   // Preset kartı önizlemeleri: filmstrip proxy'sinden küçük boyutta, preset fonksiyonunun kendisiyle
   const thumbSrc = activePhoto ? activePhoto.proxyUrl || activePhoto.originalUrl : null;
@@ -214,17 +289,20 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
     setContextMenu(null);
   };
 
-  const handleHeroHarmonize = (id: string) => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      if (ctx) {
-        const metrics = extractColorMetrics(ctx.getImageData(0, 0, canvas.width, canvas.height));
-        actions.setHeroColorMetrics(metrics);
-        actions.setHarmonizeReference(id, 0.20);
-      }
-    }
+  // Hero metrikleri ham kareden (kırp/sığdır, harmonize ve preset ÖNCESİ) alınır — denetim bulgusu #5
+  const handleHeroHarmonize = async (id: string) => {
     setContextMenu(null);
+    const item = photos.find((p) => p.id === id);
+    if (!item) return;
+    const src = item.originalUrl || item.proxyUrl;
+    const img = sourceRef.current?.key === src ? sourceRef.current.img : await loadImage(src);
+    const c = document.createElement("canvas");
+    c.width = FULL_W;
+    c.height = FULL_H;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+    actions.setHeroColorMetrics(extractHeroMetrics(ctx, img, FULL_W, FULL_H, fitMode));
+    actions.setHarmonizeReference(id, 0.20);
   };
 
   const handleRemovePhoto = (id: string) => {
@@ -244,28 +322,10 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
     const ctx = expCanvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) throw new Error("Canvas context failed");
 
-    const img = new window.Image();
-    const photoPath = item.originalUrl || item.proxyUrl;
-    if (!photoPath.startsWith("data:") && !photoPath.startsWith("blob:")) {
-      img.crossOrigin = "anonymous";
-    }
-    img.src = photoPath;
-    await new Promise((res, rej) => {
-      img.onload = () => res(null);
-      img.onerror = () => rej(new Error(`Failed to load ${item.name}`));
-    });
+    const img = await loadImage(item.originalUrl || item.proxyUrl);
 
-    const activePresetId = item.preset?.id ?? state.globalPreset?.id ?? null;
-    const activeIntensity = item.preset?.intensity ?? state.globalPreset?.intensity ?? 1.0;
-
-    // Tekil render fonksiyonu preview ile birebir aynı matematik ve filtreleri yürütür
-    drawCarouselFrame(ctx, img, targetW, targetH, {
-      fitMode,
-      heroColorMetrics: state.heroColorMetrics,
-      customLut: state.customLut,
-      presetId: activePresetId,
-      presetIntensity: activeIntensity,
-    });
+    // Önizleme ile aynı parametre şeması ve aynı adımlar (renderCarouselBase + applyCarouselLook)
+    drawCarouselFrame(ctx, img, targetW, targetH, buildRenderOptions(item));
 
     const mimeType = format === "png" ? "image/png" : "image/jpeg";
     return new Promise((resolve, reject) => {
@@ -295,7 +355,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
             transformOrigin: "center center",
             transition: "transform 100ms ease-out",
           }}
-          className={`w-full h-full ${fitMode === "fill" ? "object-cover" : "object-contain"}`}
+          className="w-full h-full"
         />
       ) : (
         <div className="flex flex-col items-center justify-center p-6 text-center text-[#71717a] gap-1">
@@ -394,6 +454,13 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
       {/* Katmanlı ifşa: preset veya LUT seçiliyse yoğunluk */}
       {selectedPresetId && (
         <ResettableSlider
+          onInteractionStart={() => {
+            draggingRef.current = true;
+          }}
+          onInteractionEnd={() => {
+            draggingRef.current = false;
+            scheduleRender();
+          }}
           label="Yoğunluk"
           value={itemIntensity}
           min={0}

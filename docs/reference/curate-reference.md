@@ -79,9 +79,9 @@ Letterbox math in the daily log matches the formula in `getExportBlob`: a 1920×
 11. **Filmstrip thumbnail dimensions standardized.** Updated from non-standard `w-13 h-15` to standard `w-14 h-16 rounded-xl` with smooth border transitions. [VERIFIED]
 12. **`runPipelineVerification` converted to automated tests.** Replaced by Vitest suite `tests/pipeline.test.ts` covering crop math, Lanczos dimensions, zip extensions, harmonize bounds, letterbox math, and 6 editorial presets; unwired runner deleted. [VERIFIED]
 13. **[Fixed in Faz M1, 2026-10-03]** Mobile edit panel no longer covers the photo: 0 overlap at 360×740, 390×844, 430×932 in all four modules (`docs/reports/2026-10-03-phases.md`). Original finding: **Mobile edit panel covers the photo (measured).** At 390×844 with the panel open and a preset selected: stage y=107–501, panel y=186–730 (545px tall), so about 80% of the stage is under the panel; with no preset the panel is 436px and covers about 53%. `.canvas-viewport-sheet-open` pads a fixed 280px regardless of panel height, and `scale-[0.88]` does not compensate. Header is 95px (title wraps to four lines) and its Export button right edge is at x=444 on a 390px screen. [VERIFIED] 2026-10-02, `components/studio/CarouselStudio.tsx`, `app/globals.css`.
-14. **Live preview runs the full color pipeline on the full-resolution original on the main thread.** Preview draws `originalUrl` into a canvas of natural size (4000×3000 in the test), then `getImageData`/preset/`putImageData`. Measured long tasks per preset switch on a 12 MP image: 500 ms (Warm Silhouette), 728 ms (Night Cinematic), 579 ms (Amber Grain), desktop CPU. Phone timings not measured. [VERIFIED] 2026-10-02.
-15. **Preview and export call `drawCarouselFrame` with different arguments.** Preview: `fitMode:"fill"` hardcoded, canvas at natural size, crop done by CSS `object-cover`. Export: real `fitMode`, 1080×1350 canvas, crop in canvas. Grain and halation depend on pixel resolution, and harmonize metrics are taken over different pixel sets. "Same function" is true, "same result" is not guaranteed. [VERIFIED] code read; pixel equality not rendered. [UNVERIFIED]
-16. **Hero Harmonize reads metrics from the preview canvas after the preset was applied** (`handleHeroHarmonize` calls `getImageData` on the already filtered canvas). [VERIFIED] code read.
+14. **[Fixed in Faz M2, 2026-10-03]** Preview now renders at 1080×1350 (540×675 while dragging) with a cached base; preset switch 54–68 ms on the same 4000×3000 input (desktop). Original finding: **Live preview runs the full color pipeline on the full-resolution original on the main thread.** Preview draws `originalUrl` into a canvas of natural size (4000×3000 in the test), then `getImageData`/preset/`putImageData`. Measured long tasks per preset switch on a 12 MP image: 500 ms (Warm Silhouette), 728 ms (Night Cinematic), 579 ms (Amber Grain), desktop CPU. Phone timings not measured. [VERIFIED] 2026-10-02.
+15. **[Fixed in Faz M2]** Preview and export share one option builder and the same two steps (`renderCarouselBase`, `applyCarouselLook`); `tests/carousel-parity.test.ts` finds 0 differing bytes at 1080×1350. Original finding: **Preview and export call `drawCarouselFrame` with different arguments.** Preview: `fitMode:"fill"` hardcoded, canvas at natural size, crop done by CSS `object-cover`. Export: real `fitMode`, 1080×1350 canvas, crop in canvas. Grain and halation depend on pixel resolution, and harmonize metrics are taken over different pixel sets. "Same function" is true, "same result" is not guaranteed. [VERIFIED] code read; pixel equality not rendered. [UNVERIFIED]
+16. **[Fixed in Faz M2]** Hero metrics now come from `extractHeroMetrics` (raw crop, no harmonize, no preset), regression-tested. Original finding: **Hero Harmonize reads metrics from the preview canvas after the preset was applied** (`handleHeroHarmonize` calls `getImageData` on the already filtered canvas). [VERIFIED] code read.
 
 ### What is completed from roadmap
 - Proxy pipeline and worker bridge offload are active. [VERIFIED]
@@ -137,12 +137,12 @@ Largest application files: `CarouselStudio.tsx` 674 lines, `StoryStudio.tsx` 549
 
 1. Hub or a studio creates `StudioItem`s with `URL.createObjectURL`, dimensions, and `preset: null`.
 2. `studioStore.addItems` updates store items and notifies subscribers.
-3. Carousel preview loads `originalUrl`, sizes the canvas to the natural image size, and calls `drawCarouselFrame` with `fitMode:"fill"`; CSS `object-cover` / `object-contain` handles crop on screen.
-4. Carousel export builds a new 1080×1350 canvas, calls `drawCarouselFrame` with the real fit mode, and `toBlob`s. Story, Frame and Upscale have their own draw code.
+3. Carousel preview decodes `originalUrl` once and renders through `CarouselPreviewRenderer` at 1080×1350 (540×675 while a slider is pressed), real fit mode, base step cached, one draw per animation frame.
+4. Carousel export builds a 1080×1350 canvas and calls `drawCarouselFrame` with the same options builder. Story, Frame and Upscale have their own draw code.
 5. `QuickExportSheet` sanitizes each blob, then `packageDumpZip` sanitizes again, writes `dump_NN.jpg|png`, and triggers download.
 6. Switching modules shares `state.items`.
 
-Carousel preview and export share `drawCarouselFrame` but not its arguments (see §2 item 15). Story, Frame and Upscale preview do not share a render function with export. Fit-mode background color is `#0a0a0c`. [VERIFIED] code read.
+Carousel preview and export share the same steps and arguments since Faz M2 (see §2 item 15). Story, Frame and Upscale preview do not share a render function with export. Fit-mode background color is `#0a0a0c`. [VERIFIED] code read.
 
 ### Worker, proxy, OffscreenCanvas — single status table
 Last verified: 2026-10-03
@@ -152,7 +152,7 @@ Last verified: 2026-10-03
 | Web Worker (`lib/workers/image-processor.worker.ts`, `lib/core/worker-bridge.ts`) | Tasks: upscale, preset, harmonize, metrics, gradient; in-thread fallback | **Only** `UpscaleStudio` export calls `workerBridge.upscaleLanczos`. `applyPreset`, `harmonizeSync`, `extractMetrics`, `extractGradient` have no caller. | [VERIFIED] grep |
 | Proxy (`lib/engine/proxy.ts`, `createStudioItem` in `state-machine.ts`) | ≤1080 px JPEG 0.88 proxy generated asynchronously on upload, `proxyUrl` stored | Filmstrip thumbnails only. Carousel preview and export load `originalUrl`. | [VERIFIED] code read |
 | OffscreenCanvas | Used inside `generateProxyImage` (when available) and the Lanczos output path | Not used for any preview or export render | [VERIFIED] grep |
-| Preview/export color pipeline | CPU loops in `lib/engine/presets.ts`, `harmonize.ts` | Main thread, Carousel only | [VERIFIED] |
+| Preview/export color pipeline | CPU loops in `lib/engine/presets.ts`, `harmonize.ts`; two steps in `lib/engine/carousel-render.ts` | Main thread, Carousel only; preview at 1080×1350 / 540×675 since Faz M2 | [VERIFIED] |
 
 Earlier statements in this file that "worker and proxy are unwired" (§10 item 4) or "connected and active" (§2) were each half true; this table is the reference.
 
@@ -279,7 +279,7 @@ Last verified: 2026-10-03
 1. **Starting library state:** Starting with seed photos rather than empty library. [Addressed in Phase 5 Roadmap 2]
 2. **Docs consistency:** Spec §4.1 previously listed fixed defects. [Addressed in Phase 4]
 3. **Preview vs Export draw paths:** Upscale preview filter vs Lanczos export. [Addressed in Phase 5 Roadmap 4]
-4. **Worker and proxy cover only Upscale export and thumbnails:** Carousel preview/export stay on the main thread at full resolution (§3 table). Mobile is primary, so this is now a performance defect, not a roadmap item. [Audit report §2]
+4. **Preview performance on phone unmeasured:** Faz M2 brought the Carousel preview to export resolution (54–68 ms per preset switch, 18–21 ms per draft frame on desktop). Phone numbers are needed to decide on WebGL2 (option C). Worker still only serves Upscale export.
 5. **Audience:** Resolved 2026-10-02 (single user, mobile primary). **Preset targets:** code now holds the 6 target presets; owner confirmation pending.
 6. **Mobile stage lock:** fixed in Faz M1 (2026-10-03); flex column, `100dvh`, bottom stack ≤ 40dvh. Not verified on a real phone or in landscape.
 7. **README inaccuracies:** Interaction details and versioning. [Addressed in Phase 4]
