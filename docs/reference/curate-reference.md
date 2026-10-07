@@ -321,7 +321,7 @@ Incorporated into `AGENTS.md` (see Phase 2).
 ---
 
 ## 13. Open questions for owner
-Last verified: 2026-10-03
+Last verified: 2026-10-07
 
 1. ~~Which audience sentence is binding?~~ **Resolved 2026-10-02:** single-user personal tool.
 2. Do the six shipping profiles replace Moody Teal / Warm Silhouette / Night Cinematic / Muted Coastal / Amber Grain / Monochrome Noir, sit beside them, or get replaced by them?
@@ -345,3 +345,4 @@ Last verified: 2026-10-03
 19. AI1 not verified: real duration and timeout on Vercel, phone flow, real cost (Billing), counter under distributed load.
 18. ~~Story safe band~~ **Resolved 2026-10-03:** 250 px approved; phone comparison still not done.
 19. ~~Overlay hide control~~ **Resolved 2026-10-03:** eye toggle under the Carousel stage, default visible.
+21. AI access on the phone (2026-10-07): the sheet asks for `CURATE_AI_PASSWORD`, which the owner cannot type or read back on the phone. Plan and owner questions S1–S6 (4-digit PIN, device pairing cookie, global wrong-PIN limits): `docs/reports/2026-10-07-ai-pin-plan.md`. Not implemented.
