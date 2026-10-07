@@ -27,9 +27,6 @@ async function fresh() {
     await wait(800);
     return req.respond({ status: 200, contentType: 'image/jpeg', body: resultJpeg, headers: { 'x-curate-remaining-day': '18', 'x-curate-remaining-month': '148' } });
   });
-  await page.evaluateOnNewDocument(() => {
-    try { localStorage.setItem('curate.ai.password', 'x'); } catch {}
-  });
   await page.goto(base, { waitUntil: 'networkidle0' });
   return page;
 }

@@ -1,8 +1,9 @@
 /**
- * "AI ile onar" proxy'si (spec §4.5 E12). Anahtar yalnız sunucu ortam değişkeninde (VERTEX_API_KEY);
- * tarayıcıya hiç inmez. Mantık ve testler: lib/ai/server.ts.
+ * "AI ile onar" proxy'si (spec §4.5 E12). Anahtar ve PIN yalnız sunucu ortam değişkeninde
+ * (VERTEX_API_KEY, CURATE_AI_PASSWORD); tarayıcıya hiç inmez. Mantık ve testler: lib/ai/server.ts.
+ * GET durum · PUT PIN ile cihaz eşleme · POST görev · DELETE cihazı unut.
  */
-import { defaultAiDeps, handleAiPost, handleAiStatus } from '@/lib/ai/server';
+import { defaultAiDeps, handleAiForget, handleAiPost, handleAiStatus, handleAiUnlock } from '@/lib/ai/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,4 +16,12 @@ export async function POST(req: Request): Promise<Response> {
 
 export async function GET(req: Request): Promise<Response> {
   return handleAiStatus(req, defaultAiDeps());
+}
+
+export async function PUT(req: Request): Promise<Response> {
+  return handleAiUnlock(req, defaultAiDeps());
+}
+
+export async function DELETE(req: Request): Promise<Response> {
+  return handleAiForget(req);
 }

@@ -1,36 +1,27 @@
 /**
- * "AI ile onar" istemci tarafı: küçültme, şifre saklama, istek ve Türkçe hata eşlemesi.
+ * "AI ile onar" istemci tarafı: küçültme, PIN ile cihaz eşleme, istek ve Türkçe hata eşlemesi.
  * Görsel yalnız kendi proxy'mize (/api/ai) gider; üçüncü taraf SDK yok.
+ * Erişim HttpOnly cihaz çerezidir (sunucu verir); PIN tarayıcıda saklanmaz, yalnız eşlemede bir kez gider.
  */
 import {
   AI_ENDPOINT,
   AI_ERRORS,
-  AI_HEADER_PASSWORD,
   AI_HEADER_REMAINING_DAY,
   AI_HEADER_REMAINING_MONTH,
   AI_HEADER_TASK,
   AI_INPUT_JPEG_QUALITY,
+  AI_LEGACY_PASSWORD_KEY,
   AiErrorCode,
   AiTask,
   aiInputSize,
 } from './config';
 
-const PASSWORD_KEY = 'curate.ai.password';
-
-export function loadAiPassword(): string | null {
+/** Eski sürümün localStorage'da düz metin tuttuğu şifreyi siler */
+export function clearLegacyAiPassword(): void {
   try {
-    return window.localStorage.getItem(PASSWORD_KEY);
+    window.localStorage.removeItem(AI_LEGACY_PASSWORD_KEY);
   } catch {
-    return null;
-  }
-}
-
-export function saveAiPassword(pw: string | null): void {
-  try {
-    if (pw) window.localStorage.setItem(PASSWORD_KEY, pw);
-    else window.localStorage.removeItem(PASSWORD_KEY);
-  } catch {
-    /* depolama kapalı: şifre her oturumda yeniden sorulur */
+    /* depolama kapalı: silinecek bir şey de yok */
   }
 }
 
@@ -44,11 +35,13 @@ function fail(code: AiErrorCode): AiFailure {
 
 const STATUS_FALLBACK: Record<number, AiErrorCode> = {
   400: 'bad_task',
-  401: 'wrong_password',
+  401: 'pin_required',
+  403: 'forbidden',
   413: 'too_large',
   415: 'bad_image',
   429: 'model_busy',
   499: 'canceled',
+  500: 'server_error',
   502: 'model_error',
   503: 'model_busy',
   504: 'timeout',
@@ -65,24 +58,52 @@ export async function failureFromResponse(res: Response): Promise<AiFailure> {
   return fail(STATUS_FALLBACK[res.status] ?? (res.status >= 500 ? 'timeout' : 'model_error'));
 }
 
-function headers(password: string, extra: Record<string, string> = {}): Record<string, string> {
-  return { [AI_HEADER_PASSWORD]: encodeURIComponent(password), ...extra };
-}
-
 function numHeader(res: Response, name: string): number | null {
   const v = res.headers.get(name);
   return v === null ? null : Number(v);
 }
 
-/** Şifreyi doğrular ve kalan hakkı okur (model çağrısı yok, para harcamaz) */
-export async function fetchAiStatus(password: string, fetchFn: typeof fetch = fetch): Promise<AiStatusResult> {
+async function statusFrom(res: Response): Promise<AiStatusResult> {
+  if (!res.ok) return failureFromResponse(res);
+  const json = (await res.json()) as { remainingDay: number; remainingMonth: number };
+  return { ok: true, remainingDay: json.remainingDay, remainingMonth: json.remainingMonth };
+}
+
+/** Cihaz eşli mi ve kalan hak (model çağrısı yok, para harcamaz) */
+export async function fetchAiStatus(fetchFn: typeof fetch = fetch): Promise<AiStatusResult> {
   try {
-    const res = await fetchFn(AI_ENDPOINT, { method: 'GET', headers: headers(password), cache: 'no-store' });
-    if (!res.ok) return failureFromResponse(res);
-    const json = (await res.json()) as { remainingDay: number; remainingMonth: number };
-    return { ok: true, remainingDay: json.remainingDay, remainingMonth: json.remainingMonth };
+    return await statusFrom(
+      await fetchFn(AI_ENDPOINT, { method: 'GET', credentials: 'same-origin', cache: 'no-store' }),
+    );
   } catch {
     return fail('network');
+  }
+}
+
+/** PIN ile bu cihazı eşler; başarıda sunucu HttpOnly çerez bırakır */
+export async function unlockAi(pin: string, fetchFn: typeof fetch = fetch): Promise<AiStatusResult> {
+  try {
+    return await statusFrom(
+      await fetchFn(AI_ENDPOINT, {
+        method: 'PUT',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      }),
+    );
+  } catch {
+    return fail('network');
+  }
+}
+
+/** "Bu cihazı unut": çerezi sunucu siler */
+export async function forgetAiDevice(fetchFn: typeof fetch = fetch): Promise<boolean> {
+  try {
+    const res = await fetchFn(AI_ENDPOINT, { method: 'DELETE', credentials: 'same-origin', cache: 'no-store' });
+    return res.ok;
+  } catch {
+    return false;
   }
 }
 
@@ -90,14 +111,14 @@ export async function fetchAiStatus(password: string, fetchFn: typeof fetch = fe
 export async function requestAiRepair(
   task: AiTask,
   jpeg: Blob,
-  password: string,
   signal?: AbortSignal,
   fetchFn: typeof fetch = fetch,
 ): Promise<AiRepairResult> {
   try {
     const res = await fetchFn(AI_ENDPOINT, {
       method: 'POST',
-      headers: headers(password, { [AI_HEADER_TASK]: task, 'Content-Type': 'image/jpeg' }),
+      credentials: 'same-origin',
+      headers: { [AI_HEADER_TASK]: task, 'Content-Type': 'image/jpeg' },
       body: jpeg,
       signal,
       cache: 'no-store',

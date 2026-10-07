@@ -299,8 +299,12 @@ class StudioStateMachine {
       items[index] = { ...newItem, order: index };
       const cellTransforms = { ...prev.storyLayout.cellTransforms };
       delete cellTransforms[old.id];
+      // Eski kaydın Düzenle ayarı da gider (removeFromState ile aynı)
+      const edits = { ...prev.edits };
+      delete edits[old.id];
       return {
         items,
+        edits,
         selectedItemId: prev.selectedItemId === old.id ? newItem.id : prev.selectedItemId,
         storyLayout: { ...prev.storyLayout, cellTransforms },
       };
@@ -448,6 +452,11 @@ export function createStudioItem(file: File, index: number = 0): StudioItem {
           aspectRatio: (img.naturalWidth || 1080) / (img.naturalHeight || 1350),
         };
         const proxyRes = await generateProxyImage(img, origDim);
+        if (!studioStore.getState().items.some((i) => i.id === id)) {
+          // Kayıt bu arada silindi: proxy URL'si sızmasın
+          revokeUrl(proxyRes.proxyUrl);
+          return;
+        }
         studioStore.updateItem(id, {
           dimensions: origDim,
           proxyUrl: proxyRes.proxyUrl,
@@ -457,9 +466,20 @@ export function createStudioItem(file: File, index: number = 0): StudioItem {
         // Fallback: keep original URL as proxy
       }
     };
+    img.onerror = () => handleUndecodable(id, file.name, url);
     img.src = url;
   }
 
   return item;
 }
 
+/**
+ * Tarayıcının açamadığı dosya (ör. Android Chrome'da HEIC): sahte 1080×1350 boyutla mesajsız kalmaz,
+ * kütüphaneden çıkarılır ve kullanıcıya söylenir.
+ */
+export function handleUndecodable(id: string, fileName: string, url: string): void {
+  const present = studioStore.getState().items.some((i) => i.id === id);
+  if (present) studioStore.removeItem(id);
+  else revokeUrl(url);
+  studioStore.setNotice(`"${fileName}" açılamadı; bu dosya biçimi desteklenmiyor.`);
+}

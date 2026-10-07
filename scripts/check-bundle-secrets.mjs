@@ -23,6 +23,9 @@ const SECRET_NAMES = [
   'REDIS_URL',
 ];
 const values = [];
+// 8 karakterden kısa değerler (ör. 4 haneli AI PIN'i) değerle taranamaz: rastgele rakam dizileri pakette zaten geçer.
+// PIN'in güvencesi tasarımdır: karşılaştırma yalnız sunucuda (lib/ai/server.ts), istemci paketinde PIN veya adı yok.
+let shortSkipped = 0;
 for (const f of ['.env', '.env.local', '.env.production', '.env.production.local']) {
   const p = join(root, f);
   if (!existsSync(p)) continue;
@@ -31,6 +34,7 @@ for (const f of ['.env', '.env.local', '.env.production', '.env.production.local
     if (!m || !SECRET_NAMES.includes(m[1])) continue;
     const v = m[2].replace(/^['"]|['"]$/g, '');
     if (v.length >= 8) values.push(v);
+    else if (v.length > 0) shortSkipped++;
   }
 }
 
@@ -63,6 +67,7 @@ for (const file of walk(next, [])) {
 }
 
 console.log(
-  `check-bundle-secrets: ${scanned} dosya (${clientFiles.size} istemci), ${values.length} gerçek değer arandı, bulgu ${hits}`,
+  `check-bundle-secrets: ${scanned} dosya (${clientFiles.size} istemci), ${values.length} gerçek değer arandı` +
+    `, ${shortSkipped} kısa değer değerle taranmadı (yalnız ad taraması), bulgu ${hits}`,
 );
 process.exit(hits ? 1 : 0);

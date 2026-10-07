@@ -6,12 +6,14 @@ import {
   AI_TASKS,
   AI_TASK_IDS,
   AI_ASPECT_WARN,
+  AI_PIN_LENGTH,
   AiTask,
   AiErrorCode,
   nearestAspectRatio,
-  loadAiPassword,
-  saveAiPassword,
+  clearLegacyAiPassword,
   fetchAiStatus,
+  unlockAi,
+  forgetAiDevice,
   requestAiRepair,
 } from "@/lib";
 
@@ -22,18 +24,20 @@ interface AiRepairSheetProps {
   size: { w: number; h: number } | null;
   /** Gönderilecek JPEG'i hazırlar (aktif fotoğrafın kendi pikselleri, ayarsız) */
   prepareInput: () => Promise<Blob>;
-  /** Sonuç geldi: kontrol sayfası açılır (kütüphaneye henüz eklenmez) */
-  onResult: (task: AiTask, blob: Blob) => void;
+  /** Sonuç geldi: kontrol sayfası açılır (kütüphaneye henüz eklenmez). false = sonuç açılamadı */
+  onResult: (task: AiTask, blob: Blob) => Promise<boolean>;
 }
 
-type Step = "checking" | "password" | "pick" | "running";
+type Step = "checking" | "pin" | "pick" | "running";
 /** Bu hatalarda satırlar kapalı kalır */
-const BLOCKING: AiErrorCode[] = ["disabled", "not_configured", "password_locked", "quota_day", "quota_month"];
+const BLOCKING: AiErrorCode[] = ["disabled", "not_configured", "forbidden", "service_error", "quota_day", "quota_month"];
+/** Bu hatalarda PIN adımı açılır/kalır */
+const PIN_STEP: AiErrorCode[] = ["pin_required", "wrong_pin", "pin_locked_ip", "pin_locked_day", "pin_locked_month", "network"];
 
 /** "AI ile onar" alt sayfası (spec §4.5 E12): dört görev, süre ve ~₺; tek istek, iptal */
 export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: AiRepairSheetProps) {
   const [step, setStep] = useState<Step>("checking");
-  const [password, setPassword] = useState("");
+  const [pin, setPin] = useState("");
   const [error, setError] = useState<{ code: AiErrorCode; message: string } | null>(null);
   const [remaining, setRemaining] = useState<{ day: number; month: number } | null>(null);
   const [running, setRunning] = useState<{ task: AiTask; startedAt: number } | null>(null);
@@ -41,29 +45,24 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
   const busyRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Açılışta: kayıtlı şifre varsa doğrula ve kalan hakkı oku (para harcamaz)
+  // Açılışta: cihaz eşli mi, kalan hak (para harcamaz). Eşli değilse PIN sorulur (hata metni göstermeden).
   useEffect(() => {
     if (!open) return;
+    clearLegacyAiPassword();
     setError(null);
-    const stored = loadAiPassword();
-    if (!stored) {
-      setStep("password");
-      return;
-    }
+    setPin("");
     setStep("checking");
     let cancelled = false;
-    fetchAiStatus(stored).then((r) => {
+    fetchAiStatus().then((r) => {
       if (cancelled) return;
       if (r.ok) {
         setRemaining({ day: r.remainingDay, month: r.remainingMonth });
         setStep("pick");
-      } else if (r.code === "wrong_password") {
-        saveAiPassword(null);
-        setError(r);
-        setStep("password");
+      } else if (r.code === "pin_required") {
+        setStep("pin");
       } else {
         setError(r);
-        setStep("pick");
+        setStep(PIN_STEP.includes(r.code) ? "pin" : "pick");
       }
     });
     return () => {
@@ -81,33 +80,43 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
 
   if (!open) return null;
 
-  const submitPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!password || busyRef.current) return;
+  const submitPin = async (value: string) => {
+    if (value.length !== AI_PIN_LENGTH || busyRef.current) return;
     busyRef.current = true;
     setStep("checking");
-    const r = await fetchAiStatus(password);
+    const r = await unlockAi(value);
     busyRef.current = false;
+    setPin("");
     if (r.ok) {
-      saveAiPassword(password);
-      setPassword("");
       setError(null);
       setRemaining({ day: r.remainingDay, month: r.remainingMonth });
       setStep("pick");
     } else {
       setError(r);
-      setStep(r.code === "wrong_password" || r.code === "password_locked" || r.code === "network" ? "password" : "pick");
+      setStep(PIN_STEP.includes(r.code) ? "pin" : "pick");
     }
+  };
+
+  // Yalnız rakam; 4. hanede kendiliğinden gönderilir
+  const onPinChange = (raw: string) => {
+    const digits = raw.replace(/\D/g, "").slice(0, AI_PIN_LENGTH);
+    setPin(digits);
+    if (digits.length === AI_PIN_LENGTH) void submitPin(digits);
+  };
+
+  const forget = async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    await forgetAiDevice();
+    busyRef.current = false;
+    setRemaining(null);
+    setError(null);
+    setStep("pin");
   };
 
   const run = async (task: AiTask) => {
     // Çift dokunuş ikinci isteği göndermez
     if (busyRef.current) return;
-    const stored = loadAiPassword();
-    if (!stored) {
-      setStep("password");
-      return;
-    }
     busyRef.current = true;
     setError(null);
     const controller = new AbortController();
@@ -122,18 +131,20 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
         setStep("pick");
         return;
       }
-      const r = await requestAiRepair(task, input, stored, controller.signal);
+      const r = await requestAiRepair(task, input, controller.signal);
       if (r.ok) {
         if (r.remainingDay !== null && r.remainingMonth !== null) {
           setRemaining({ day: r.remainingDay, month: r.remainingMonth });
         }
-        onResult(task, r.blob);
+        // Kontrol sayfası açılana kadar beklenir; açılamazsa sayfa boş ve kapatılamaz kalmaz
+        if (await onResult(task, r.blob)) return;
+        setError({ code: "no_image", message: "Sonuç açılamadı." });
+        setStep("pick");
         return;
       }
-      if (r.code === "wrong_password") {
-        saveAiPassword(null);
+      if (r.code === "pin_required") {
         setError(r);
-        setStep("password");
+        setStep("pin");
         return;
       }
       setError(r);
@@ -183,24 +194,34 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
 
         {step === "checking" && <p className="text-sm text-ink-2 h-11 flex items-center">Kontrol ediliyor…</p>}
 
-        {step === "password" && (
-          <form onSubmit={submitPassword} className="flex flex-col gap-2">
-            <label htmlFor="ai-password" className="text-sm text-ink-2 flex items-center gap-1.5">
+        {step === "pin" && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submitPin(pin);
+            }}
+            className="flex flex-col gap-2"
+          >
+            <label htmlFor="ai-pin" className="text-sm text-ink-2 flex items-center gap-1.5">
               <Lock className="w-4 h-4" />
-              AI şifresi (bir kez sorulur, bu tarayıcıda saklanır)
+              AI PIN&apos;i (4 hane) — bu cihaz hatırlanır
             </label>
             <div className="flex gap-2">
               <input
-                id="ai-password"
+                id="ai-pin"
                 type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="flex-1 min-w-0 h-11 px-3 rounded-xl bg-surface-2 border border-separator text-base text-ink-1"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={AI_PIN_LENGTH}
+                autoComplete="off"
+                autoFocus
+                value={pin}
+                onChange={(e) => onPinChange(e.target.value)}
+                className="flex-1 min-w-0 h-11 px-3 rounded-xl bg-surface-2 border border-separator text-base text-ink-1 tracking-[0.5em]"
               />
               <button
                 type="submit"
-                disabled={!password}
+                disabled={pin.length !== AI_PIN_LENGTH}
                 className="press h-11 px-4 rounded-xl bg-accent-fill text-on-accent text-sm font-semibold"
               >
                 Devam
@@ -236,10 +257,20 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
                 );
               })}
             </div>
+            {/* Kalan hak yalnız eşli cihazda okunur; "unut" de yalnız orada anlamlı */}
             {remaining && (
-              <p className="text-xs text-ink-2 num-metric">
-                Bugün kalan: {remaining.day} · Bu ay: {remaining.month}
-              </p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-ink-2 num-metric">
+                  Bugün kalan: {remaining.day} · Bu ay: {remaining.month}
+                </p>
+                <button
+                  type="button"
+                  onClick={forget}
+                  className="press h-11 px-2 -mr-2 text-xs text-ink-2 hover:text-ink-1"
+                >
+                  Bu cihazı unut
+                </button>
+              </div>
             )}
           </>
         )}

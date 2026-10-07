@@ -164,3 +164,28 @@ Hesap sistemi, veritabanı, ikinci sunucu rotası, tüm uygulamayı kilitlemek (
 | S4 | Preview ortamında AI açık kalsın mı? | Preview'da `AI_ENABLED=false` |
 | S5 | PIN değerini Vercel'e kim girecek: sahip panelden mi, ajan araçla mı? | Sahip panelden |
 | S6 | P1 gelene kadar geçici olarak A seçeneği (yalnız değeri PIN yapmak) istenir mi? | Hayır; P1 bekler |
+
+## 8. Uygulama durumu (2026-10-07, aynı gün)
+
+Sahip S1–S6'da önerileri kabul etti: yalnız AI kilitli, cihaz 365 gün ve "Bu cihazı unut", sınırlar 5/10/30, Preview'da AI kapalı. S5 için sahip PIN'i Vercel'e ajanın yazmasına izin verdi. Geçici çözüm (A) yok.
+
+| # | Durum | Ne yapıldı |
+|---|---|---|
+| A1 | Düzeltildi | 4 haneli PIN ile cihaz eşleme (§3). PIN 4. hanede kendiliğinden gönderilir, sayısal klavye açılır, cihaz 365 gün hatırlanır. |
+| A2 | Düzeltildi | Yanlış PIN: IP 5/gün, genel 10/gün, 30/ay; atomik ayırma. Eşli cihaz kilitten etkilenmez. |
+| A3 | Düzeltildi | `onResult` bekleniyor; açılamayan sonuçta "Sonuç açılamadı." gösterilir ve görev listesine dönülür (kapat düğmesi görünür). |
+| A4 | Düzeltildi | Sayaç hatası → `service_error` (503), model çağrılmaz. Çöken fonksiyonun 500'ü istemcide "Sunucu hatası" (artık "Süre aşıldı" değil). |
+| A5 | Düzeltildi | Kota `INCR` dönüşüyle ayrılır, aşan ayırma geri alınır. |
+| A6 | Düzeltildi | PIN tarayıcıda saklanmaz; eski `curate.ai.password` anahtarı sayfa açılınca silinir; erişim HttpOnly çerez. |
+| A7 | Düzeltildi (rapor) | `check:secrets` kısa değerleri "değerle taranmadı" diye sayar; Prosedür 4'e PIN arama adımı eklendi. |
+| A8 | Yapıldı | Preview'da `AI_ENABLED=false`; Production PIN Vercel'e yazıldı, yeniden dağıtıldı (değer yazdırılmadı). |
+| B1 | Düzeltildi | Worker `error`/`messageerror` → bekleyen görevler reddedilir, worker kapanır, sonraki görevler ana thread'de. |
+| B2 | Düzeltildi | Upscale kaynak yüklemesinde `onerror`; export sayfası hata gösterir. |
+| B3 | Düzeltildi | Açılamayan dosya kütüphaneden çıkarılır, mesaj: `"<ad>" açılamadı; bu dosya biçimi desteklenmiyor.` Silinmiş kaydın proxy URL'si serbest bırakılır. |
+| B4 | Düzeltildi | `replaceItem` eski kaydın Düzenle ayarını siler. |
+| B5 | Düzeltildi | EXIF temizleyicide sınır kontrolü; zip yolunda ikinci temizlik kaldırıldı. |
+| B6 | Düzeltildi | `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `Referrer-Policy: same-origin`, `nosniff`. |
+
+**Planda olmayan, testin yakaladığı hata:** `MemoryCounterStore.incr` okuma ile yazma arasında `await` içerdiği için atomik değildi; paralel 20 yanlış PIN'in 20'si de değerlendirildi (beklenen 5). Okuma senkron yapıldı. Redis `INCR` zaten atomikti; hata yalnız bellek yedeğindeydi.
+
+**Plandan sapma:** "Bu cihazı unut" yalnız cihaz eşliyken (kalan hak okunduysa) görünür.

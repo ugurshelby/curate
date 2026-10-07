@@ -117,8 +117,24 @@ export const AI_RETRY_WAIT_MS = 2_000;
 // --- Kota ---
 export const AI_DEFAULT_DAILY_LIMIT = 20;
 export const AI_DEFAULT_MONTHLY_LIMIT = 150;
-/** IP başına günlük yanlış şifre sınırı; genel sayaç yok (sahibi kilitlememeli) */
-export const AI_WRONG_PASSWORD_LIMIT = 10;
+// --- PIN ile cihaz eşleme (Faz P1, sahip kararı 2026-10-07) ---
+/** PIN tam olarak 4 rakam; değeri yalnız sunucu ortam değişkeninde (CURATE_AI_PASSWORD) */
+export const AI_PIN_LENGTH = 4;
+export const AI_PIN_PATTERN = /^\d{4}$/;
+/**
+ * Yanlış PIN sınırları. Yalnız PIN girişi (PUT) sayılır; eşlenmiş cihazın çerez yolu bunlara dokunmaz,
+ * kilit sahibin telefonunu etkilemez. Ay sınırı yılda en çok 360 deneme demek (10.000 olasılıkta ≈ %3,6).
+ */
+export const AI_PIN_FAIL_LIMIT_IP_DAY = 5;
+export const AI_PIN_FAIL_LIMIT_DAY = 10;
+export const AI_PIN_FAIL_LIMIT_MONTH = 30;
+/** Cihaz çerezi: HttpOnly, imzalı, yalnız /api/ai yoluna gider */
+export const AI_DEVICE_COOKIE = 'curate_ai';
+export const AI_DEVICE_COOKIE_PATH = '/api/ai';
+/** Cihaz 365 gün hatırlanır (sahip kararı S2) */
+export const AI_DEVICE_MAX_AGE_S = 365 * 24 * 3600;
+/** Eski sürümün tarayıcıda tuttuğu şifre anahtarı; açılışta silinir */
+export const AI_LEGACY_PASSWORD_KEY = 'curate.ai.password';
 
 // --- Oran ---
 export const AI_ASPECT_RATIOS = ['1:1', '4:3', '3:4', '3:2', '2:3', '4:5', '5:4', '16:9', '9:16'] as const;
@@ -169,7 +185,6 @@ export function buildVertexBody(task: AiTask, jpegBase64: string, width: number,
 }
 
 /** Sunucu ↔ istemci başlık adları */
-export const AI_HEADER_PASSWORD = 'x-curate-password';
 export const AI_HEADER_TASK = 'x-curate-task';
 export const AI_HEADER_REMAINING_DAY = 'x-curate-remaining-day';
 export const AI_HEADER_REMAINING_MONTH = 'x-curate-remaining-month';
@@ -179,8 +194,14 @@ export const AI_ENDPOINT = '/api/ai';
 export const AI_ERRORS = {
   disabled: 'AI şu an kapalı.',
   not_configured: 'AI sunucuda ayarlanmamış.',
-  wrong_password: 'Şifre yanlış.',
-  password_locked: 'Çok fazla yanlış şifre. Yarın tekrar dene.',
+  forbidden: 'İstek reddedildi.',
+  pin_required: 'Bu cihazı eşlemek için AI PIN’ini gir.',
+  wrong_pin: 'PIN yanlış.',
+  pin_locked_ip: 'Bu bağlantıdan çok fazla yanlış PIN. Yarın tekrar dene.',
+  pin_locked_day: 'Bugün çok fazla yanlış PIN girildi; yeni cihaz eşleme yarına kadar kapalı.',
+  pin_locked_month: 'Bu ay çok fazla yanlış PIN girildi; yeni cihaz eşleme ay sonuna kadar kapalı.',
+  service_error: 'Sunucu sayacına ulaşılamadı. Biraz sonra tekrar dene.',
+  server_error: 'Sunucu hatası. Biraz sonra tekrar dene.',
   bad_task: 'Geçersiz işlem.',
   too_large: 'Fotoğraf gönderim için çok büyük.',
   bad_image: 'Fotoğraf okunamadı.',

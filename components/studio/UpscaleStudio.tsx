@@ -118,8 +118,12 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     if (!photoPath.startsWith("data:") && !photoPath.startsWith("blob:")) {
       img.crossOrigin = "anonymous";
     }
-    img.src = photoPath;
-    await new Promise((res) => { img.onload = res; });
+    // Açılamayan görselde söz biter (export sayfası hata gösterir; sonsuza kadar beklemez)
+    await new Promise<void>((res, rej) => {
+      img.onload = () => res();
+      img.onerror = () => rej(new Error("Görsel yüklenemedi"));
+      img.src = photoPath;
+    });
 
     const c = document.createElement("canvas");
     c.width = img.naturalWidth;

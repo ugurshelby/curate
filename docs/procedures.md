@@ -70,8 +70,8 @@ Every procedure run must conclude with these steps in exact order:
      glass: [...document.querySelectorAll('.glass-panel')].filter(visible).length });
   ```
   Required: `overlap` false, `hScroll` false, `offscreen`, `smallTargets` and `tinyText` empty, `glass` ≤ 3.
-  Automated runner (Faz C): `node scripts/audit-ui.mjs` (puppeteer-core + local Chrome, dev server on :3101) runs this script plus a computed text-contrast check on 14 screens at 360/390/430 and mocks `/api/ai`; `node scripts/capture-screens.mjs <label>` writes 390-wide screenshots to `screenshots/<label>/` (untracked).
-  Düzenle "AI ile onar" (Faz AI1): the sheet is `[data-ai-sheet]` (must fit the viewport without inner scroll; 44px targets, 12px text); the full-screen review marks `[data-review-header]`, `[data-review-stage]`, `[data-review-bar]` (stage between header and bar, inside the viewport). Mock `/api/ai` in the page (override `fetch`) so no paid call is made; finish CSS animations (`document.getAnimations().forEach(a => a.finish())`) before measuring in the hidden pane. Items inside a horizontal scroller (preset row, filmstrip) are excluded from `offscreen`; they are clipped by the scroller, not the page.
+  Automated runner (Faz C): `node scripts/audit-ui.mjs` (puppeteer-core + local Chrome, dev server on :3101) runs this script plus a computed text-contrast check on 15 screens at 360/390/430 and mocks `/api/ai` (GET answers 401 `pin_required` until the mocked PUT pairs, so the PIN step is measured too); set `CHROME` and `BASE` for other machines (Linux cloud: `CHROME=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`); `node scripts/capture-screens.mjs <label>` writes 390-wide screenshots to `screenshots/<label>/` (untracked).
+  Düzenle "AI ile onar" (Faz AI1, P1): the PIN step input is `#ai-pin`; the sheet is `[data-ai-sheet]` (must fit the viewport without inner scroll; 44px targets, 12px text); the full-screen review marks `[data-review-header]`, `[data-review-stage]`, `[data-review-bar]` (stage between header and bar, inside the viewport). Mock `/api/ai` in the page (override `fetch`) so no paid call is made; finish CSS animations (`document.getAnimations().forEach(a => a.finish())`) before measuring in the hidden pane. Items inside a horizontal scroller (preset row, filmstrip) are excluded from `offscreen`; they are clipped by the scroller, not the page.
   Notes: wait for the panel animation (≈250 ms) before measuring; in the in-app browser, transitions only advance while the pane is rendered, so take a screenshot first.
 - **May Change:** CSS classes, layout padding, responsive flex/grid wrappers.
 - **Must Only Report:** Visual rendering status (mark as "not verified" if browser unavailable).
@@ -110,6 +110,7 @@ Every procedure run must conclude with these steps in exact order:
   3. Verify `.gitignore` covers `.env*`, `.vercel`, build outputs, dumps, and screenshots.
   4. Audit EXIF and GPS sanitation logic in export pipelines.
   5. List tracked files that look personal (reference photos under `public/reference-images/`).
+  6. The AI PIN (`CURATE_AI_PASSWORD`, 4 digits) is too short for `check:secrets` to search by value. If the owner gave the value in the session, search the staged diff and history for it and report only the count (never write the command with the value into a file or log). The PIN must never appear in client code, tests, logs, docs or commit messages; tests use a fake PIN.
 - **May Change:** `.gitignore` rules, `.env.example` templates, EXIF sanitizer edge cases.
 - **Must Only Report:** Tracked personal photos or sensitive assets (never delete tracked photos without owner directive).
 - **Docs Updated:** `docs/reference/curate-reference.md` (§4, §5), `logs/YYYY-MM-DD.md`.

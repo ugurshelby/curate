@@ -96,7 +96,7 @@ Letterbox math in the daily log matches the formula in `getExportBlob`: a 1920×
 ---
 
 ## 3. Architecture (stack, structure, data flow, directory map)
-Last verified: 2026-10-03
+Last verified: 2026-10-07
 
 ### Stack
 
@@ -153,7 +153,7 @@ Last verified: 2026-10-03
 
 | Piece | What exists | Who uses it | Tag |
 |---|---|---|---|
-| Web Worker (`lib/workers/image-processor.worker.ts`, `lib/core/worker-bridge.ts`) | Tasks: upscale, preset, harmonize, metrics, gradient; in-thread fallback | **Only** `UpscaleStudio` export calls `workerBridge.upscaleLanczos`. `applyPreset`, `harmonizeSync`, `extractMetrics`, `extractGradient` have no caller. | [VERIFIED] grep |
+| Web Worker (`lib/workers/image-processor.worker.ts`, `lib/core/worker-bridge.ts`) | Tasks: upscale, preset, harmonize, metrics, gradient; in-thread fallback | **Only** `UpscaleStudio` export calls `workerBridge.upscaleLanczos`. `applyPreset`, `harmonizeSync`, `extractMetrics`, `extractGradient` have no caller. A worker `error`/`messageerror` rejects every pending task and terminates the worker; later tasks run in-thread (2026-10-07). | [VERIFIED] grep, `tests/robustness.test.ts` |
 | Proxy (`lib/engine/proxy.ts`, `createStudioItem` in `state-machine.ts`) | ≤1080 px JPEG 0.88 proxy generated asynchronously on upload, `proxyUrl` stored | Filmstrip thumbnails only. Carousel preview and export load `originalUrl`. | [VERIFIED] code read |
 | OffscreenCanvas | Used inside `generateProxyImage` (when available) and the Lanczos output path | Not used for any preview or export render | [VERIFIED] grep |
 | Preview/export color pipeline | CPU loops in `lib/engine/presets.ts`, `harmonize.ts`; two steps in `lib/engine/carousel-render.ts` | Main thread, Carousel only; preview at 1080×1350 / 540×675 since Faz M2 | [VERIFIED] |
@@ -163,15 +163,15 @@ Earlier statements in this file that "worker and proxy are unwired" (§10 item 4
 ---
 
 ## 4. Data and infrastructure (DB, schema, migrations, external APIs, cron jobs, deployment, branch and deploy triggers)
-Last verified: 2026-10-03
+Last verified: 2026-10-07
 
 | Concern | State | Tag |
 |---|---|---|
 | Database, schema, migrations | None | [VERIFIED] no SQL/Prisma files; no DB dependency |
 | External APIs | One: Google Vertex `generateContent` via our own route `app/api/ai/route.ts` (Faz AI1, owner decision 2026-10-03). `process.env` is read only in `lib/ai/server.ts` / `lib/ai/quota.ts` (server). Upstash Redis REST for the quota counter (plain `fetch`) | [VERIFIED] code; one real call (task B) on localhost 2026-10-03 |
 | Cron | None | [VERIFIED] no workflow or route |
-| Auth | Only the AI route: shared password `CURATE_AI_PASSWORD` in header `x-curate-password` (URI-encoded); 10 wrong per IP per day → 429 | [VERIFIED] tests |
-| Persistence | Photos: none, refresh drops uploads. `localStorage` holds only the AI password (`curate.ai.password`). Quota counters in Upstash Redis (`curate:ai:day:*`, `curate:ai:month:*`, `curate:ai:pwfail:*`) | [VERIFIED] |
+| Auth | Only the AI route (Faz P1, 2026-10-07): 4-digit PIN `CURATE_AI_PASSWORD` (server only) sent once per device via `PUT /api/ai`; the server sets an HMAC-signed `curate_ai` cookie (HttpOnly, Secure, SameSite=Strict, Path=/api/ai, 365 days; key derived from `VERTEX_API_KEY` + PIN, so a PIN change logs out every device); GET/POST need the cookie; `DELETE` clears it; cross-site `Sec-Fetch-Site` → 403. Wrong PIN: 5 per IP per day, 10 per day and 30 per month globally (atomic reservation; paired devices unaffected) | [VERIFIED] tests; local server + browser 2026-10-07 |
+| Persistence | Photos: none, refresh drops uploads. Browser storage: none for AI (the old `curate.ai.password` key is deleted when the sheet opens); pairing is the HttpOnly cookie. Quota counters in Upstash Redis (`curate:ai:day:*`, `curate:ai:month:*`, `curate:ai:pinfail:<tag>:*`) | [VERIFIED] |
 | Env files | `.env` local only (ignored); names in `.env.example`: `VERTEX_API_KEY`, `CURATE_AI_PASSWORD`, `AI_ENABLED`, `AI_DAILY_LIMIT`, `AI_MONTHLY_LIMIT`, `UPSTASH_REDIS_REST_URL/TOKEN` or `KV_REST_API_URL/TOKEN` | [VERIFIED] |
 | Branch | Single-branch model: direct commit and push to `main`; side branches eliminated | [VERIFIED] |
 | GitHub Actions | Added in Phase 5 via `.github/workflows/ci.yml` | [VERIFIED] |
@@ -186,21 +186,21 @@ PWA manifest exists (`public/manifest.json`, `display: standalone`). `app/layout
 ---
 
 ## 5. Security, secrets and cost exposure (env handling, .gitignore coverage, auth, abuse and quota risks)
-Last verified: 2026-10-03
+Last verified: 2026-10-07
 
 ### Secrets
 
-Secrets live only in local `.env` (ignored) and Vercel server env vars; none are `NEXT_PUBLIC_*`. `npm run check:secrets` after build: 76 files (19 client), 6 real values searched, 0 findings (2026-10-03). History scan (D1b): key found 0 times in 42 commits. [VERIFIED]
+Secrets live only in local `.env` (ignored) and Vercel server env vars; none are `NEXT_PUBLIC_*`. The 4-digit PIN is too short for `check:secrets` to search by value (the script reports it as skipped); its guarantee is design: compared only in `lib/ai/server.ts`, never in client code (2026-10-07: 77 files, 1 local fake value searched, 1 short value skipped, 0 findings). `npm run check:secrets` after build: 76 files (19 client), 6 real values searched, 0 findings (2026-10-03). History scan (D1b): key found 0 times in 42 commits. [VERIFIED]
 
 `.gitignore` ignores `.env`, `.env*.local`, `.env.production`, `*.pem`, `.vercel`, `/screenshots/`, `capture-screenshots.mjs`.
 
 ### Auth, abuse, quota
 
-One server endpoint, `/api/ai` (paid). Guards: `AI_ENABLED`, shared password with timing-safe compare, 10 wrong passwords per IP per day (no global lock), daily 20 / monthly 150 calls (env), counted before the model call and not refunded, input ≤ 4 MB JPEG, at most one waited retry on 429/503. Counter is Upstash Redis when its env vars exist, otherwise per-instance memory (not durable on Vercel). The password sits in the browser's `localStorage` in plain text (personal tool). [VERIFIED] tests; distributed counter behaviour [UNVERIFIED]
+One server endpoint, `/api/ai` (paid). Guards (Faz P1, 2026-10-07): `AI_ENABLED` (off in Preview), 4-digit PIN checked only on the server with timing-safe compare, device cookie as above, wrong-PIN limits 5/IP/day, 10/day, 30/month globally (a year allows at most 360 guesses of 10,000 ≈ 3.6 %; an attacker can close new pairing for a day or month, paired devices keep working), same-origin check, daily 20 / monthly 150 calls (env) reserved atomically before the model call and not refunded, counter failure → `service_error` without a model call, input ≤ 4 MB JPEG, at most one waited retry on 429/503. Counter is Upstash Redis when its env vars exist, otherwise per-instance memory (not durable on Vercel; made atomic 2026-10-07). Response headers on every page: `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `Referrer-Policy: same-origin`, `nosniff`. [VERIFIED] tests, local server; distributed counter behaviour [UNVERIFIED]
 
 ### EXIF
 
-`sanitizeJpegBuffer` zeros JPEG APP1 and APP2 payloads. Canvas `toBlob` re-encodes, dropping source EXIF. [VERIFIED] `lib/export/exif-sanitizer.ts`.
+`sanitizeJpegBuffer` zeros JPEG APP1 and APP2 payloads; a segment length that is < 2 or runs past the end stops the scan without throwing (2026-10-07). `QuickExportSheet` sanitizes every file once; `packageDumpZip` expects clean blobs. Canvas `toBlob` re-encodes, dropping source EXIF. [VERIFIED] `lib/export/exif-sanitizer.ts`, `tests/robustness.test.ts`.
 
 Limits: HEIC copy on the hub has no decoder dependency. Upscale sets `crossOrigin = "anonymous"`.
 
@@ -215,16 +215,16 @@ Paid: Google Vertex image models per call. Estimates in `lib/ai/config.ts` (A ~�
 ---
 
 ## 6. Quality gates (tests, lint, build, typecheck: what exists, what actually passes)
-Last verified: 2026-10-03
+Last verified: 2026-10-07
 
 | Gate | Exists? | Status (2026-10-02) |
 |---|---|---|
 | `npx tsc --noEmit` | Required by rules | Pass, exit 0 [VERIFIED] |
 | `npm run lint` | `"lint": "next lint"` | Pass, no warnings [VERIFIED] |
 | `npm run build` | `"build": "next build"` | Pass, exit 0 [VERIFIED] |
-| `npm test` | Added in Phase 5 via Vitest | Pass, exit 0, 13 files / 127 tests (2026-10-03, Faz C; includes `tests/color-tokens.test.ts`) [VERIFIED] |
+| `npm test` | Added in Phase 5 via Vitest | Pass, exit 0, 14 files / 150 tests (2026-10-07, Faz P1 + H1; includes `tests/robustness.test.ts`) [VERIFIED] |
 | `npm run check:secrets` | `scripts/check-bundle-secrets.mjs`, run after build | 0 findings (2026-10-03) [VERIFIED] |
-| `node scripts/audit-ui.mjs` | Procedure 2 invariants plus computed text contrast, puppeteer-core + local Chrome, 360/390/430 | 2026-10-03 (Faz C): 42 screens `pass: true`, lowest text contrast 4.70 (emulated; phone and real screen brightness [UNVERIFIED]) |
+| `node scripts/audit-ui.mjs` | Procedure 2 invariants plus computed text contrast, puppeteer-core + local Chrome, 360/390/430 | 2026-10-07 (Faz P1): 45 screens incl. the AI PIN step `pass: true`, lowest text contrast 4.70 (emulated, production build; phone and real screen brightness [UNVERIFIED]) |
 | CI | `.github/workflows/ci.yml` | Triggers: push to `main`, pull request to `main`, manual. Node 22: tsc, lint, test, build [VERIFIED] file read; run results not checked [UNVERIFIED] |
 | Visual / mobile viewport check | Required after UI changes (AGENTS.md §4, CDS §6.5) | 2026-10-03 (Faz D1): Procedure 2 passes in all five modules at 360×740, 390×844, 430×932 (emulated, desktop CPU) [VERIFIED]; phone and landscape [UNVERIFIED] |
 
@@ -330,7 +330,7 @@ Last verified: 2026-10-07
 5. ~~`.cube` LUT placement~~ **Resolved 2026-10-02:** under a collapsed "Araçlar" section (Faz M1).
 6. ~~Reference photos~~ **Resolved 2026-10-02:** they stay.
 7. ~~Is mobile primary?~~ **Resolved 2026-10-02:** yes. Still open: which preview render option (audit report §2) to adopt.
-8. ~~Was zero-config Vercel connected?~~ **Answered by API 2026-10-03:** project `curate` exists with a READY production deployment. Still open: owner sets `VERTEX_API_KEY`, `CURATE_AI_PASSWORD` (and Upstash) in Vercel Production and Preview.
+8. ~~Was zero-config Vercel connected?~~ **Answered by API 2026-10-03:** project `curate` exists with a READY production deployment. **2026-10-07:** `VERTEX_API_KEY`, `CURATE_AI_PASSWORD` (now the 4-digit PIN, Production) and the Upstash/KV variables are set; Preview has `AI_ENABLED=false`.
 9. ~~Rewrite or delete the UI rule file?~~ **Resolved 2026-10-02:** rewritten against existing files.
 10. ~~`layout.tsx` language~~ **Resolved:** now `lang="tr"`.
 11. ~~Frame aspect~~ **Resolved 2026-10-02:** Frame stays 1080×1350.
@@ -345,4 +345,4 @@ Last verified: 2026-10-07
 19. AI1 not verified: real duration and timeout on Vercel, phone flow, real cost (Billing), counter under distributed load.
 18. ~~Story safe band~~ **Resolved 2026-10-03:** 250 px approved; phone comparison still not done.
 19. ~~Overlay hide control~~ **Resolved 2026-10-03:** eye toggle under the Carousel stage, default visible.
-21. AI access on the phone (2026-10-07): the sheet asks for `CURATE_AI_PASSWORD`, which the owner cannot type or read back on the phone. Plan and owner questions S1–S6 (4-digit PIN, device pairing cookie, global wrong-PIN limits): `docs/reports/2026-10-07-ai-pin-plan.md`. Not implemented.
+21. ~~AI access on the phone~~ **Resolved 2026-10-07 (Faz P1):** owner accepted S1–S6 as recommended; 4-digit PIN with device pairing implemented (`docs/reports/2026-10-07-ai-pin-plan.md` §8). Still open: owner's phone check on production.

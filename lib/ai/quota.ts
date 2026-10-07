@@ -9,6 +9,8 @@ export interface CounterStore {
   get(key: string): Promise<number>;
   /** Artırır, anahtara süre verir, yeni değeri döner */
   incr(key: string, ttlSeconds: number): Promise<number>;
+  /** Bir azaltır (ayırmayı geri alma); yeni değeri döner */
+  decr(key: string): Promise<number>;
 }
 
 export class MemoryCounterStore implements CounterStore {
@@ -16,7 +18,8 @@ export class MemoryCounterStore implements CounterStore {
   private map = new Map<string, { value: number; expiresAt: number }>();
   constructor(private now: () => number = Date.now) {}
 
-  async get(key: string): Promise<number> {
+  /** Senkron okuma: incr/decr okuma ile yazma arasında await içermez (Redis INCR gibi atomik) */
+  private read(key: string): number {
     const e = this.map.get(key);
     if (!e) return 0;
     if (e.expiresAt <= this.now()) {
@@ -26,10 +29,21 @@ export class MemoryCounterStore implements CounterStore {
     return e.value;
   }
 
+  async get(key: string): Promise<number> {
+    return this.read(key);
+  }
+
   async incr(key: string, ttlSeconds: number): Promise<number> {
-    const value = (await this.get(key)) + 1;
+    const value = this.read(key) + 1;
     this.map.set(key, { value, expiresAt: this.now() + ttlSeconds * 1000 });
     return value;
+  }
+
+  async decr(key: string): Promise<number> {
+    const e = this.map.get(key);
+    if (!e || e.expiresAt <= this.now()) return 0;
+    e.value -= 1;
+    return e.value;
   }
 }
 
@@ -68,6 +82,11 @@ export class UpstashCounterStore implements CounterStore {
       ['INCR', key],
       ['EXPIRE', key, ttlSeconds],
     ]);
+    return Number(v) || 0;
+  }
+
+  async decr(key: string): Promise<number> {
+    const [v] = await this.pipeline([['DECR', key]]);
     return Number(v) || 0;
   }
 }
@@ -109,7 +128,10 @@ export function istanbulMonth(now: Date): string {
 export const quotaKeys = {
   day: (now: Date) => `curate:ai:day:${istanbulDay(now)}`,
   month: (now: Date) => `curate:ai:month:${istanbulMonth(now)}`,
-  wrongPassword: (ip: string, now: Date) => `curate:ai:pwfail:${ip}:${istanbulDay(now)}`,
+  /** tag: PIN'e bağlı kısa etiket (sunucuda imza anahtarından türetilir); PIN değişince sayaçlar sıfırlanır */
+  pinFailIp: (tag: string, ip: string, now: Date) => `curate:ai:pinfail:${tag}:ip:${ip}:${istanbulDay(now)}`,
+  pinFailDay: (tag: string, now: Date) => `curate:ai:pinfail:${tag}:day:${istanbulDay(now)}`,
+  pinFailMonth: (tag: string, now: Date) => `curate:ai:pinfail:${tag}:month:${istanbulMonth(now)}`,
 };
 
 export const DAY_TTL_S = 2 * 24 * 3600;

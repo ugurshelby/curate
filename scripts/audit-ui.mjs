@@ -20,13 +20,23 @@ async function fresh(w, h) {
   const page = await browser.newPage();
   await page.setViewport({ width: w, height: h, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
   await page.setRequestInterception(true);
+  // Taklit: cihaz önce eşli değil (GET 401 pin_required), PUT (PIN) eşler, sonra GET 200
+  let paired = false;
+  const status = { enabled: true, remainingDay: 19, remainingMonth: 149, counter: 'redis' };
   page.on('request', async (req) => {
     if (!req.url().includes('/api/ai')) return req.continue();
-    if (req.method() === 'GET') return req.respond({ status: 200, contentType: 'application/json', body: JSON.stringify({ enabled: true, remainingDay: 19, remainingMonth: 149, counter: 'redis' }) });
+    if (req.method() === 'GET') {
+      return paired
+        ? req.respond({ status: 200, contentType: 'application/json', body: JSON.stringify(status) })
+        : req.respond({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'pin_required', message: 'x' }) });
+    }
+    if (req.method() === 'PUT') {
+      paired = true;
+      return req.respond({ status: 200, contentType: 'application/json', body: JSON.stringify(status) });
+    }
     await wait(500);
     return req.respond({ status: 200, contentType: 'image/jpeg', body: resultJpeg, headers: { 'x-curate-remaining-day': '18', 'x-curate-remaining-month': '148' } });
   });
-  await page.evaluateOnNewDocument(() => { try { localStorage.setItem('curate.ai.password', 'x'); } catch {} });
   await page.goto(base, { waitUntil: 'networkidle0' });
   return page;
 }
@@ -155,6 +165,9 @@ for (const [w, h] of VIEWPORTS) {
   await record(page, w, 'Düzenle Kırp');
   await clickText(page, 'Preset', '[role=tab]');
   await clickText(page, 'AI ile onar');
+  await wait(800);
+  await record(page, w, 'AI PIN adımı', false);
+  await page.type('#ai-pin', '0000');
   await wait(800);
   await record(page, w, 'AI alt sayfası', false);
   await clickText(page, 'Gürültü temizle', '[data-ai-sheet] button');

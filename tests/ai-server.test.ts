@@ -15,11 +15,24 @@ import {
   buildVertexBody,
   nearestAspectRatio,
 } from '../lib/ai/config';
-import { handleAiPost, handleAiStatus, encodeResponseJpeg, extractImage, AiDeps, readAiConfig } from '../lib/ai/server';
-import { MemoryCounterStore, UpstashCounterStore, counterStoreFromEnv, istanbulDay, redisEnv } from '../lib/ai/quota';
+import {
+  handleAiPost,
+  handleAiStatus,
+  handleAiUnlock,
+  handleAiForget,
+  encodeResponseJpeg,
+  extractImage,
+  issueDeviceToken,
+  verifyDeviceToken,
+  AiDeps,
+  readAiConfig,
+} from '../lib/ai/server';
+import { MemoryCounterStore, UpstashCounterStore, counterStoreFromEnv, istanbulDay, redisEnv, CounterStore } from '../lib/ai/quota';
 
 const KEY = 'test-key-not-real-0123456789';
-const PW = 'şifre-Ğ1';
+/** Sahte test PIN'i (gerçek değerle ilgisi yok) */
+const PIN = '2468';
+const NOW = Date.parse('2026-10-03T10:00:00Z');
 
 async function jpeg(width: number, height: number): Promise<Buffer> {
   return sharp({ create: { width, height, channels: 3, background: { r: 90, g: 120, b: 160 } } }).jpeg({ quality: 90 }).toBuffer();
@@ -43,10 +56,10 @@ function makeDeps(over: Partial<AiDeps> & { env?: Record<string, string> } = {})
   const logs: Record<string, unknown>[] = [];
   const sleep = vi.fn(async () => {});
   const deps: AiDeps = {
-    config: readAiConfig({ VERTEX_API_KEY: KEY, CURATE_AI_PASSWORD: PW, ...(over.env ?? {}) }),
+    config: readAiConfig({ VERTEX_API_KEY: KEY, CURATE_AI_PASSWORD: PIN, ...(over.env ?? {}) }),
     counter: new MemoryCounterStore(),
     fetchFn: vi.fn(async () => vertexOk(await pngBase64(64, 48))) as unknown as typeof fetch,
-    now: () => Date.parse('2026-10-03T10:00:00Z'),
+    now: () => NOW,
     sleep,
     log: (l) => logs.push(l),
     budgetMs: 110_000,
@@ -55,17 +68,33 @@ function makeDeps(over: Partial<AiDeps> & { env?: Record<string, string> } = {})
   return { deps, logs, sleep };
 }
 
-function post(body: Uint8Array, opts: { task?: string; pw?: string; ip?: string } = {}) {
+/** Eşlenmiş cihazın çerezi (varsayılan yapılandırmayla imzalı) */
+function deviceCookie(env: Record<string, string> = {}, now = NOW): string {
+  return `curate_ai=${issueDeviceToken(readAiConfig({ VERTEX_API_KEY: KEY, CURATE_AI_PASSWORD: PIN, ...env }), now)}`;
+}
+
+function post(body: Uint8Array, opts: { task?: string; cookie?: string | null; ip?: string; headers?: Record<string, string> } = {}) {
+  const headers: Record<string, string> = {
+    'x-curate-task': opts.task ?? 'B',
+    'x-forwarded-for': opts.ip ?? '1.2.3.4',
+    'Content-Type': 'image/jpeg',
+    ...(opts.headers ?? {}),
+  };
+  const cookie = opts.cookie === undefined ? deviceCookie() : opts.cookie;
+  if (cookie) headers.cookie = cookie;
+  return new Request('http://localhost/api/ai', { method: 'POST', headers, body: body as unknown as BodyInit });
+}
+
+function unlock(pin: string, ip = '1.2.3.4', headers: Record<string, string> = {}) {
   return new Request('http://localhost/api/ai', {
-    method: 'POST',
-    headers: {
-      'x-curate-task': opts.task ?? 'B',
-      'x-curate-password': encodeURIComponent(opts.pw ?? PW),
-      'x-forwarded-for': opts.ip ?? '1.2.3.4',
-      'Content-Type': 'image/jpeg',
-    },
-    body: body as unknown as BodyInit,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'x-forwarded-for': ip, ...headers },
+    body: JSON.stringify({ pin }),
   });
+}
+
+function status(cookie: string | null = deviceCookie()) {
+  return new Request('http://localhost/api/ai', { headers: cookie ? { cookie } : {} });
 }
 
 describe('AI config: one place for models, sizes, prompts', () => {
@@ -133,30 +162,174 @@ describe('AI proxy: access and limits', () => {
     expect(deps.fetchFn).not.toHaveBeenCalled();
   });
 
-  it('wrong password → 401; 10 wrong per IP per day locks only that IP', async () => {
+  it('POST without a device cookie → 401 pin_required, no model call; the old password header alone does nothing', async () => {
     const { deps } = makeDeps();
     const body = await jpeg(40, 30);
-    for (let i = 0; i < 10; i++) {
-      const r = await handleAiPost(post(body, { pw: 'yanlış', ip: '9.9.9.9' }), deps);
-      expect(r.status).toBe(401);
-    }
-    const locked = await handleAiPost(post(body, { ip: '9.9.9.9' }), deps);
-    expect(locked.status).toBe(429);
-    expect((await locked.json()).error).toBe('password_locked');
-    // Başka IP (sahip) kilitlenmez: genel sayaç yok
-    const owner = await handleAiPost(post(body, { ip: '5.5.5.5' }), deps);
-    expect(owner.status).toBe(200);
-    expect(deps.fetchFn).toHaveBeenCalledTimes(1);
+    const none = await handleAiPost(post(body, { cookie: null }), deps);
+    expect(none.status).toBe(401);
+    expect((await none.json()).error).toBe('pin_required');
+    const legacy = await handleAiPost(post(body, { cookie: null, headers: { 'x-curate-password': PIN } }), deps);
+    expect(legacy.status).toBe(401);
+    expect(deps.fetchFn).not.toHaveBeenCalled();
   });
 
-  it('accepts a non-ASCII password sent URI-encoded', async () => {
+  it('PIN must be exactly 4 digits on the server, else not_configured', () => {
+    expect(readAiConfig({ VERTEX_API_KEY: KEY, CURATE_AI_PASSWORD: PIN }).pin).toBe(PIN);
+    expect(readAiConfig({ VERTEX_API_KEY: KEY, CURATE_AI_PASSWORD: ` ${PIN} ` }).pin).toBe(PIN);
+    for (const bad of ['', '123', '12345', 'abcd', 'uzun-eski-şifre']) {
+      expect(readAiConfig({ VERTEX_API_KEY: KEY, CURATE_AI_PASSWORD: bad }).pin).toBeNull();
+    }
+  });
+
+  it('old long password in env → not_configured for every method', async () => {
+    const { deps } = makeDeps({ env: { CURATE_AI_PASSWORD: 'uzun-eski-şifre' } });
+    expect((await (await handleAiStatus(status(), deps)).json()).error).toBe('not_configured');
+    expect((await (await handleAiUnlock(unlock(PIN), deps)).json()).error).toBe('not_configured');
+    expect((await (await handleAiPost(post(await jpeg(40, 30)), deps)).json()).error).toBe('not_configured');
+  });
+
+  it('status with a paired device reports the remaining quota', async () => {
     const { deps } = makeDeps();
-    const res = await handleAiStatus(
-      new Request('http://localhost/api/ai', { headers: { 'x-curate-password': encodeURIComponent(PW) } }),
-      deps,
-    );
+    const res = await handleAiStatus(status(), deps);
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ enabled: true, remainingDay: 20, remainingMonth: 150, counter: 'memory' });
+  });
+
+  it('correct PIN → 200, HttpOnly Secure SameSite=Strict cookie on /api/ai for 365 days; the cookie then works', async () => {
+    const { deps } = makeDeps();
+    const res = await handleAiUnlock(unlock(PIN), deps);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ enabled: true, remainingDay: 20, remainingMonth: 150 });
+    const set = res.headers.get('set-cookie')!;
+    expect(set).toMatch(/^curate_ai=v1\.\d+\.[A-Za-z0-9_-]{43};/);
+    for (const attr of ['Path=/api/ai', 'Max-Age=31536000', 'HttpOnly', 'Secure', 'SameSite=Strict']) expect(set).toContain(attr);
+    expect(set).not.toContain(PIN);
+    const cookie = set.split(';')[0];
+    expect((await handleAiStatus(status(cookie), deps)).status).toBe(200);
+    expect((await handleAiPost(post(await jpeg(40, 30), { cookie }), deps)).status).toBe(200);
+  });
+
+  it('tampered, expired, future or other-PIN/key cookies are rejected (and cleared)', async () => {
+    const { deps } = makeDeps();
+    const good = deviceCookie();
+    const tampered = good.slice(0, -2) + (good.endsWith('AA') ? 'BB' : 'AA');
+    const expired = deviceCookie({}, NOW - 366 * 24 * 3600 * 1000);
+    const future = deviceCookie({}, NOW + 3600 * 1000);
+    const otherPin = deviceCookie({ CURATE_AI_PASSWORD: '1357' });
+    const otherKey = deviceCookie({ VERTEX_API_KEY: 'another-key-not-real-000000' });
+    for (const c of [tampered, expired, future, otherPin, otherKey, 'curate_ai=garbage']) {
+      const r = await handleAiStatus(status(c), deps);
+      expect(r.status).toBe(401);
+      expect((await r.json()).error).toBe('pin_required');
+      expect(r.headers.get('set-cookie')).toContain('Max-Age=0');
+    }
+    expect((await handleAiStatus(status(good), deps)).status).toBe(200);
+  });
+
+  it('changing the PIN logs out every paired device', async () => {
+    const cookie = deviceCookie();
+    const { deps } = makeDeps({ env: { CURATE_AI_PASSWORD: '1357' } });
+    expect((await handleAiStatus(status(cookie), deps)).status).toBe(401);
+  });
+
+  it('verifyDeviceToken: format and age', () => {
+    const cfg = readAiConfig({ VERTEX_API_KEY: KEY, CURATE_AI_PASSWORD: PIN });
+    const t = issueDeviceToken(cfg, NOW);
+    expect(verifyDeviceToken(cfg, t, NOW)).toBe(true);
+    expect(verifyDeviceToken(cfg, t, NOW + 364 * 24 * 3600 * 1000)).toBe(true);
+    expect(verifyDeviceToken(cfg, t, NOW + 366 * 24 * 3600 * 1000)).toBe(false);
+    expect(verifyDeviceToken(cfg, null, NOW)).toBe(false);
+    expect(verifyDeviceToken(cfg, `${t}x`, NOW)).toBe(false);
+  });
+
+  it('wrong PIN → 401; 5 wrong per IP per day locks that IP (even the right PIN)', async () => {
+    const { deps } = makeDeps();
+    for (let i = 0; i < 5; i++) {
+      const r = await handleAiUnlock(unlock('0000', '9.9.9.9'), deps);
+      expect(r.status).toBe(401);
+      expect((await r.json()).error).toBe('wrong_pin');
+      expect(r.headers.get('set-cookie')).toBeNull();
+    }
+    const locked = await handleAiUnlock(unlock(PIN, '9.9.9.9'), deps);
+    expect(locked.status).toBe(429);
+    expect((await locked.json()).error).toBe('pin_locked_ip');
+    expect(locked.headers.get('set-cookie')).toBeNull();
+    // Başka IP hâlâ eşleyebilir
+    expect((await handleAiUnlock(unlock(PIN, '5.5.5.5'), deps)).status).toBe(200);
+  });
+
+  it('global limit: 10 wrong per day across IPs closes new pairing; paired devices keep working', async () => {
+    const { deps } = makeDeps();
+    for (let i = 0; i < 10; i++) {
+      expect((await handleAiUnlock(unlock('0000', `10.0.0.${i}`), deps)).status).toBe(401);
+    }
+    const r = await handleAiUnlock(unlock(PIN, '10.0.1.1'), deps);
+    expect((await r.json()).error).toBe('pin_locked_day');
+    // Eşli cihaz etkilenmez
+    expect((await handleAiStatus(status(), deps)).status).toBe(200);
+    expect((await handleAiPost(post(await jpeg(40, 30)), deps)).status).toBe(200);
+  });
+
+  it('global limit: 30 wrong per month (spread over days); a new month opens again', async () => {
+    let t = NOW;
+    const { deps } = makeDeps({ now: () => t });
+    for (let day = 0; day < 3; day++) {
+      t = Date.parse(`2026-10-${String(10 + day).padStart(2, '0')}T10:00:00Z`);
+      for (let i = 0; i < 10; i++) {
+        expect((await handleAiUnlock(unlock('0000', `10.${day}.0.${i}`), deps)).status).toBe(401);
+      }
+    }
+    t = Date.parse('2026-10-20T10:00:00Z');
+    expect((await (await handleAiUnlock(unlock(PIN, '10.9.9.9'), deps)).json()).error).toBe('pin_locked_month');
+    t = Date.parse('2026-11-02T10:00:00Z');
+    expect((await handleAiUnlock(unlock(PIN, '10.9.9.9'), deps)).status).toBe(200);
+  });
+
+  it('parallel guesses cannot exceed the limit; a correct PIN gives its reservation back', async () => {
+    const { deps } = makeDeps();
+    const results = await Promise.all(Array.from({ length: 20 }, () => handleAiUnlock(unlock('0000', '7.7.7.7'), deps)));
+    const codes = await Promise.all(results.map(async (r) => (await r.json()).error));
+    expect(codes.filter((c) => c === 'wrong_pin')).toHaveLength(5);
+    expect(codes.filter((c) => c === 'pin_locked_ip')).toHaveLength(15);
+
+    const { deps: d2 } = makeDeps();
+    for (let i = 0; i < 3; i++) await handleAiUnlock(unlock(PIN, '8.8.8.8'), d2);
+    // 3 doğru giriş sayılmadı: hâlâ 5 yanlış hakkı var
+    for (let i = 0; i < 5; i++) expect((await handleAiUnlock(unlock('0000', '8.8.8.8'), d2)).status).toBe(401);
+    expect((await (await handleAiUnlock(unlock(PIN, '8.8.8.8'), d2)).json()).error).toBe('pin_locked_ip');
+  });
+
+  it('cross-site requests are refused (Sec-Fetch-Site)', async () => {
+    const { deps } = makeDeps();
+    const r = await handleAiUnlock(unlock(PIN, '1.2.3.4', { 'sec-fetch-site': 'cross-site' }), deps);
+    expect(r.status).toBe(403);
+    const p = await handleAiPost(post(await jpeg(40, 30), { headers: { 'sec-fetch-site': 'same-site' } }), deps);
+    expect(p.status).toBe(403);
+    expect((await handleAiUnlock(unlock(PIN, '1.2.3.4', { 'sec-fetch-site': 'same-origin' }), deps)).status).toBe(200);
+    expect(deps.fetchFn).not.toHaveBeenCalled();
+  });
+
+  it('DELETE clears the cookie', async () => {
+    const r = await handleAiForget(new Request('http://localhost/api/ai', { method: 'DELETE' }));
+    expect(r.status).toBe(204);
+    expect(r.headers.get('set-cookie')).toMatch(/^curate_ai=; Path=\/api\/ai; Max-Age=0;/);
+  });
+
+  it('counter failure → service_error, no model call (not "timeout")', async () => {
+    const down = async (): Promise<number> => {
+      throw new Error('down');
+    };
+    const broken: CounterStore = { kind: 'redis', get: down, incr: down, decr: down };
+    const { deps } = makeDeps({ counter: broken });
+    for (const res of [
+      await handleAiStatus(status(), deps),
+      await handleAiUnlock(unlock(PIN), deps),
+      await handleAiPost(post(await jpeg(40, 30)), deps),
+    ]) {
+      expect(res.status).toBe(503);
+      expect((await res.json()).error).toBe('service_error');
+    }
+    expect(deps.fetchFn).not.toHaveBeenCalled();
   });
 
   it('rejects bodies over 4 MB and non-JPEG input before calling the model', async () => {
@@ -189,6 +362,17 @@ describe('AI proxy: access and limits', () => {
     expect((await handleAiPost(post(body), deps)).status).toBe(200);
     const r = await handleAiPost(post(body), deps);
     expect((await r.json()).error).toBe('quota_month');
+  });
+
+  it('quota is reserved atomically: parallel requests never exceed it', async () => {
+    const { deps } = makeDeps({ env: { AI_DAILY_LIMIT: '3' } });
+    const body = await jpeg(40, 30);
+    const results = await Promise.all(Array.from({ length: 8 }, () => handleAiPost(post(body), deps)));
+    expect(results.filter((r) => r.status === 200)).toHaveLength(3);
+    expect(results.filter((r) => r.status === 429)).toHaveLength(5);
+    expect(deps.fetchFn).toHaveBeenCalledTimes(3);
+    // Reddedilen ayırmalar geri alındı: kalan 0
+    expect(await (await handleAiStatus(status(), deps)).json()).toMatchObject({ remainingDay: 0 });
   });
 });
 
@@ -283,13 +467,22 @@ describe('AI proxy: model call', () => {
 });
 
 describe('AI quota store', () => {
-  it('memory counter expires', async () => {
+  it('memory counter expires; decr gives a reservation back', async () => {
     let t = 0;
     const m = new MemoryCounterStore(() => t);
     expect(await m.incr('k', 10)).toBe(1);
     expect(await m.incr('k', 10)).toBe(2);
+    expect(await m.decr('k')).toBe(1);
     t = 11_000;
     expect(await m.get('k')).toBe(0);
+    expect(await m.decr('k')).toBe(0);
+  });
+
+  it('Upstash: DECR in one REST call', async () => {
+    const f = vi.fn(async () => new Response(JSON.stringify([{ result: 4 }])));
+    const s = new UpstashCounterStore('https://x.upstash.io', 'tok', f as unknown as typeof fetch);
+    expect(await s.decr('k')).toBe(4);
+    expect(JSON.parse((f.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)).toEqual([['DECR', 'k']]);
   });
 
   it('accepts both Upstash and Vercel KV variable names', () => {

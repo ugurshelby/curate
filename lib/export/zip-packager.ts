@@ -5,7 +5,6 @@
 
 import JSZip from 'jszip';
 import { ExportProgress } from '../core/types';
-import { sanitizeImageBlob } from './exif-sanitizer';
 
 export interface ExportableItem {
   id: string;
@@ -15,7 +14,8 @@ export interface ExportableItem {
 }
 
 /**
- * Packages a list of image blobs into a clean sequenced zip file
+ * Packages a list of image blobs into a sequenced zip file.
+ * Blobs must already be metadata-clean (sanitizeImageBlob); QuickExportSheet does this for every file.
  */
 export async function packageDumpZip(
   items: ExportableItem[],
@@ -41,9 +41,8 @@ export async function packageDumpZip(
       });
     }
 
-    // Sanitize metadata before archiving
-    const cleanBlob = await sanitizeImageBlob(item.blob);
-    zip.file(fileName, cleanBlob);
+    // Çağıran (QuickExportSheet) blob'ları zaten temizlemiş gönderir; burada ikinci kez taranmaz
+    zip.file(fileName, item.blob);
   }
 
   if (onProgress) {

@@ -1,16 +1,20 @@
 /**
  * "AI ile onar" sunucu proxy'si (yalnız sunucuda çalışır; istemci paketine girmez).
- * Akış: AI_ENABLED → şifre (IP başına yanlış şifre sınırı) → görev → boyut → kota → Vertex → JPEG.
+ * Erişim (Faz P1): PIN yeni cihazda bir kez girilir (PUT), sunucu imzalı HttpOnly çerez verir;
+ * GET/POST yalnız bu çerezle çalışır. PIN ve Vertex anahtarı tarayıcıya hiç inmez.
+ * Akış: AI_ENABLED → yapılandırma → aynı köken → çerez → görev → boyut → kota (atomik) → Vertex → JPEG.
  * Fotoğraf saklanmaz, loglanmaz. Log satırı: görev, model, süre, boyut, tahmini maliyet.
  */
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import sharp from 'sharp';
 import {
   AI_DEFAULT_DAILY_LIMIT,
   AI_DEFAULT_MONTHLY_LIMIT,
   AI_DEADLINE_MARGIN_MS,
+  AI_DEVICE_COOKIE,
+  AI_DEVICE_COOKIE_PATH,
+  AI_DEVICE_MAX_AGE_S,
   AI_ERRORS,
-  AI_HEADER_PASSWORD,
   AI_HEADER_REMAINING_DAY,
   AI_HEADER_REMAINING_MONTH,
   AI_HEADER_TASK,
@@ -19,9 +23,12 @@ import {
   AI_MAX_RESPONSE_BYTES,
   AI_OUTPUT_QUALITY_STEPS,
   AI_OUTPUT_SHRINK,
+  AI_PIN_FAIL_LIMIT_DAY,
+  AI_PIN_FAIL_LIMIT_IP_DAY,
+  AI_PIN_FAIL_LIMIT_MONTH,
+  AI_PIN_PATTERN,
   AI_RETRY_WAIT_MS,
   AI_TASKS,
-  AI_WRONG_PASSWORD_LIMIT,
   AiErrorCode,
   AiTask,
   aiModelId,
@@ -36,7 +43,8 @@ type EnvLike = Record<string, string | undefined>;
 export interface AiServerConfig {
   enabled: boolean;
   apiKey: string | null;
-  password: string | null;
+  /** 4 haneli PIN; biçim tutmazsa null (→ not_configured) */
+  pin: string | null;
   dailyLimit: number;
   monthlyLimit: number;
 }
@@ -47,10 +55,11 @@ function positiveInt(v: string | undefined, fallback: number): number {
 }
 
 export function readAiConfig(env: EnvLike): AiServerConfig {
+  const pin = (env.CURATE_AI_PASSWORD ?? '').trim();
   return {
     enabled: (env.AI_ENABLED ?? 'true').trim().toLowerCase() !== 'false',
     apiKey: env.VERTEX_API_KEY || null,
-    password: env.CURATE_AI_PASSWORD || null,
+    pin: AI_PIN_PATTERN.test(pin) ? pin : null,
     dailyLimit: positiveInt(env.AI_DAILY_LIMIT, AI_DEFAULT_DAILY_LIMIT),
     monthlyLimit: positiveInt(env.AI_MONTHLY_LIMIT, AI_DEFAULT_MONTHLY_LIMIT),
   };
@@ -82,8 +91,14 @@ export function defaultAiDeps(env: EnvLike = process.env): AiDeps {
 const ERROR_STATUS: Record<AiErrorCode, number> = {
   disabled: 503,
   not_configured: 503,
-  wrong_password: 401,
-  password_locked: 429,
+  forbidden: 403,
+  pin_required: 401,
+  wrong_pin: 401,
+  pin_locked_ip: 429,
+  pin_locked_day: 429,
+  pin_locked_month: 429,
+  service_error: 503,
+  server_error: 500,
   bad_task: 400,
   too_large: 413,
   bad_image: 415,
@@ -104,20 +119,17 @@ function errorResponse(code: AiErrorCode, extraHeaders?: Record<string, string>)
   });
 }
 
+function jsonResponse(body: unknown, extraHeaders?: Record<string, string>): Response {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...extraHeaders },
+  });
+}
+
 export function clientIp(req: Request): string {
   const fwd = req.headers.get('x-forwarded-for');
   if (fwd) return fwd.split(',')[0].trim() || 'unknown';
   return req.headers.get('x-real-ip')?.trim() || 'unknown';
-}
-
-/** Başlıktaki şifre encodeURIComponent ile gelir (Türkçe karakterler başlıkta güvenli değil) */
-function readPassword(req: Request): string {
-  const raw = req.headers.get(AI_HEADER_PASSWORD) ?? '';
-  try {
-    return decodeURIComponent(raw);
-  } catch {
-    return raw;
-  }
 }
 
 function sameSecret(a: string, b: string): boolean {
@@ -126,22 +138,83 @@ function sameSecret(a: string, b: string): boolean {
   return timingSafeEqual(ha, hb);
 }
 
+// --- Cihaz çerezi ---
+
+/** İmza anahtarı: HMAC(VERTEX_API_KEY, PIN). PIN veya anahtar değişince eski çerezler geçersiz olur. */
+function deviceKey(config: AiServerConfig): Buffer {
+  return createHmac('sha256', config.apiKey as string).update(`curate-device-v1:${config.pin}`, 'utf8').digest();
+}
+
+/** Sayaç anahtarlarında PIN'e bağlı kısa etiket (PIN'in kendisinden veya düz özetinden türetilmez) */
+function pinTag(config: AiServerConfig): string {
+  return createHmac('sha256', deviceKey(config)).update('counter', 'utf8').digest('hex').slice(0, 12);
+}
+
+function sign(config: AiServerConfig, payload: string): string {
+  return createHmac('sha256', deviceKey(config)).update(payload, 'utf8').digest('base64url');
+}
+
+export function issueDeviceToken(config: AiServerConfig, nowMs: number): string {
+  const payload = `v1.${Math.floor(nowMs / 1000)}`;
+  return `${payload}.${sign(config, payload)}`;
+}
+
+export function verifyDeviceToken(config: AiServerConfig, token: string | null, nowMs: number): boolean {
+  if (!token) return false;
+  const m = /^(v1\.(\d{1,12}))\.([A-Za-z0-9_-]{43})$/.exec(token);
+  if (!m) return false;
+  const issued = Number(m[2]);
+  const nowS = Math.floor(nowMs / 1000);
+  if (issued > nowS + 60 || nowS - issued > AI_DEVICE_MAX_AGE_S) return false;
+  const expected = Buffer.from(sign(config, m[1]), 'utf8');
+  const got = Buffer.from(m[3], 'utf8');
+  return expected.length === got.length && timingSafeEqual(expected, got);
+}
+
+export function readCookie(req: Request, name: string): string | null {
+  const raw = req.headers.get('cookie');
+  if (!raw) return null;
+  for (const part of raw.split(';')) {
+    const i = part.indexOf('=');
+    if (i < 0) continue;
+    if (part.slice(0, i).trim() === name) return part.slice(i + 1).trim();
+  }
+  return null;
+}
+
+function deviceCookie(token: string, maxAge: number): string {
+  return `${AI_DEVICE_COOKIE}=${token}; Path=${AI_DEVICE_COOKIE_PATH}; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Strict`;
+}
+
+const CLEAR_COOKIE = { 'Set-Cookie': deviceCookie('', 0) };
+
+// --- Kapılar ---
+
 type GateResult = { ok: true } | { ok: false; response: Response };
 
-/** Ortak kapı: açık mı, ayarlı mı, şifre doğru mu (yanlışlar IP başına sayılır) */
-async function gate(req: Request, deps: AiDeps): Promise<GateResult> {
-  const { config, counter } = deps;
-  if (!config.enabled) return { ok: false, response: errorResponse('disabled') };
-  if (!config.apiKey || !config.password) return { ok: false, response: errorResponse('not_configured') };
+/** Başka siteden gelen istek (CSRF savunması; SameSite=Strict çerezin yanında ikinci kat) */
+function crossSite(req: Request): boolean {
+  const site = req.headers.get('sec-fetch-site');
+  return site !== null && site !== 'same-origin' && site !== 'none';
+}
 
-  const now = new Date(deps.now());
-  const failKey = quotaKeys.wrongPassword(clientIp(req), now);
-  if ((await counter.get(failKey)) >= AI_WRONG_PASSWORD_LIMIT) {
-    return { ok: false, response: errorResponse('password_locked') };
-  }
-  if (!sameSecret(readPassword(req), config.password)) {
-    await counter.incr(failKey, DAY_TTL_S);
-    return { ok: false, response: errorResponse('wrong_password') };
+/** Açık mı, ayarlı mı, aynı kökenden mi */
+function baseGate(req: Request, deps: AiDeps): GateResult {
+  const { config } = deps;
+  if (!config.enabled) return { ok: false, response: errorResponse('disabled') };
+  if (!config.apiKey || !config.pin) return { ok: false, response: errorResponse('not_configured') };
+  if (crossSite(req)) return { ok: false, response: errorResponse('forbidden') };
+  return { ok: true };
+}
+
+/** baseGate + geçerli cihaz çerezi */
+function deviceGate(req: Request, deps: AiDeps): GateResult {
+  const base = baseGate(req, deps);
+  if (!base.ok) return base;
+  const token = readCookie(req, AI_DEVICE_COOKIE);
+  if (!verifyDeviceToken(deps.config, token, deps.now())) {
+    // Bozuk/eski çerez varsa temizlenir
+    return { ok: false, response: errorResponse('pin_required', token ? CLEAR_COOKIE : undefined) };
   }
   return { ok: true };
 }
@@ -152,15 +225,82 @@ async function remaining(deps: AiDeps): Promise<{ day: number; month: number }> 
   return { day: Math.max(0, deps.config.dailyLimit - d), month: Math.max(0, deps.config.monthlyLimit - m) };
 }
 
-/** GET: durum ve kalan hak (şifre doğrulaması da buradan; para harcamaz) */
+/** GET: cihaz eşli mi ve kalan hak (para harcamaz, sayaç artırmaz) */
 export async function handleAiStatus(req: Request, deps: AiDeps): Promise<Response> {
-  const g = await gate(req, deps);
+  const g = deviceGate(req, deps);
   if (!g.ok) return g.response;
-  const r = await remaining(deps);
-  return new Response(
-    JSON.stringify({ enabled: true, remainingDay: r.day, remainingMonth: r.month, counter: deps.counter.kind }),
-    { status: 200, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } },
-  );
+  try {
+    const r = await remaining(deps);
+    return jsonResponse({ enabled: true, remainingDay: r.day, remainingMonth: r.month, counter: deps.counter.kind });
+  } catch {
+    return errorResponse('service_error');
+  }
+}
+
+const MAX_UNLOCK_BODY = 256;
+
+/**
+ * PUT: PIN ile cihaz eşleme. Kaba kuvvete karşı üç sayaç (IP/gün, genel gün, genel ay).
+ * Önce kilit okunur, sonra üç sayaç birden ayrılır (INCR); sınırı aşan ayırma geri alınır ve reddedilir.
+ * Böylece paralel tahminler de sınırı geçemez. Doğru PIN ayırmayı geri alır ve çerez verir.
+ */
+export async function handleAiUnlock(req: Request, deps: AiDeps): Promise<Response> {
+  const g = baseGate(req, deps);
+  if (!g.ok) return g.response;
+  const { config, counter } = deps;
+
+  let pin = '';
+  try {
+    const text = await req.text();
+    if (text.length > MAX_UNLOCK_BODY) return errorResponse('wrong_pin');
+    const body = JSON.parse(text) as { pin?: unknown };
+    pin = typeof body.pin === 'string' ? body.pin : '';
+  } catch {
+    pin = '';
+  }
+
+  const now = new Date(deps.now());
+  const tag = pinTag(config);
+  const keys = [
+    { key: quotaKeys.pinFailIp(tag, clientIp(req), now), limit: AI_PIN_FAIL_LIMIT_IP_DAY, ttl: DAY_TTL_S, code: 'pin_locked_ip' as const },
+    { key: quotaKeys.pinFailDay(tag, now), limit: AI_PIN_FAIL_LIMIT_DAY, ttl: DAY_TTL_S, code: 'pin_locked_day' as const },
+    { key: quotaKeys.pinFailMonth(tag, now), limit: AI_PIN_FAIL_LIMIT_MONTH, ttl: MONTH_TTL_S, code: 'pin_locked_month' as const },
+  ];
+
+  try {
+    const current = await Promise.all(keys.map((k) => counter.get(k.key)));
+    const lockedNow = keys.find((k, i) => current[i] >= k.limit);
+    if (lockedNow) return errorResponse(lockedNow.code);
+
+    const reserved = await Promise.all(keys.map((k) => counter.incr(k.key, k.ttl)));
+    const over = keys.find((k, i) => reserved[i] > k.limit);
+    const undo = () => Promise.all(keys.map((k) => counter.decr(k.key)));
+    if (over) {
+      await undo();
+      return errorResponse(over.code);
+    }
+
+    if (!AI_PIN_PATTERN.test(pin) || !sameSecret(pin, config.pin as string)) {
+      deps.log({ status: 'wrong_pin' });
+      return errorResponse('wrong_pin');
+    }
+
+    await undo();
+    const r = await remaining(deps);
+    deps.log({ status: 'paired' });
+    return jsonResponse(
+      { enabled: true, remainingDay: r.day, remainingMonth: r.month, counter: counter.kind },
+      { 'Set-Cookie': deviceCookie(issueDeviceToken(config, deps.now()), AI_DEVICE_MAX_AGE_S) },
+    );
+  } catch {
+    return errorResponse('service_error');
+  }
+}
+
+/** DELETE: "Bu cihazı unut" — çerezi siler */
+export async function handleAiForget(req: Request): Promise<Response> {
+  if (crossSite(req)) return errorResponse('forbidden');
+  return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store', ...CLEAR_COOKIE } });
 }
 
 /** Vertex yanıtındaki ilk görsel parçası */
@@ -209,7 +349,7 @@ function isAbort(err: unknown): boolean {
 /** POST: tek görsel, tek görev */
 export async function handleAiPost(req: Request, deps: AiDeps): Promise<Response> {
   const started = deps.now();
-  const g = await gate(req, deps);
+  const g = deviceGate(req, deps);
   if (!g.ok) return g.response;
 
   const taskRaw = req.headers.get(AI_HEADER_TASK);
@@ -233,18 +373,28 @@ export async function handleAiPost(req: Request, deps: AiDeps): Promise<Response
     return errorResponse('bad_image');
   }
 
-  // Kota: model çağrısından önce sayılır, başarısızlıkta geri alınmaz (Google yine ücretlendirebilir)
+  // Kota: model çağrısından önce atomik ayrılır (INCR dönüşü), sınırı aşan ayırma geri alınır.
+  // Model çağrısı başarısız olsa da geri alınmaz (Google yine ücretlendirebilir).
   const nowDate = new Date(deps.now());
-  const left = await remaining(deps);
-  if (left.day <= 0) return errorResponse('quota_day');
-  if (left.month <= 0) return errorResponse('quota_month');
-  await Promise.all([
-    deps.counter.incr(quotaKeys.day(nowDate), DAY_TTL_S),
-    deps.counter.incr(quotaKeys.month(nowDate), MONTH_TTL_S),
-  ]);
+  const dayKey = quotaKeys.day(nowDate);
+  const monthKey = quotaKeys.month(nowDate);
+  let usedDay = 0;
+  let usedMonth = 0;
+  try {
+    [usedDay, usedMonth] = await Promise.all([
+      deps.counter.incr(dayKey, DAY_TTL_S),
+      deps.counter.incr(monthKey, MONTH_TTL_S),
+    ]);
+    if (usedDay > deps.config.dailyLimit || usedMonth > deps.config.monthlyLimit) {
+      await Promise.all([deps.counter.decr(dayKey), deps.counter.decr(monthKey)]);
+      return errorResponse(usedDay > deps.config.dailyLimit ? 'quota_day' : 'quota_month');
+    }
+  } catch {
+    return errorResponse('service_error');
+  }
   const quotaHeaders = {
-    [AI_HEADER_REMAINING_DAY]: String(left.day - 1),
-    [AI_HEADER_REMAINING_MONTH]: String(left.month - 1),
+    [AI_HEADER_REMAINING_DAY]: String(deps.config.dailyLimit - usedDay),
+    [AI_HEADER_REMAINING_MONTH]: String(deps.config.monthlyLimit - usedMonth),
   };
 
   const cfg = AI_TASKS[task];

@@ -451,8 +451,9 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
     const img = sourceRef.current?.img ?? (await loadImage(item.originalUrl || item.proxyUrl));
     return prepareAiInput(img);
   };
-  const handleAiResult = async (task: AiTask, blob: Blob) => {
-    if (!item) return;
+  /** Kontrol sayfasını açar; görsel açılamazsa false (sayfa hata gösterir, sonuç kaybolmaz sessizce) */
+  const handleAiResult = async (task: AiTask, blob: Blob): Promise<boolean> => {
+    if (!item) return false;
     const url = URL.createObjectURL(blob);
     try {
       const img = await loadImage(url);
@@ -474,8 +475,10 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
         originalUrl: item.proxyUrl || item.originalUrl,
         suspect,
       });
+      return true;
     } catch {
       URL.revokeObjectURL(url);
+      return false;
     }
   };
   const discardAiReview = () => {
