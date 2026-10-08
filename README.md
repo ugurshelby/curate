@@ -1,12 +1,14 @@
 # Curate Studio — Minimalist Editorial Photo Darkroom (v0.1.0)
 
-Curate Studio; Uğur'un kişisel, tek kullanıcılı ve **mobil öncelikli** aracıdır: Instagram ve TikTok için hızlı, rafine ve tutarlı **Carousel Dump** ve **Story Dump** üretmek için hafif, tamamen istemci taraflı (Client-Side / HTML5 Canvas & Web Worker) bir fotoğraf stüdyosudur.
+Curate Studio; Uğur'un kişisel, tek kullanıcılı ve **mobil öncelikli** aracıdır: Instagram ve TikTok için hızlı, rafine ve tutarlı **Carousel Dump** ve **Story Dump** üretmek için hafif, istemci taraflı (Canvas & Web Worker) bir fotoğraf stüdyosudur. Fotoğraflar cihazda kalır; tek istisna Düzenle'deki "AI ile onar" (kullanıcı dokunuşuyla, tek fotoğraf, kendi proxy'miz üzerinden).
+
+Ajan ve geliştirici için başlangıç: `AGENTS.md` → `docs/INDEX.md` → `docs/STATE.md`.
 
 Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı aksiyon & koyu tema kontrastı) ve VSCO (minimalist galeri & filmstrip) felsefesinin sentezidir.
 
 ---
 
-## 🌟 Temel 4 Stüdyo Modülü
+## 🌟 Beş Modül
 
 ### 1. Carousel Dump (4:5)
 - **Sahne Mimarisi:** Varsayılan 4:5 Fill modu, tek tıkla Fit/Fill geçişi, izole wheel zoom.
@@ -94,5 +96,5 @@ npm run build
 npm run check:secrets
 ```
 
-- **CI/CD:** GitHub Actions iş akışı (`.github/workflows/ci.yml`) pull request aşamasında `tsc`, `lint`, `test` ve `build` kontrollerini otomatik çalıştırır.
+- **CI/CD:** GitHub Actions iş akışı (`.github/workflows/ci.yml`) `main`'e her push'ta ve pull request'te `tsc`, `lint`, `test` ve `build` kontrollerini otomatik çalıştırır.
 

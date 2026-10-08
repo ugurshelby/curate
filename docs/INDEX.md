@@ -1,0 +1,65 @@
+# Proje Haritası (INDEX)
+
+Önce buraya bak. Kod değişince bu harita aynı commit'te güncellenir.
+Son doğrulama: 2026-10-08
+
+## Belgeler
+| Dosya | Ne için |
+|---|---|
+| `AGENTS.md` | Ajan anayasası (İngilizce): yetki sırası, kırmızı çizgiler, kapsam kilidi, UI kuralları özeti |
+| `curate-spec-v1.md` | Sahibin ürün niyeti ve kararları (§4.4, §4.5), açık sorular (§10) |
+| `README.md` | Kısa ürün tanıtımı ve komutlar |
+| `docs/STATE.md` | Tek durum dosyası: faz, sıradaki adım, sahibe sorular |
+| `docs/ROADMAP.md` | Fazlar ve sıra |
+| `docs/PRODUCT.md` | Vizyon, hedef kullanıcı, modüller, kapsam |
+| `docs/ARCHITECTURE.md` | Render hattı, worker, depolama, PWA, AI proxy, yayın |
+| `docs/DECISIONS.md` | Karar kayıtları |
+| `docs/procedures.md` | Prosedürler 1–8 ve ortak protokol |
+| `docs/reference/curate-reference.md` | Kanonik canlı referans: ölçülmüş durum, güvenlik, kapılar |
+| `docs/reports/` | Faz raporları (30 günden eskisi özetlenip silinir) |
+| `design/CURATE_DESIGN_SYSTEM.md` | Curate tasarım dili (CDS) |
+| `design/tokens.curate.json` | Belirteçlerin JSON kopyası (kaynak `app/globals.css`) |
+| `design/skills/` | Sahibin eklediği tasarım skill'leri (apple-design, animate, improve-animations, redesign-existing-projects) |
+| `.agents/rules/ui-ux-design-hierarchy.md` | UI işinde okunacak kaynakların sırası |
+| `logs/YYYY-MM-DD.md` | Oturum günlükleri (yalnız ölçülmüş olgu; 15 gün) |
+
+## Kod
+| Yol | Ne yapar |
+|---|---|
+| `app/page.tsx` | Ana sayfa (hub) ve modül geçişi |
+| `app/layout.tsx` | Kök düzen, metadata, viewport, `lang="tr"` |
+| `app/globals.css` | Renk ve yarıçap belirteçleri (tek kaynak), yardımcı sınıflar |
+| `app/api/ai/route.ts` | Tek sunucu rotası: AI proxy (GET/PUT/POST/DELETE) |
+| `components/studio/StudioShell.tsx` | Ortak modül iskeleti: header / sahne / alt yığın |
+| `components/studio/CarouselStudio.tsx` | Carousel modülü |
+| `components/studio/StoryStudio.tsx` | Story modülü |
+| `components/studio/FrameStudio.tsx` | Çerçeve modülü |
+| `components/studio/UpscaleStudio.tsx` | Büyüt modülü |
+| `components/studio/EditStudio.tsx` | Düzenle modülü (Preset, Kırp; AI ile onar) |
+| `components/studio/AiRepairSheet.tsx`, `AiReviewScreen.tsx` | AI görev sayfası (PIN adımı dahil) ve önce/sonra kontrol sayfası |
+| `components/studio/QuickExportSheet.tsx` | Export sayfası |
+| `components/studio/PresetStrip.tsx` | Yatay preset kartları (Carousel + Düzenle) |
+| `components/studio/Filmstrip.tsx` | Filmstrip ve sürükleyerek sıralama |
+| `components/studio/AddMenu.tsx`, `ReferencePicker.tsx` | "+" menüsü ve referans görsel seçici |
+| `components/studio/usePanPinch.ts` | Ortak sürükle/yakınlaştır jesti (Story, Düzenle Kırp) |
+| `components/studio/NoticeToast.tsx`, `PerfHud.tsx`, `ResettableSlider.tsx`, `InstagramOverlay.tsx`, `TikTokOverlay.tsx` | Bildirim, `?perf=1` ölçüm, kaydırıcı, platform katmanları |
+| `lib/index.ts` | Ortak dışa aktarım |
+| `lib/core/` | `types`, `state-machine` (store), `use-studio`, `worker-bridge`, `reference-images` |
+| `lib/engine/` | `carousel-render` (önizleme=export), `presets`, `harmonize`, `edit-geometry`, `story-layout`, `upscale-lanczos`, `upscale-slider`, `adaptive-gradient`, `proxy` |
+| `lib/export/` | `platform-specs` (hedefler veri olarak), `export-plan` (kalite basamağı, dosya adı), `exif-sanitizer`, `zip-packager` |
+| `lib/ai/` | `config` (model/istem/₺ tek yer), `server`, `quota`, `client`, `diff-check` |
+| `lib/ui/colors.ts` | Export/canvas içerik renkleri (arayüz paleti değil) |
+| `lib/workers/image-processor.worker.ts` | Worker (Büyüt export'u) |
+| `public/` | `manifest.json`, `icon.svg`, `reference-images/` (13 görsel) |
+| `tests/` | Vitest testleri (parite, export planı, geometri, AI sunucu/istemci, renk belirteçleri, sağlamlık…) |
+| `scripts/` | `audit-ui.mjs` (Prosedür 2), `capture-screens.mjs` (390 ekran görüntüsü), `check-bundle-secrets.mjs` |
+
+## Komutlar
+| Komut | Ne |
+|---|---|
+| `npm ci` | Bağımlılıklar |
+| `npm run dev` | Geliştirme sunucusu |
+| `npx tsc --noEmit` · `npm run lint` · `npm test` · `npm run build` | Kalite kapıları |
+| `npm run check:secrets` | Build sonrası sır taraması (0 bulgu şart) |
+| `npx next start -p 3101` + `CHROME=/opt/pw-browsers/chromium-1194/chrome-linux/chrome node scripts/audit-ui.mjs` | Prosedür 2 (bulut kapsayıcıda yol) |
+| `node scripts/capture-screens.mjs <etiket>` | `screenshots/<etiket>/` (git izlemez) |
