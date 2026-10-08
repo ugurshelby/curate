@@ -24,6 +24,7 @@ Faz 5: 8.1 performans tabanı → 8.2 D2 Düzeltme → 8.4 bilgi tabanı + prese
 `881e7fb` (Faz 3).
 
 ## Sahibe sorular (açık)
+0b. **AI Preset tasarım özeti:** `docs/reports/2026-10-08-ai-preset-ozeti.md` §8 (devam mı, stiller, kota ağırlığı, ≤ 6 deneme çağrısı). İtiraz gelmezse bir oturum sonra kodlanır.
 0. **Tüm uygulama PIN kapısı (KIRMIZI):** `docs/reports/2026-10-08-erisim-plani.md` §10'daki 4 soru (planı onaylıyor musun; çerez 365 gün ve kayan; genel ay sınırı kalsın mı; referans görseller kapı arkasında mı).
 1. Çerçeve modülünün hedef boyutu: 1080×1350 dışında başka oran/boyut istiyor musun? (spec §4.4 K5 "Frame 1080×1350 kalır" diyor; bu soru yalnız yeni boyut istenirse açık.)
 2. Kayıp kaynak belgeler (`curate-preset-spec.md`, `referans-gorsel-yonergesi.md`, `fotografcilik_karakterim.md`, `curate-camera-app.md`) nerede? Repoda yok.
@@ -31,6 +32,7 @@ Faz 5: 8.1 performans tabanı → 8.2 D2 Düzeltme → 8.4 bilgi tabanı + prese
 4. `design/skills/animate/SKILL.md` repoda olmayan skill'lere (`review-animations`, `pick-ui-library` vb.) atıf yapıyor. Bu atıflar silinsin mi, yok sayılmaya devam mı? (Skill dosyası senin eklediğin dış kaynak; ajan değiştirmedi.)
 
 ## Bloke olanlar
+- Faz 5.3 AI Preset kodu: sahip onayı (veya bir oturum itirazsız bekleme).
 - Faz 4-A tüm uygulama kapısı: sahip onayı bekliyor.
 - Service worker: güncelleme stratejisi planı ve sahip onayı olmadan eklenmez.
 
