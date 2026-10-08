@@ -1,11 +1,11 @@
 "use client";
 
+import { tr } from "@/lib/i18n/tr";
 import React, { useState, useRef, useEffect } from "react";
-import { Sliders, Star, Palette, X, FileCode, ChevronDown, Layers, Eye, EyeOff } from "lucide-react";
+import { Sliders, Star, Palette, X, ChevronDown, Layers, Eye, EyeOff } from "lucide-react";
 import {
   useStudio,
   getStudioSelection,
-  parseCubeLUT,
   PLATFORM_SPECS,
   StudioItem,
   drawCarouselFrame,
@@ -15,6 +15,9 @@ import {
   CAROUSEL_OUTPUT_WIDTH,
   extractHeroMetrics,
   createExportCanvas,
+  previewRenderSize,
+  whenIdle,
+  suggestSeries,
 } from "@/lib";
 import { InstagramOverlay } from "./InstagramOverlay";
 import { TikTokOverlay } from "./TikTokOverlay";
@@ -24,7 +27,7 @@ import { StudioShell, StageNote } from "./StudioShell";
 import { AddMenu } from "./AddMenu";
 import { ReferencePicker } from "./ReferencePicker";
 import { Filmstrip } from "./Filmstrip";
-import { PresetStrip, usePresetThumbs } from "./PresetStrip";
+import { PresetStrip, usePresetThumbs, suggestFromImage, presetName } from "./PresetStrip";
 import { reportRenderTime } from "./PerfHud";
 
 /** Hedef → export platformu (spec §4.4 K1). Önizleme tam = export boyutu, taslak = yarısı (slider sürüklenirken). */
@@ -37,7 +40,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
       img.crossOrigin = "anonymous";
     }
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Görsel yüklenemedi"));
+    img.onerror = () => reject(new Error(tr.common.imageLoadFailed));
     img.src = src;
   });
 }
@@ -52,11 +55,13 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   const photos = state.items;
   const activePhotoId = activePhoto?.id || null;
 
-  const [fitMode, setFitMode] = useState<"fill" | "fit">("fill");
+  // Görünüm tercihleri store'da (cihazda hatırlanır, lib/core/prefs.ts)
+  const { fitMode, target, showOverlay } = state.carouselView;
+  const setFitMode = (m: "fill" | "fit") => actions.setCarouselView({ fitMode: m });
+  const setTarget = (t: "instagram" | "tiktok") => actions.setCarouselView({ target: t });
+  const setShowOverlay = (fn: (v: boolean) => boolean) => actions.setCarouselView({ showOverlay: fn(showOverlay) });
   // Sahip kararı: her zaman bir hedef seçili, varsayılan Instagram (export hedefi Faz S'de bağlanır)
-  const [target, setTarget] = useState<"instagram" | "tiktok">("instagram");
   // Platform arayüz katmanı yalnız önizlemede; renk değerlendirmesi için gizlenebilir (sahip kararı 2026-10-03)
-  const [showOverlay, setShowOverlay] = useState<boolean>(true);
   const [zoomScale, setZoomScale] = useState<number>(1);
   const [isEditSheetOpen, setIsEditSheetOpen] = useState<boolean>(false);
   const [isToolsOpen, setIsToolsOpen] = useState<boolean>(false);
@@ -71,13 +76,12 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const lutInputRef = useRef<HTMLInputElement | null>(null);
 
   const spec = PLATFORM_SPECS[TARGET_PLATFORM[target]];
   const FULL_W = spec.width;
   const FULL_H = spec.height;
-  const DRAFT_W = FULL_W / 2;
-  const DRAFT_H = FULL_H / 2;
+  // Sahnenin CSS kutusu: önizleme ekranın gösterebildiği piksel kadar çizilir (previewRenderSize)
+  const stageBoxRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
 
   const selectedPresetId = state.globalPreset?.id ?? null;
   const itemIntensity = Math.round((state.globalPreset?.intensity ?? 1.0) * 100);
@@ -90,7 +94,6 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   const buildRenderOptions = (item: StudioItem | null): CarouselRenderOptions => ({
     fitMode,
     heroColorMetrics: state.heroColorMetrics,
-    customLut: state.customLut,
     presetId: item?.preset?.id ?? state.globalPreset?.id ?? null,
     presetIntensity: item?.preset?.intensity ?? state.globalPreset?.intensity ?? 1.0,
     outputWidth: CAROUSEL_OUTPUT_WIDTH,
@@ -101,6 +104,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   const optionsRef = useRef<CarouselRenderOptions>(buildRenderOptions(activePhoto));
   optionsRef.current = buildRenderOptions(activePhoto);
   const draggingRef = useRef(false);
+  const warmCancelRef = useRef<(() => void) | null>(null);
   const rafRef = useRef<number | null>(null);
 
   // Kare başına en çok bir çizim: bekleyen istekler birleşir, her zaman en güncel durum çizilir
@@ -111,8 +115,8 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
     const source = sourceRef.current;
     if (!canvas || !source) return;
     const draft = draggingRef.current;
-    const W = draft ? DRAFT_W : FULL_W;
-    const H = draft ? DRAFT_H : FULL_H;
+    const box = stageBoxRef.current;
+    const { width: W, height: H } = previewRenderSize(FULL_W, FULL_H, box.w, box.h, window.devicePixelRatio || 1, draft);
     if (canvas.width !== W || canvas.height !== H) {
       canvas.width = W;
       canvas.height = H;
@@ -122,6 +126,20 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
     const t0 = performance.now();
     rendererRef.current.render(ctx, source.img, source.key, W, H, optionsRef.current);
     reportRenderTime(performance.now() - t0);
+    // Boşta taslak tabanı hazırla: kaydırıcının ilk karesi tam kaynağı küçültmek zorunda kalmasın
+    if (!draft) {
+      warmCancelRef.current?.();
+      warmCancelRef.current = whenIdle(() => {
+        const s = sourceRef.current;
+        if (!s) return;
+        const d = previewRenderSize(FULL_W, FULL_H, box.w, box.h, window.devicePixelRatio || 1, true);
+        const c = document.createElement("canvas");
+        c.width = d.width;
+        c.height = d.height;
+        const wctx = c.getContext("2d", { willReadFrequently: true });
+        if (wctx) rendererRef.current.prepareBase(wctx, s.img, s.key, d.width, d.height, optionsRef.current);
+      });
+    }
   };
   const scheduleRender = () => {
     if (rafRef.current === null) {
@@ -157,19 +175,37 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   useEffect(() => {
     scheduleRender();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitMode, state.heroColorMetrics, state.customLut, selectedPresetId, itemIntensity, hasPhoto, target]);
+  }, [fitMode, state.heroColorMetrics, selectedPresetId, itemIntensity, hasPhoto, target]);
 
   useEffect(() => {
     return () => {
       // StrictMode effect'i iki kez çalıştırır: iptalden sonra ref sıfırlanmazsa sonraki çizimler kilitlenir
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
+      warmCancelRef.current?.();
     };
   }, []);
 
   // Preset kartı önizlemeleri: filmstrip proxy'sinden küçük boyutta (ortak PresetStrip)
   const thumbSrc = activePhoto ? activePhoto.proxyUrl || activePhoto.originalUrl : null;
   const presetThumbs = usePresetThumbs(thumbSrc);
+
+  // Sahne boyutu değişince (panel açıldı, döndürüldü) önizleme çözünürlüğü yeniden hesaplanır
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const measure = (w: number, h: number) => {
+      const prev = stageBoxRef.current;
+      if (Math.abs(prev.w - w) < 1 && Math.abs(prev.h - h) < 1) return;
+      stageBoxRef.current = { w, h };
+      scheduleRender();
+    };
+    measure(el.clientWidth, el.clientHeight);
+    const ro = new ResizeObserver(([entry]) => measure(entry.contentRect.width, entry.contentRect.height));
+    ro.observe(el);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasPhoto, target]);
 
   // Wheel zoom: native, non-passive dinleyici (React onWheel passive olduğu için preventDefault hatası veriyordu)
   useEffect(() => {
@@ -199,28 +235,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   };
 
   const handleClear = () => {
-    if (window.confirm("Serideki tüm fotoğraflar kaldırılsın mı?")) actions.clearItems();
-  };
-
-  // .CUBE LUT Yükleme
-  const handleLutUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        const parsedLut = parseCubeLUT(text, file.name.replace(/\.[^/.]+$/, ""));
-        actions.setCustomLut(parsedLut);
-        actions.setGlobalPreset({ id: "custom_lut", intensity: itemIntensity / 100 });
-      } catch (err) {
-        console.error("LUT parse hatası:", err);
-        alert("Geçersiz .cube dosyası: Lütfen standart 3D LUT dosyası seçin.");
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = "";
+    if (window.confirm(tr.carousel.clearConfirm)) actions.clearItems();
   };
 
   // Dokunma: seç; 320ms içinde ikinci dokunma menüyü açar
@@ -295,13 +310,13 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
       ) : (
         <div className="flex flex-col items-center justify-center p-6 text-center text-ink-3 gap-1">
           <Layers className="w-8 h-8 text-disabled-ink" />
-          <span className="text-sm">Seride henüz fotoğraf yok</span>
+          <span className="text-sm">{tr.carousel.emptySeries}</span>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className="touch-target px-3 text-sm text-accent"
           >
-            Fotoğraf Yükle
+            {tr.common.uploadPhoto}
           </button>
         </div>
       )}
@@ -314,7 +329,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
 
   const stageToolbar = (
     <>
-      <div role="radiogroup" aria-label="Hedef platform" className="flex p-0.5 rounded-xl bg-surface-2 border border-separator">
+      <div role="radiogroup" aria-label={tr.carousel.target} className="flex p-0.5 rounded-xl bg-surface-2 border border-separator">
         {(["instagram", "tiktok"] as const).map((t) => (
           <button
             key={t}
@@ -338,8 +353,8 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         onClick={() => setShowOverlay((v) => !v)}
         disabled={!hasPhoto}
         aria-pressed={!showOverlay}
-        aria-label={showOverlay ? "Arayüz katmanını gizle" : "Arayüz katmanını göster"}
-        title={showOverlay ? "Arayüz katmanını gizle" : "Arayüz katmanını göster"}
+        aria-label={showOverlay ? tr.carousel.overlayHide : tr.carousel.overlayShow}
+        title={showOverlay ? tr.carousel.overlayHide : tr.carousel.overlayShow}
         className={`touch-target press shrink-0 rounded-xl border ${
           showOverlay ? "bg-surface-2 border-separator text-ink-1" : "bg-accent/15 border-accent text-accent"
         }`}
@@ -351,10 +366,10 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         type="button"
         onClick={() => setFitMode(fitMode === "fill" ? "fit" : "fill")}
         disabled={!hasPhoto}
-        aria-label="Doldur veya sığdır"
+        aria-label={tr.carousel.fitToggle}
         className="press shrink-0 h-11 px-3 rounded-xl bg-surface-2 border border-separator text-xs font-semibold text-ink-1"
       >
-        {fitMode === "fill" ? "Doldur" : "Sığdır"}
+        {fitMode === "fill" ? tr.carousel.fill : tr.carousel.fit}
       </button>
     </>
   );
@@ -364,18 +379,27 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
       {/* Preset'ler: yatay kaydırmalı tek satır (CDS §6.3) */}
       <PresetStrip
         thumbs={presetThumbs}
-        activeId={state.customLut && selectedPresetId === "custom_lut" ? "__lut" : selectedPresetId}
+        activeId={selectedPresetId}
         onSelect={(id) => {
           if (id === null) {
             actions.setGlobalPreset(null);
-            actions.setCustomLut(null);
           } else {
             actions.setGlobalPreset({ id, intensity: itemIntensity / 100 });
           }
         }}
+        onAuto={async () => {
+          // Seri için: her karenin önerisi, en çok çıkan preset kazanır (en çok 12 kare, küçük kopyalarla)
+          const list = (
+            await Promise.all(photos.slice(0, 12).map((p) => suggestFromImage(p.proxyUrl || p.originalUrl)))
+          ).filter((s): s is NonNullable<typeof s> => !!s);
+          const best = suggestSeries(list);
+          if (!best) return;
+          actions.setGlobalPreset({ id: best.presetId, intensity: best.amount });
+          actions.setNotice(tr.presets.autoApplied(presetName(best.presetId), Math.round(best.amount * 100)));
+        }}
       />
 
-      {/* Katmanlı ifşa: preset veya LUT seçiliyse yoğunluk */}
+      {/* Katmanlı ifşa: preset seçiliyse miktar */}
       {selectedPresetId && (
         <ResettableSlider
           onInteractionStart={() => {
@@ -385,7 +409,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
             draggingRef.current = false;
             scheduleRender();
           }}
-          label="Yoğunluk"
+          label={tr.common.amount}
           value={itemIntensity}
           min={0}
           max={100}
@@ -399,7 +423,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         />
       )}
 
-      {/* Araçlar: .cube LUT ve Hero Harmonize, varsayılan kapalı */}
+      {/* Araçlar: seri renk uyumu, varsayılan kapalı */}
       <div className="flex flex-col border-t border-separator pt-1">
         <button
           type="button"
@@ -407,38 +431,12 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
           aria-expanded={isToolsOpen}
           className="h-11 flex items-center justify-between text-sm text-ink-2"
         >
-          <span>Araçlar</span>
+          <span>{tr.common.tools}</span>
           <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isToolsOpen ? "rotate-180" : ""}`} />
         </button>
 
         {isToolsOpen && (
           <div className="flex flex-wrap items-center gap-2 pb-1 animate-panel-in">
-            <button
-              type="button"
-              onClick={() => lutInputRef.current?.click()}
-              className={`press h-11 px-3 rounded-xl text-sm border flex items-center gap-2 ${
-                state.customLut
-                  ? "border-accent bg-accent/15 text-accent"
-                  : "border-separator bg-surface-2 text-ink-1"
-              }`}
-            >
-              <FileCode className="w-4 h-4" />
-              <span className="max-w-[160px] truncate">
-                {state.customLut ? `LUT: ${state.customLut.title}` : "3D LUT (.cube) yükle"}
-              </span>
-            </button>
-
-            {state.customLut && (
-              <button
-                type="button"
-                onClick={() => actions.setCustomLut(null)}
-                aria-label="Yüklü LUT'u kaldır"
-                className="touch-target press rounded-xl text-ink-2"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-
             {activePhoto && (
               <button
                 type="button"
@@ -450,7 +448,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
                 }`}
               >
                 <Palette className="w-4 h-4" />
-                <span>{state.heroColorMetrics ? "Hero uyumu açık (%20)" : "Kareden hero renk al"}</span>
+                <span>{state.heroColorMetrics ? tr.carousel.syncOn : tr.carousel.syncToFrame}</span>
               </button>
             )}
           </div>
@@ -484,14 +482,14 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         }`}
       >
         <Sliders className="w-4 h-4" />
-        <span>Düzenle</span>
+        <span>{tr.carousel.editToggle}</span>
       </button>
     </div>
   );
 
   return (
     <StudioShell
-      title="Carousel Dump"
+      title={tr.modules.carousel.title}
       onBack={onBack}
       onExport={() => setIsExportOpen(true)}
       exportDisabled={!hasPhoto}
@@ -502,7 +500,6 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
     >
       {/* Gizli Dosya Inputları */}
       <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-      <input ref={lutInputRef} type="file" accept=".cube" className="hidden" onChange={handleLutUpload} />
 
       {/* Context Menu (Masaüstü Sağ Tık / Mobil Çift Dokunma) — cam değil, düz yüzey */}
       {contextMenu && (
@@ -521,7 +518,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
               className="h-11 px-3 text-left text-sm text-ink-1 hover:bg-separator rounded-lg flex items-center gap-2"
             >
               <Star className="w-4 h-4 text-ink-2" />
-              <span>Kapak yap</span>
+              <span>{tr.carousel.makeCover}</span>
             </button>
             <button
               type="button"
@@ -529,7 +526,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
               className="h-11 px-3 text-left text-sm text-ink-1 hover:bg-separator rounded-lg flex items-center gap-2"
             >
               <Palette className="w-4 h-4 text-ink-2" />
-              <span>Seriyi bu renge eşitle</span>
+              <span>{tr.carousel.syncToFrame}</span>
             </button>
             <div className="h-px bg-surface-2 my-0.5" />
             <button
@@ -538,7 +535,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
               className="h-11 px-3 text-left text-sm text-danger hover:bg-danger/10 rounded-lg flex items-center gap-2"
             >
               <X className="w-4 h-4" />
-              <span>Seriden çıkar</span>
+              <span>{tr.carousel.removeFromSeries}</span>
             </button>
           </div>
         </>

@@ -180,17 +180,13 @@ describe('Core Pipeline & Export Math Verification', () => {
 
   // 6. Editorial Presets & Aesthetic Math Verification
   describe('Editorial Presets (CURATE_PRESETS)', () => {
-    it('defines exactly the 6 target editorial preset families', () => {
-      expect(CURATE_PRESETS).toHaveLength(6);
+    it('keeps the owner\'s 6 editorial families inside the 16-preset library (Faz 5, D24)', () => {
       const ids = CURATE_PRESETS.map((p) => p.id);
-      expect(ids).toEqual([
-        'moody_teal',
-        'warm_silhouette',
-        'night_cinematic',
-        'muted_coastal',
-        'amber_grain',
-        'monochrome_noir',
-      ]);
+      expect(ids).toHaveLength(16);
+      for (const id of ['moody_teal', 'warm_silhouette', 'night_cinematic', 'muted_coastal', 'amber_grain', 'monochrome_noir']) {
+        expect(ids).toContain(id);
+      }
+      expect(CURATE_PRESETS.filter((p) => p.family === 'imza')).toHaveLength(6);
     });
 
     it('applies monochrome_noir with R === G === B and preserved alpha', () => {

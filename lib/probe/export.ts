@@ -1,4 +1,5 @@
-// Yoklama raporunu cihazdan dışarı çıkarma: indir, Web Share ile dosya paylaş, panoya kopyala. Ağ yok.
+// Gets the probe report off the device: download, Web Share as a file, clipboard. No network.
+import { trProbe } from '../i18n/tr';
 
 export function downloadJson(name: string, text: string) {
   const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
@@ -12,11 +13,11 @@ export function downloadJson(name: string, text: string) {
 }
 
 /**
- * Dosya olarak paylaşır. Chrome Android'in paylaşım tip listesi JSON'u kabul etmeyebilir;
- * sırayla application/json, text/plain (.json) ve .txt denenir. Dönen değer kullanılan biçimdir.
+ * Shares as a file. Chrome Android's share type allow-list may reject JSON, so
+ * application/json, text/plain (.json) and .txt are tried in order. Returns the form used.
  */
 export async function shareJson(name: string, text: string): Promise<string> {
-  if (!navigator.share) throw new Error('Bu tarayıcıda paylaşım yok');
+  if (!navigator.share) throw new Error(trProbe.noShare);
   const candidates = [
     new File([text], name, { type: 'application/json' }),
     new File([text], name, { type: 'text/plain' }),
@@ -33,7 +34,7 @@ export async function shareJson(name: string, text: string): Promise<string> {
     await navigator.share({ files: [f], title: name });
     return `${f.name} (${f.type})`;
   }
-  throw new Error('Tarayıcı dosya paylaşımını kabul etmedi; İndir ya da Kopyala kullan');
+  throw new Error(trProbe.shareRejected);
 }
 
 export async function copyText(text: string): Promise<void> {
@@ -41,7 +42,7 @@ export async function copyText(text: string): Promise<void> {
     await navigator.clipboard.writeText(text);
     return;
   } catch {
-    // izin yoksa eski yol
+    // no permission: legacy path
   }
   const ta = document.createElement('textarea');
   ta.value = text;
@@ -52,5 +53,5 @@ export async function copyText(text: string): Promise<void> {
   ta.select();
   const ok = document.execCommand('copy');
   ta.remove();
-  if (!ok) throw new Error('Panoya kopyalanamadı');
+  if (!ok) throw new Error(trProbe.copyFailed);
 }

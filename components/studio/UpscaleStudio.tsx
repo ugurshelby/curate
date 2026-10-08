@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/lib/i18n/tr";
 import React, { useState, useRef, useEffect } from "react";
 import { ZoomIn } from "lucide-react";
 import { 
@@ -64,7 +65,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
   };
 
   const handleClear = () => {
-    if (window.confirm("Tüm fotoğraflar kaldırılsın mı?")) actions.clearItems();
+    if (window.confirm(tr.common.clearAllConfirm)) actions.clearItems();
   };
 
   // Split view slider: Pointer capture ve dokunmatik desteği
@@ -118,8 +119,12 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     if (!photoPath.startsWith("data:") && !photoPath.startsWith("blob:")) {
       img.crossOrigin = "anonymous";
     }
-    img.src = photoPath;
-    await new Promise((res) => { img.onload = res; });
+    // Açılamayan görselde söz biter (export sayfası hata gösterir; sonsuza kadar beklemez)
+    await new Promise<void>((res, rej) => {
+      img.onload = () => res();
+      img.onerror = () => rej(new Error(tr.common.imageLoadFailed));
+      img.src = photoPath;
+    });
 
     const c = document.createElement("canvas");
     c.width = img.naturalWidth;
@@ -158,7 +163,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photoPath} alt="" draggable={false} className="w-full h-full object-cover" />
             <span className="absolute bottom-2 left-2 text-xs bg-black/75 px-2 py-0.5 rounded text-ink-2 pointer-events-none">
-              1x orijinal
+              {tr.upscale.originalNote}
             </span>
           </div>
 
@@ -176,7 +181,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
               style={{ filter: "contrast(1.04) brightness(1.02)" }}
             />
             <span className="absolute bottom-2 right-2 text-xs bg-black/75 px-2 py-0.5 rounded text-white pointer-events-none">
-              Önizleme kontrast ({scaleFactor}x)
+              {tr.upscale.previewNote(scaleFactor)}
             </span>
           </div>
 
@@ -184,7 +189,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
           <div
             role="slider"
             tabIndex={0}
-            aria-label="Öncesi / Sonrası Karşılaştırma Bölücüsü"
+            aria-label={tr.upscale.divider}
             aria-valuenow={splitPos}
             aria-valuemin={0}
             aria-valuemax={100}
@@ -206,13 +211,13 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
       ) : (
         <div className="flex flex-col items-center justify-center h-full text-center text-ink-3 gap-1 p-4">
           <ZoomIn className="w-8 h-8 text-disabled-ink" />
-          <span className="text-sm">Büyütülecek fotoğraf henüz seçilmedi</span>
+          <span className="text-sm">{tr.upscale.empty}</span>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className="touch-target px-3 text-sm text-accent"
           >
-            Fotoğraf Yükle
+            {tr.common.uploadPhoto}
           </button>
         </div>
       )}
@@ -226,8 +231,8 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
         onReference={() => setIsReferenceOpen(true)}
         onClear={state.items.length > 0 ? handleClear : undefined}
       />
-      <span className="ml-auto text-sm text-ink-2">Büyütme</span>
-      <div role="radiogroup" aria-label="Büyütme oranı" className="flex p-0.5 rounded-xl bg-surface-2 border border-separator">
+      <span className="ml-auto text-sm text-ink-2">{tr.upscale.factorLabel}</span>
+      <div role="radiogroup" aria-label={tr.upscale.factorAria} className="flex p-0.5 rounded-xl bg-surface-2 border border-separator">
         {([2, 4] as const).map((f) => (
           <button
             key={f}
@@ -235,7 +240,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
             role="radio"
             aria-checked={scaleFactor === f}
             disabled={hasPhoto && !factorAllowed(f)}
-            title={hasPhoto && !factorAllowed(f) ? "Bu boyut için çok büyük" : undefined}
+            title={hasPhoto && !factorAllowed(f) ? tr.common.tooLarge : undefined}
             onClick={() => actions.setUpscaleScale(f)}
             className={`press w-14 h-11 rounded-[10px] text-sm num-metric ${
               scaleFactor === f ? "bg-accent-fill text-on-accent font-semibold" : "text-ink-2"
@@ -250,9 +255,8 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
 
   return (
     <StudioShell
-      title="Kayıpsız Upscale"
+      title={tr.modules.upscale.title}
       onBack={onBack}
-      exportLabel={`Export ${scaleFactor}x`}
       onExport={() => setIsExportOpen(true)}
       exportDisabled={!hasPhoto || !factorAllowed(scaleFactor)}
       stage={stage}
@@ -261,13 +265,13 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
           <>
             <span className="flex items-center gap-1.5 min-w-0">
               <StageNote>
-                Çıktı {outW} × {outH}
+                {tr.upscale.output(outW, outH)}
               </StageNote>
               {selectedItem?.derivedBy && <DerivedBadge label={derivedLabel(selectedItem.derivedBy) ?? ""} />}
             </span>
             {!factorAllowed(4) && (
               <span role="status" className="text-xs text-ink-2 text-right">
-                {anyAllowed ? "4x: Bu boyut için çok büyük" : "Bu boyut için çok büyük"} (en çok {UPSCALE_MAX_LONG_EDGE} px kenar, {UPSCALE_MAX_PIXELS / 1_000_000} MP)
+                {tr.upscale.limit(anyAllowed, UPSCALE_MAX_LONG_EDGE, UPSCALE_MAX_PIXELS / 1_000_000)}
               </span>
             )}
           </>

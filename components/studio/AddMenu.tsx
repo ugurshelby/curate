@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/lib/i18n/tr";
 import React, { useEffect, useRef, useState } from "react";
 import { Plus, ImagePlus, Images, Trash2 } from "lucide-react";
 
@@ -37,7 +38,7 @@ export function AddMenu({ onUpload, onReference, onClear, addDisabledReason }: A
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="Ekle"
+        aria-label={tr.addMenu.open}
         aria-expanded={open}
         className={`touch-target press rounded-xl border ${
           open ? "bg-accent-fill text-on-accent border-accent-fill" : "bg-surface-2 text-ink-1 border-separator"
@@ -62,7 +63,7 @@ export function AddMenu({ onUpload, onReference, onClear, addDisabledReason }: A
             className="h-11 px-3 rounded-lg text-left text-sm text-ink-1 flex items-center gap-2.5 hover:bg-separator"
           >
             <ImagePlus className="w-4 h-4 text-ink-2" />
-            <span>Fotoğraf Yükle</span>
+            <span>{tr.common.uploadPhoto}</span>
           </button>
           <button
             type="button"
@@ -72,7 +73,7 @@ export function AddMenu({ onUpload, onReference, onClear, addDisabledReason }: A
             className="h-11 px-3 rounded-lg text-left text-sm text-ink-2 flex items-center gap-2.5 hover:bg-separator"
           >
             <Images className="w-4 h-4" />
-            <span>Referans Görsel Yükle</span>
+            <span>{tr.common.loadReference}</span>
           </button>
           {onClear && (
             <>
@@ -84,7 +85,7 @@ export function AddMenu({ onUpload, onReference, onClear, addDisabledReason }: A
                 className="h-11 px-3 rounded-lg text-left text-sm text-danger flex items-center gap-2.5 hover:bg-danger/10"
               >
                 <Trash2 className="w-4 h-4" />
-                <span>Seriyi Temizle</span>
+                <span>{tr.common.clearSeries}</span>
               </button>
             </>
           )}

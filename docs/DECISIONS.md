@@ -1,0 +1,38 @@
+# Karar Kayıtları (DECISIONS)
+
+Kısa kayıtlar: tarih, karar, gerekçe, değerlendirilen alternatif. Kaynağı "sahip" olan kararlar ajan tarafından değiştirilemez (AGENTS.md §2.8). Ayrıntılı ürün metni `curate-spec-v1.md`'de; bu dosya dizindir.
+
+| # | Tarih | Karar | Gerekçe | Alternatif | Kaynak |
+|---|---|---|---|---|---|
+| D01 | 2026-10-02 | Curate tek kullanıcılı kişisel araç; birincil kullanım mobil (390×844). | Hedef kitle sahip. | Çok kullanıcılı ürün (reddedildi). | sahip; spec §2 |
+| D02 | 2026-10-02 | Panorama kalıcı olarak KAPALI. | Kapsam dışı. | — | sahip; spec §4.4 K4 |
+| D03 | 2026-10-02 | 13 referans görsel `public/reference-images/` içinde kalır; kütüphane boş başlar, görseller yalnız kullanıcı eylemiyle eklenir. | Test ve kalibrasyon seti. | Repodan silmek. | sahip; spec §4.4 K3 |
+| D04 | 2026-10-02 | Referans yükleme ana sayfada (ikincil) ve modüllerdeki "+" menüsünde. | Hızlı deneme. | Yalnız ana sayfa. | sahip; spec K3 |
+| D05 | 2026-10-02 | TikTok ayrı export hedefi: 1080×1920 (telefonda doğrulanacak). Instagram post 1080×1350. | Platform boyutları farklı. | Tek hedef. | sahip; spec K1 |
+| D06 | 2026-10-02 | Story: 2–6 fotoğraf, grid sayısı otomatik (fotoğraf sayısına eşit). Fazlası alınmaz. | Zahmetsizlik. | Kullanıcı grid seçer (kaldırıldı). | sahip; spec K2 |
+| D07 | 2026-10-02 | Önizleme render hattı seçenek A (CPU, export çözünürlüğü, export ile aynı fonksiyon). | Parite garantisi. | Worker (B), WebGL2 (C). | sahip; spec M2-a |
+| D08 | 2026-10-03 | Vurgu rengi iOS mavisi: çizgi/ikon/odak `#0A84FF`, dolgu `#0071E3`. Amber kalktı. | Amber fotoğraflarla yarışıyordu. | Amber. | sahip; spec K6 |
+| D09 | 2026-10-03 | Beşinci modül Düzenle (Preset, Kırp, Düzeltme). Manuel renk arayüzü yok; Düzeltme'de satır başına tek aç/kapa + tek kaydırıcı. | Lightroom'un basit hâli. | — | sahip; spec §4.5 E1–E2 |
+| D10 | 2026-10-03 | "AI ile onar": tek fotoğraf, kullanıcı dokunuşu, kendi proxy'miz → Vertex. Fotoğraf sunucuda saklanmaz/loglanmaz. | Sahibin onayladığı tek piksel istisnası. | Tamamen yerel (yetersiz kalite). | sahip; spec §4.5 E12 |
+| D11 | 2026-10-03 | D görevinde (patlak alan/pus) model Pro, Flash değil. | Flash orijinalde olmayan güneş diski uydurdu. | Flash (ucuz). | sahip; spec E12 |
+| D12 | 2026-10-03 | AI sonucu önce tam ekran önce/sonra sayfasında; "Kullan" denmeden kütüphaneye girmez. | AI bazen olmayan ayrıntı ekler. | Doğrudan ekleme. | sahip; spec E12 |
+| D13 | 2026-10-03 | Türetilmiş fotoğraf (`sourceId`, `derivedBy`); kaynak başına en çok 2. | Bellek ve sadelik. | Sürüm sistemi. | sahip; spec E11 |
+| D14 | 2026-10-03 | 8 MB sınırı yalnız platform hedeflerine (post, story, TikTok, Çerçeve). Upscale'e uygulanmaz. | Platform sınırı. | — | sahip; spec §10 s.8 |
+| D15 | 2026-10-07 | AI erişimi: 4 haneli PIN, cihaz başına bir kez; imzalı HttpOnly çerez 365 gün. Yanlış PIN: IP 5/gün, genel 10/gün, 30/ay. Preview ortamında AI kapalı. | Telefonda erişim; kaba kuvvete karşı sınır. | Uzun şifre (telefonda yazılamıyor). | sahip; rapor 2026-10-07 |
+| D16 | 2026-10-08 | PIN sabit kalır ve yalnız sahip girer. PIN değeri ajan tarafından değiştirilmez, üretilmez, yazdırılmaz. | Kilitlenme riski ve gizlilik. | — | sahip; görev belgesi §1.5 |
+| D17 | 2026-10-08 | Vercel proje ayarları, ortam değişkenleri ve alan adları sahibin elle yaptığı iştir; ajan araçla dokunmaz. (2026-10-07'deki "PIN'i Vercel'e ajan yazar" izni bundan sonra geçerli değil.) | Geri alınamaz değişiklik riski. | Ajanın yazması (D15 döneminde yapıldı). | sahip; görev belgesi §1.6 |
+| D18 | 2026-10-08 | Kalıcılık cihazda: localStorage (tercihler), IndexedDB (büyük veri), çerez (oturum). Sunucu tarafı depolama ve veritabanı yok; tek istisna Upstash kota sayacı. | Gizlilik, tek kullanıcı. | Bulut senkronu (kapsam dışı). | sahip; görev belgesi §1.4 |
+| D19 | 2026-10-08 | Arayüz dili Türkçe, `<html lang="tr">`; metinler tek dosyada. | Sahip Türkçe kullanıyor. | — | sahip; görev belgesi §0 |
+| D20 | 2026-10-08 | Yalnız `main` dalı; force push ve geçmiş yeniden yazma yok. | `main` sahibin telefonundaki uygulama. | Yan dallar. | sahip; görev belgesi §1.1 |
+| D21 | 2026-10-08 | Yetki sırası: kod > spec > AGENTS.md > reference > diğerleri. Tasarımda ilkeler `apple-design` §1–17, Curate dili CDS (Rosso §18 ve açık tema Curate'in değil). | Görev belgesi §4.1. | Önceki sıra (CDS üstte) — ilkelerde apple-design üste alındı. | sahip |
+| D22 | 2026-10-08 | Lens kenar kararmasını DÜZELTMEK serbest; AI Preset planı içindeki yerel ışık maskeleri (gradyan, çokgen) doğrulayıcı sınırlarıyla serbest. Bağımsız estetik vinyet eklemek yasak kalır. | Görev belgesi §4.1. | — | sahip |
+| D23 | 2026-10-08 | AI Preset ("Işık ve Renk Planı"): AI görseli üretmez, yalnız JSON plan döndürür; Curate yerel motorla uygular. Kod, sahip tasarım özetini onayladıktan sonra (itiraz yoksa özetten bir oturum sonra). | Ucuz, deterministik, uydurma yok. | AI ile piksel üretmek (reddedildi). | sahip; görev belgesi §8.3 |
+| D24 | 2026-10-08 | Preset kütüphanesinin kapsamı (12–16 preset, 4–5 aile, Türkçe adlar, varsayılan "Doğal") ajana bırakıldı. | Sahip fotoğrafçı değil. | — | sahip; görev belgesi §8.4 |
+| D26 | 2026-10-08 | Preset kütüphanesi v2: 4 aile, 16 preset (Temel 4, Portre 2, Işık 4, İmza 6 = spec §5.1 aileleri). Varsayılan "Doğal" (yeni fotoğraflar, Carousel serisi); türetilmiş sonuçlar sade başlar (E11). Ton eğrisi uçları sabit; Warm Silhouette ve Monochrome Noir'da kasıtlı derin gölge (spec §5.1) ölçülüp belgelendi. Akıllı Otomatik istatistikle (AI değil). | Sahip doğal, temiz sonuç ve tek kaydırıcı istedi; spec'in 6 ailesi korunmalı. | 6 aileyi Türkçe adlarla değiştirmek (spec kararıyla çelişirdi). | ajan (sarı); `docs/PHOTO-KNOWLEDGE.md` §7 |
+| D25 | 2026-10-08 | Tasarım dili kararları (yazı tipi, malzeme, hareket, bileşenler): CDS v3'te gerekçe ve kontrastla. | Görev belgesi §5 kararları ajana bıraktı. | — | ajan (sarı); `design/CURATE_DESIGN_SYSTEM.md` |
+| D27 | 2026-10-08 | Tüm uygulama PIN kapısı onaylandı (plan `docs/reports/2026-10-08-erisim-plani.md`, öneriler kabul: çerez 365 gün ve kayan, genel ay sınırı kalır, referans görseller kapı arkasında). D15'teki "PIN yalnız AI için" (S1) bununla değişti. | Uygulamaya sahipten başkası girmesin. | Yalnız AI kilidi (D15). | sahip |
+| D28 | 2026-10-08 | AI Preset tasarımı onaylandı; ajan geliştirme denemelerinde "abartmadan" serbest. Sahibin kendi kullanımına şimdilik kota konmaz (kredi var). | Sahip yanıtı. | Günlük 20 / aylık 150 kota (kaldırıldı, yalnız kötüye kullanım tavanı kalır). | sahip |
+| D29 | 2026-10-08 | Çerçeve modülü tüm standart çözünürlükleri sunar (spec K5'teki "Frame 1080×1350 kalır" genişledi). | Sahip yanıtı. | Yalnız 1080×1350. | sahip |
+| D30 | 2026-10-08 | Spec'in andığı kaynak belgeler (`curate-preset-spec.md` vb.) repoda yok, eskimiş sayılır; kullanılmaz. Yerine ölçülmüş kalibrasyon ve `docs/PHOTO-KNOWLEDGE.md`. | Sahip yanıtı. | — | sahip |
+| D31 | 2026-10-08 | `.cube` LUT yükleme kaldırıldı. | Sahip "işime yararsa kalsın, yaramazsa sil" dedi; sahip fotoğrafçı değil, `.cube` dosyası temin etmesi gerekir, özellik "Araçlar" altında gizliydi ve 16 preset aynı işi görüyor. | Tutmak (bakım yükü, jargon). | ajan (sahip yetkisiyle) |
+| D32 | 2026-10-08 | `animate` ve `improve-animations` skill'lerindeki repoda olmayan skill atıfları silindi. | Sahip izni. | Yok saymak. | sahip |

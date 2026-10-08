@@ -1,5 +1,5 @@
-// Native yoklama: Kotlin modülünün döndürdüğü sayıları probe/v1 raporuna çevirir (docs/probe/README.md).
-// Ağa hiçbir şey göndermez; görüntü saklamaz.
+// Native probe: turns the numbers returned by the Kotlin module into a probe/v1 report (docs/probe/README.md).
+// Sends nothing over the network; keeps no image.
 import { Dimensions, PermissionsAndroid, PixelRatio } from 'react-native';
 import CurateProbe from '../modules/curate-probe/src/CurateProbeModule';
 import {
@@ -19,7 +19,7 @@ export const NATIVE_STEPS = ['Cihaz', 'Camera2 özellikleri', 'Sensörler', 'Kam
 
 type Json = Record<string, unknown>;
 const errMsg = (e: unknown) => (e instanceof Error ? `${e.name}: ${e.message}` : String(e));
-/** JSON'a güvenli: undefined düşer, NaN/Infinity null olur */
+/** JSON-safe: undefined is dropped, NaN/Infinity become null */
 const asMeasure = (v: unknown): ProbeMeasure => JSON.parse(JSON.stringify(v ?? null)) as ProbeMeasure;
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const str = (v: unknown): string | null => (typeof v === 'string' && v ? v : null);
@@ -73,7 +73,7 @@ export async function runNativeProbe(onStep: (i: number) => void): Promise<Probe
     summary: buildSummary([]),
   };
 
-  // 1. Cihaz
+  // 1. Device
   onStep(0);
   const dev = await timed('native.cihaz', 'Cihaz bilgisi', () => CurateProbe.deviceInfo());
   if (dev) {
@@ -90,7 +90,7 @@ export async function runNativeProbe(onStep: (i: number) => void): Promise<Probe
     add('native.cihaz', 'Cihaz bilgisi', 'var', `${dev.manufacturer} ${dev.model}, Android ${dev.release}, ${osLayer(dev) ?? 'üretici katmanı ?'}`, null);
   }
 
-  // 2. Camera2 özellikleri (izinsiz)
+  // 2. Camera2 characteristics (no permission needed)
   onStep(1);
   const ch = await timed('native.kameraListesi', 'Camera2 kamera listesi', () => CurateProbe.cameraCharacteristics());
   let mainBack: Json | null = null;
@@ -155,7 +155,7 @@ export async function runNativeProbe(onStep: (i: number) => void): Promise<Probe
     }
   }
 
-  // 3. Sensörler
+  // 3. Sensors
   onStep(2);
   const sens = await timed('native.sensorler', 'Sensörler', () => CurateProbe.sampleSensors(3000));
   if (sens) {
@@ -174,7 +174,7 @@ export async function runNativeProbe(onStep: (i: number) => void): Promise<Probe
     notes.push('Android 12+ sensör hızı HIGH_SAMPLING_RATE_SENSORS izni olmadan 200 Hz ile sınırlıdır (izin manifestte var).');
   }
 
-  // 4. Kamera izni (yalnız kamera; mikrofon/konum istenmez)
+  // 4. Camera permission (camera only; no microphone or location)
   onStep(3);
   const perm = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA, {
     title: 'Kamera izni',
@@ -185,7 +185,7 @@ export async function runNativeProbe(onStep: (i: number) => void): Promise<Probe
   const granted = perm === PermissionsAndroid.RESULTS.GRANTED;
   add('native.izin', 'Kamera izni', granted ? 'var' : 'hata', granted ? 'izin verildi' : `izin yok (${perm})`);
 
-  // 5. Canlı yakalama
+  // 5. Live capture
   onStep(4);
   if (granted) {
     const cap = await timed('native.oturum', 'Camera2 oturumu (arka ana kamera)', () => CurateProbe.captureTests());
@@ -200,7 +200,7 @@ export async function runNativeProbe(onStep: (i: number) => void): Promise<Probe
     add('native.oturum', 'Camera2 oturumu (arka ana kamera)', 'atlandı', 'kamera izni yok');
   }
 
-  // Üretici kısıtı: manuel/RAW üçüncü taraf uygulamaya veriliyor mu, verilmiyorsa hangi adımda
+  // Vendor restriction: does a third-party app get manual/RAW, and if not, at which step it stops
   const byId = new Map(tests.map((t) => [t.id, t]));
   const caps = strs(mainBack?.yetenekler);
   const manual = byId.get('native.manuel');
@@ -227,7 +227,7 @@ export async function runNativeProbe(onStep: (i: number) => void): Promise<Probe
   }
   add('native.ureticiKisiti', 'Üçüncü taraf uygulamaya manuel/RAW erişimi', kisit, lines.join('; '), { yetenekler: caps });
 
-  // Performans özeti (yakalama testlerinden)
+  // Performance summary (from the capture tests)
   const m = (id: string) => (byId.get(id)?.ölçüm ?? null) as Record<string, ProbeMeasure> | null;
   report.perf = {
     ...report.perf,

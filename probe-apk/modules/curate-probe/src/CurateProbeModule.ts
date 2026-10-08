@@ -1,6 +1,6 @@
 import { NativeModule, requireNativeModule } from 'expo';
 
-// Kotlin tarafı: android/src/main/java/app/curate/probe/module/*.kt. Dönen nesneler düz JSON (sayı, metin, dizi, nesne).
+// Kotlin side: android/src/main/java/app/curate/probe/module/*.kt. Returned objects are plain JSON (numbers, strings, arrays, objects).
 type Json = Record<string, unknown>;
 
 declare class CurateProbeModule extends NativeModule<{}> {

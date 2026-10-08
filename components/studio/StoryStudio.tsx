@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/lib/i18n/tr";
 import React, { useState, useEffect, useRef } from "react";
 import { EXPORT_COLORS } from "@/lib/ui/colors";
 import { Sparkles, Smartphone, ImagePlus, RotateCcw } from "lucide-react";
@@ -45,7 +46,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     const img = new window.Image();
     if (!src.startsWith("data:") && !src.startsWith("blob:")) img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Görsel yüklenemedi"));
+    img.onerror = () => reject(new Error(tr.common.imageLoadFailed));
     img.src = src;
   });
 }
@@ -133,7 +134,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
       actions.addItems(accepted.map((file, idx) => createStudioItem(file, library.length + idx)));
     }
     if (rejected > 0) {
-      setNotice(`Story en fazla ${STORY_MAX_PHOTOS} fotoğraf alır; ${rejected} fotoğraf alınmadı.`);
+      setNotice(tr.story.rejected(STORY_MAX_PHOTOS, rejected));
     }
   };
 
@@ -151,7 +152,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
   };
 
   const handleClear = () => {
-    if (window.confirm("Tüm fotoğraflar kaldırılsın mı?")) actions.clearItems();
+    if (window.confirm(tr.common.clearAllConfirm)) actions.clearItems();
   };
 
   // Dokunma: seç; seçiliyken başka hücreye dokunmak yer değiştirir (iki dokunuşla takas)
@@ -325,9 +326,9 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
       {count === 0 ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center text-ink-3 gap-1">
           <Smartphone className="w-8 h-8 text-disabled-ink" />
-          <span className="text-sm">Story için en az 2 fotoğraf ekle</span>
+          <span className="text-sm">{tr.story.empty}</span>
           <button type="button" onClick={() => fileInputRef.current?.click()} className="touch-target px-3 text-sm text-accent">
-            Fotoğraf Yükle
+            {tr.common.uploadPhoto}
           </button>
         </div>
       ) : count < STORY_MIN_PHOTOS ? (
@@ -338,7 +339,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
             alt=""
             className="w-1/2 aspect-[4/5] object-cover rounded-xl opacity-60"
           />
-          <span className={`text-sm ${isDarkBg ? "text-ink-1" : "text-black"}`}>Bir fotoğraf daha ekle</span>
+          <span className={`text-sm ${isDarkBg ? "text-ink-1" : "text-black"}`}>{tr.story.addOneMore}</span>
         </div>
       ) : (
         cells.map((cell, idx) => {
@@ -365,7 +366,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
               data-cell={idx}
               role="button"
               tabIndex={0}
-              aria-label={`${idx + 1}. hücre${isSelected ? ", seçili" : ""}`}
+              aria-label={tr.story.cellAria(idx + 1, isSelected)}
               aria-pressed={isSelected}
               {...cellGesture.bind(idx)}
               onKeyDown={(e) => {
@@ -409,9 +410,9 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
   const statusText =
     notice ||
     (library.length > STORY_MAX_PHOTOS
-      ? `Kütüphanede ${library.length} fotoğraf var; Story ilk ${STORY_MAX_PHOTOS}'sını kullanır.`
+      ? tr.story.usesFirst(library.length, STORY_MAX_PHOTOS)
       : count < STORY_MIN_PHOTOS
-        ? "En az 2 fotoğraf ekle"
+        ? tr.story.minPhotos
         : "");
 
   const stageToolbar = (
@@ -424,7 +425,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
           {statusText}
         </span>
       ) : (
-        <span className="text-xs text-ink-3 text-right truncate min-w-0">Sürükle, iki parmakla yakınlaştır</span>
+        <span className="text-xs text-ink-3 text-right truncate min-w-0">{tr.common.dragPinchHint}</span>
       )}
     </>
   );
@@ -442,7 +443,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
             className="press h-11 px-3 rounded-xl text-sm border border-separator bg-surface-2 text-ink-1 flex items-center gap-2"
           >
             <ImagePlus className="w-4 h-4" />
-            <span>Değiştir</span>
+            <span>{tr.story.replace}</span>
           </button>
           <button
             type="button"
@@ -450,13 +451,13 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
             className="press h-11 px-3 rounded-xl text-sm border border-separator bg-surface-2 text-ink-1 flex items-center gap-2"
           >
             <RotateCcw className="w-4 h-4" />
-            <span>Sıfırla</span>
+            <span>{tr.common.reset}</span>
           </button>
         </div>
       )}
 
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm text-ink-2">Zemin</span>
+        <span className="text-sm text-ink-2">{tr.story.background}</span>
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -467,7 +468,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
             }`}
           >
             <Sparkles className="w-4 h-4" />
-            <span>Gradyan</span>
+            <span>{tr.story.gradient}</span>
           </button>
           {(["black", "white", "charcoal"] as const).map((m) => (
             <button
@@ -475,7 +476,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
               type="button"
               onClick={() => actions.setStoryLayout({ backgroundMode: m })}
               aria-pressed={backgroundMode === m}
-              aria-label={m === "black" ? "OLED siyah" : m === "white" ? "Beyaz" : "Kömür"}
+              aria-label={tr.story.bg[m]}
               className="touch-target press rounded-full"
             >
               <span
@@ -489,7 +490,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
       </div>
 
       <ResettableSlider
-        label="Boşluk"
+        label={tr.story.spacing}
         value={spacing}
         min={0}
         max={32}
@@ -505,7 +506,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
         onUpload={() => fileInputRef.current?.click()}
         onReference={() => setIsReferenceOpen(true)}
         onClear={library.length > 0 ? handleClear : undefined}
-        addDisabledReason={room <= 0 ? `Story en fazla ${STORY_MAX_PHOTOS} fotoğraf alır.` : undefined}
+        addDisabledReason={room <= 0 ? tr.story.max(STORY_MAX_PHOTOS) : undefined}
       />
       <span className="ml-auto pr-2 text-sm text-ink-2 num-metric">
         {count}/{STORY_MAX_PHOTOS} fotoğraf · grid otomatik
@@ -515,7 +516,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
 
   return (
     <StudioShell
-      title="Story Dump"
+      title={tr.modules.story.title}
       onBack={onBack}
       onExport={() => setIsExportOpen(true)}
       exportDisabled={count < STORY_MIN_PHOTOS}

@@ -1,6 +1,6 @@
 # Yoklama raporu şeması `probe/v1`
 
-> Kaynak tip: `lib/probe/schema.ts` (web). Native kopya: `probe-apk/src/probe-schema.ts`, "ortak gövde" işaretinden sonrası birebir aynı olmalı; `tests/probe-schema.test.ts` denetler. Aşağıdaki JSON örneği de aynı testte şemaya karşı doğrulanır.
+> Kaynak tip: `lib/probe/schema.ts` (web). Native kopya: `probe-apk/src/probe-schema.ts`, "shared body" işaretinden sonrası birebir aynı olmalı; `tests/probe-schema.test.ts` denetler. Aşağıdaki JSON örneği de aynı testte şemaya karşı doğrulanır.
 > Son doğrulama: 2026-10-08.
 
 Tek JSON dosyası. Web ve native aynı biçimi üretir; yalnız `meta.kaynak` (`web` | `native`) ve test kimlikleri farklıdır. Rapor kişisel içerik taşımaz: görüntü yok, seri no / IMEI / konum / hesap yok, web'de `deviceId`/`groupId` yazılmaz.

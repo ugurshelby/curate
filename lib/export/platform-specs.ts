@@ -3,7 +3,7 @@
  * Export targets as data (spec §4.4 K1, S-b).
  */
 
-import { ExportPlatform, ExportSpec } from '../core/types';
+import { ExportPlatform, ExportSpec, FrameResolution, FrameSizeId } from '../core/types';
 
 /** Platform dosya sınırı (sahip kararı, Faz S): aşılırsa JPEG kalitesi kademeli düşer */
 export const MAX_EXPORT_BYTES = 8 * 1024 * 1024;
@@ -69,6 +69,43 @@ export const PLATFORM_SPECS: Record<ExportPlatform, ExportSpec> = {
     verified: true,
   },
 };
+
+/**
+ * Çerçeve standart boyutları (sahip kararı 2026-10-08, D29). Boyutlar kısa kenarı 1080 olan
+ * standart çıktıdır; 'high' çözünürlükte iki katı (kısa kenar 2160, 16:9'da 3840×2160 = 4K UHD).
+ * Sıra: en çok kullanılan önce. Instagram 1.91:1 yatay 1080×566.
+ */
+export interface FrameSizeSpec {
+  id: FrameSizeId;
+  /** Oran etiketi (sayı, çeviri gerekmez) */
+  ratio: string;
+  width: number;
+  height: number;
+}
+
+export const FRAME_SIZES: readonly FrameSizeSpec[] = [
+  { id: '4_5', ratio: '4:5', width: 1080, height: 1350 },
+  { id: '1_1', ratio: '1:1', width: 1080, height: 1080 },
+  { id: '9_16', ratio: '9:16', width: 1080, height: 1920 },
+  { id: '3_4', ratio: '3:4', width: 1080, height: 1440 },
+  { id: '2_3', ratio: '2:3', width: 1080, height: 1620 },
+  { id: '5_4', ratio: '5:4', width: 1350, height: 1080 },
+  { id: '4_3', ratio: '4:3', width: 1440, height: 1080 },
+  { id: '3_2', ratio: '3:2', width: 1620, height: 1080 },
+  { id: '16_9', ratio: '16:9', width: 1920, height: 1080 },
+  { id: '191_1', ratio: '1.91:1', width: 1080, height: 566 },
+];
+
+export const FRAME_SIZE_IDS = FRAME_SIZES.map((s) => s.id) as readonly FrameSizeId[];
+
+export const FRAME_RESOLUTION_SCALE: Record<FrameResolution, number> = { standard: 1, high: 2 };
+
+/** Çıktı boyutu: oran + çözünürlük */
+export function frameOutputSize(size: FrameSizeId, resolution: FrameResolution): FrameSizeSpec {
+  const spec = FRAME_SIZES.find((s) => s.id === size) ?? FRAME_SIZES[0];
+  const k = FRAME_RESOLUTION_SCALE[resolution] ?? 1;
+  return { ...spec, width: spec.width * k, height: spec.height * k };
+}
 
 /**
  * Calculates crop dimensions for centering and fitting into target aspect ratio (cover mode)

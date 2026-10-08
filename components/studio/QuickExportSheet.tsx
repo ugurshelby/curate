@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/lib/i18n/tr";
 import React, { useEffect, useState } from "react";
 import { X, Download, RefreshCw, ChevronDown, Check } from "lucide-react";
 import {
@@ -88,7 +89,7 @@ export function QuickExportSheet({
       const sorted = [...itemsToExport].sort((a, b) => a.order - b.order);
       const encoded: { id: string; blob: Blob; order: number; quality: number | null; reduced: boolean; overLimit: boolean }[] = [];
       for (let i = 0; i < sorted.length; i++) {
-        setProgress(count > 1 ? `Hazırlanıyor ${i + 1}/${count}` : "Hazırlanıyor");
+        setProgress(count > 1 ? tr.export.preparingN(i + 1, count) : tr.common.preparing);
         const canvas = await sorted[i].renderCanvas();
         const out = await encodeWithinLimit((q) => canvasToBlob(canvas, mime, q), format, spec.maxBytes);
         const clean = await sanitizeImageBlob(out.blob);
@@ -109,14 +110,14 @@ export function QuickExportSheet({
         downloadBlob(encoded[0].blob, plan.fileName);
         setResult({ fileName: plan.fileName, bytes: encoded[0].blob.size, ...summary });
       } else {
-        setProgress("Zip hazırlanıyor");
+        setProgress(tr.export.zipping);
         const zip = await packageDumpZip(encoded, prefix);
         downloadBlob(zip, plan.zipName);
         setResult({ fileName: plan.zipName, bytes: zip.size, ...summary });
       }
     } catch (err) {
       console.error("Export failed", err);
-      setError("Dışa aktarma başarısız oldu.");
+      setError(tr.export.failed);
     } finally {
       setIsExporting(false);
       setProgress("");
@@ -128,16 +129,16 @@ export function QuickExportSheet({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Dışa aktar"
+        aria-label={tr.export.title}
         className="w-full max-w-lg rounded-t-sheet sm:rounded-sheet bg-surface p-5 pb-[calc(var(--safe-area-bottom)+20px)] border border-separator shadow-2xl animate-panel-in flex flex-col gap-4"
       >
         <div className="flex items-center justify-between">
-          <span className="text-[17px] font-semibold text-ink-1">Dışa aktar</span>
+          <span className="text-[17px] font-semibold text-ink-1">{tr.export.title}</span>
           <button
             type="button"
             onClick={onClose}
             disabled={isExporting}
-            aria-label="Kapat"
+            aria-label={tr.common.close}
             className="touch-target press rounded-full text-ink-2 hover:text-ink-1"
           >
             <X className="w-5 h-5" />
@@ -146,25 +147,25 @@ export function QuickExportSheet({
 
         <dl className="rounded-xl bg-surface-2 border border-separator divide-y divide-separator text-sm">
           <div className="flex items-center justify-between gap-3 px-3 h-11">
-            <dt className="text-ink-2">Hedef</dt>
+            <dt className="text-ink-2">{tr.export.target}</dt>
             <dd className="text-ink-1 num-metric truncate">
               {spec.name} · {targetLabel}
             </dd>
           </div>
           <div className="flex items-center justify-between gap-3 px-3 h-11">
-            <dt className="text-ink-2">Görsel</dt>
+            <dt className="text-ink-2">{tr.export.count}</dt>
             <dd className="text-ink-1 num-metric">{count}</dd>
           </div>
           <div className="flex items-center justify-between gap-3 px-3 h-11">
-            <dt className="text-ink-2">Dosya</dt>
+            <dt className="text-ink-2">{tr.export.file}</dt>
             <dd className="text-ink-1 num-metric truncate">
               {plan ? (plan.kind === "single" ? plan.fileName : `${plan.zipName} (${count} dosya)`) : "—"}
             </dd>
           </div>
           <div className="flex items-center justify-between gap-3 px-3 h-11">
-            <dt className="text-ink-2">Kalite</dt>
+            <dt className="text-ink-2">{tr.export.quality}</dt>
             <dd className="text-ink-1 num-metric">
-              {format === "png" ? "PNG (kayıpsız)" : `JPEG %${Math.round(spec.quality * 100)}`}
+              {format === "png" ? tr.export.png : tr.export.jpeg(spec.quality)}
             </dd>
           </div>
         </dl>
@@ -182,11 +183,11 @@ export function QuickExportSheet({
             aria-expanded={isAdvancedOpen}
             className="h-11 flex items-center justify-between text-sm text-ink-2"
           >
-            <span>Gelişmiş</span>
+            <span>{tr.common.advanced}</span>
             <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isAdvancedOpen ? "rotate-180" : ""}`} />
           </button>
           {isAdvancedOpen && (
-            <div role="radiogroup" aria-label="Format" className="flex p-0.5 rounded-xl bg-surface-2 border border-separator animate-panel-in">
+            <div role="radiogroup" aria-label={tr.export.format} className="flex p-0.5 rounded-xl bg-surface-2 border border-separator animate-panel-in">
               {(["jpeg", "png"] as const).map((f) => (
                 <button
                   key={f}
@@ -206,20 +207,20 @@ export function QuickExportSheet({
           )}
         </div>
 
-        <p className="text-xs text-ink-3">Konum ve cihaz bilgisi (EXIF) dosyadan çıkarılır.</p>
+        <p className="text-xs text-ink-3">{tr.export.privacy}</p>
 
         {result && (
           <div role="status" className="rounded-xl bg-surface-2 border border-separator px-3 py-2 text-sm text-ink-1 flex flex-col gap-0.5">
             <span className="num-metric break-all">
-              İndirildi: {result.fileName} · {formatBytes(result.bytes)}
+              {tr.export.done(result.fileName, formatBytes(result.bytes))}
             </span>
             {result.reduced && result.quality !== null && (
               <span className="text-xs text-ink-2 num-metric">
-                8 MB sınırı için JPEG kalitesi %{Math.round(result.quality * 100)}&apos;e düşürüldü.
+                {tr.export.reduced(result.quality)}
               </span>
             )}
             {result.overLimit && (
-              <span className="text-xs text-ink-1">Dosya en düşük basamakta bile 8 MB&apos;ı aşıyor.</span>
+              <span className="text-xs text-ink-1">{tr.export.overLimit}</span>
             )}
           </div>
         )}
@@ -233,7 +234,7 @@ export function QuickExportSheet({
         >
           {isExporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : !result && <Download className="w-4 h-4" />}
           <span className="num-metric">
-            {isExporting ? progress || "Hazırlanıyor" : result ? "Tamam" : count > 1 ? `İndir (${count} görsel, zip)` : "İndir"}
+            {isExporting ? progress || tr.common.preparing : result ? tr.common.done : count > 1 ? tr.export.downloadZip(count) : tr.export.download}
           </span>
         </button>
       </div>

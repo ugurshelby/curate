@@ -7,6 +7,7 @@ export * from './core/state-machine';
 export * from './core/use-studio';
 export * from './core/worker-bridge';
 export * from './core/reference-images';
+export * from './core/idle';
 
 export * from './engine/proxy';
 export * from './engine/harmonize';
@@ -17,6 +18,10 @@ export * from './engine/upscale-slider';
 export * from './engine/carousel-render';
 export * from './engine/story-layout';
 export * from './engine/edit-geometry';
+export * from './engine/corrections';
+export * from './engine/frame-render';
+export * from './engine/ai-plan';
+export * from './engine/scene';
 
 export * from './export/platform-specs';
 export * from './export/exif-sanitizer';

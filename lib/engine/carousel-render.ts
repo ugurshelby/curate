@@ -4,17 +4,19 @@
  *
  * Two steps, same functions for preview and export:
  *   1. base  = background + crop/fit draw + hero harmonize   (renderCarouselBase)
- *   2. look  = .cube LUT or editorial preset on a copy of base (applyCarouselLook)
+ *   2. look  = editorial preset on a copy of base (applyCarouselLook)
  * Export calls drawCarouselFrame (1 + 2 in one go). The preview calls the same two steps through
  * CarouselPreviewRenderer, which caches step 1 so a slider only recomputes step 2.
  */
 
-import { ColorMetrics, CubeLUT, EditCrop } from '../core/types';
+import { ColorMetrics, EditCrop } from '../core/types';
 import { drawEditGeometry, editCropKey } from './edit-geometry';
 import { calculateAspectCrop } from '../export/platform-specs';
 import { applyHarmonizeSync, extractColorMetrics } from './harmonize';
-import { applyCubeLutToImageData, applyPresetToImageData, CURATE_PRESETS } from './presets';
+import { applyPresetToImageData, CURATE_PRESETS } from './presets';
 import { EXPORT_COLORS } from '../ui/colors';
+import { applyCorrections, CorrectionParams, correctionsKey } from './corrections';
+import { applyAiPlan, planMapping, type AiLightPlan, type PlanGeometry } from './ai-plan';
 
 /** Export width the look is calibrated for (grain grid). */
 export const CAROUSEL_OUTPUT_WIDTH = 1080;
@@ -24,17 +26,27 @@ export const FIT_BACKGROUND = EXPORT_COLORS.fitBackground;
 export interface CarouselRenderOptions {
   fitMode: 'fit' | 'fill';
   heroColorMetrics?: ColorMetrics | null;
-  customLut?: CubeLUT | null;
   presetId?: string | null;
   presetIntensity?: number;
   /** Export width this render stands for. Defaults to the render width (export). */
   outputWidth?: number;
   /** Düzenle: kırp/döndür/çevir geometrisi. Verilirse fitMode yerine bu çizim kullanılır. */
   crop?: EditCrop | null;
+  /** Düzenle → Düzeltme (D2): taban adımında, kırptan sonra, görünümden önce */
+  corrections?: CorrectionParams | null;
+  /** Düzenle → AI Preset (D28): görünüm adımında, preset'ten önce; koordinatlar orijinal fotoğrafta */
+  aiPlan?: AiPlanRender | null;
+}
+
+export interface AiPlanRender {
+  plan: AiLightPlan;
+  /** Miktar × planın güvenli ölçeği (planSafeScale) */
+  strength: number;
+  geometry: PlanGeometry;
 }
 
 export interface CarouselBase {
-  /** Harmonized pixels of the image rectangle (before LUT/preset) */
+  /** Harmonized pixels of the image rectangle (before the preset) */
   imageData: ImageData;
   x: number;
   y: number;
@@ -90,12 +102,14 @@ export function renderCarouselBase(
   img: CarouselSource,
   targetW: number,
   targetH: number,
-  options: Pick<CarouselRenderOptions, 'fitMode' | 'heroColorMetrics' | 'crop'>
+  options: Pick<CarouselRenderOptions, 'fitMode' | 'heroColorMetrics' | 'crop' | 'corrections' | 'outputWidth'>
 ): CarouselBase {
   if (options.crop) {
     // Düzenle: aynı taban adımı, çizim kırp geometrisiyle (tüm hedef alanı kaplar)
     drawEditGeometry(ctx, img, targetW, targetH, options.crop);
     let cropped = ctx.getImageData(0, 0, targetW, targetH);
+    // Düzeltme satırları (yarıçaplar export pikseli cinsinden; önizlemede ölçeklenir)
+    if (options.corrections) applyCorrections(cropped, options.corrections, (options.outputWidth ?? targetW) / targetW);
     if (options.heroColorMetrics) {
       cropped = applyHarmonizeSync(cropped, options.heroColorMetrics, HERO_HARMONIZE_STRENGTH);
     }
@@ -120,23 +134,52 @@ export function renderCarouselBase(
   return { imageData, ...rect };
 }
 
-/** Step 2: LUT or preset on a copy of the base. The base is never mutated (it is cached by the preview). */
+/** Step 2: preset on a copy of the base. The base is never mutated (it is cached by the preview). */
 export function applyCarouselLook(
   base: ImageData,
-  options: Pick<CarouselRenderOptions, 'customLut' | 'presetId' | 'presetIntensity'>,
+  options: Pick<CarouselRenderOptions, 'presetId' | 'presetIntensity' | 'aiPlan'>,
   resolutionScale: number = 1
 ): ImageData {
-  const { customLut, presetId, presetIntensity = 1.0 } = options;
+  const { presetId, presetIntensity = 1.0, aiPlan } = options;
   const out = cloneImageData(base);
+  if (aiPlan) applyAiPlan(out, aiPlan.plan, aiPlan.strength, planMapping(aiPlan.geometry, out.width, out.height));
 
-  if (customLut && presetId === 'custom_lut') {
-    return applyCubeLutToImageData(out, customLut, presetIntensity);
-  }
-  if (presetId && presetId !== 'custom_lut') {
+  if (presetId) {
     const preset = CURATE_PRESETS.find((p) => p.id === presetId);
     if (preset) return applyPresetToImageData(out, preset, presetIntensity, { resolutionScale });
   }
   return out;
+}
+
+/**
+ * Preview canvas size: the export size, capped at what the stage can actually show (CSS box × device pixel ratio).
+ * Same draw function and parameters as the export; only the scale differs (CDS §8). Grain stays on the export
+ * grid through `outputWidth`. `draft` halves it while a slider is dragged. Never upscales past the export size.
+ */
+/**
+ * Preview pixel density cap. Phones report DPR 2.6–3; at 2 the preview is still crisp at arm's length and
+ * costs ~45% fewer pixels than at 2.75 (Faz 5 perf baseline: 4× CPU throttle, 12 MP source). Export is unaffected.
+ */
+export const PREVIEW_MAX_DPR = 2;
+
+export function previewRenderSize(
+  exportW: number,
+  exportH: number,
+  boxCssW: number,
+  boxCssH: number,
+  dpr: number,
+  draft = false,
+): { width: number; height: number } {
+  const ratio = exportW / exportH;
+  let s = 1;
+  if (boxCssW > 0 && boxCssH > 0 && dpr > 0) {
+    // the displayed image fits the box keeping the export ratio
+    const shownW = Math.min(boxCssW, boxCssH * ratio) * Math.min(dpr, PREVIEW_MAX_DPR);
+    s = Math.min(1, shownW / exportW);
+  }
+  if (draft) s *= 0.5;
+  const width = Math.max(1, Math.round(exportW * s));
+  return { width, height: Math.max(1, Math.round(width / ratio)) };
 }
 
 function resolutionScaleFor(targetW: number, options: CarouselRenderOptions): number {
@@ -157,7 +200,7 @@ export function drawCarouselFrame(
 }
 
 /**
- * Hero harmonize reference metrics come from the raw frame (crop/fit only, no harmonize, no LUT/preset).
+ * Hero harmonize reference metrics come from the raw frame (crop/fit only, no harmonize, no preset).
  * Regression guard for audit finding #5.
  */
 export function extractHeroMetrics(
@@ -196,7 +239,7 @@ export class CarouselPreviewRenderer {
       this.cache.clear();
       this.imageKey = imageKey;
     }
-    const key = `${targetW}x${targetH}|${options.fitMode}|${metricsKey(options.heroColorMetrics)}|${editCropKey(options.crop)}`;
+    const key = this.baseKey(targetW, targetH, options);
     let base = this.cache.get(key);
     if (!base) {
       base = renderCarouselBase(ctx, img, targetW, targetH, options);
@@ -211,6 +254,52 @@ export class CarouselPreviewRenderer {
     }
     const look = applyCarouselLook(base.imageData, options, resolutionScaleFor(targetW, options));
     ctx.putImageData(look, base.x, base.y);
+  }
+
+  /**
+   * Computes and caches step 1 for another size without drawing it (e.g. the draft size while idle),
+   * so the first frame of a slider drag does not pay for the downscale of the full source.
+   */
+  prepareBase(
+    ctx: CanvasRenderingContext2D,
+    img: CarouselSource,
+    imageKey: string,
+    targetW: number,
+    targetH: number,
+    options: CarouselRenderOptions,
+  ): void {
+    if (imageKey !== this.imageKey) return; // only for the image currently shown
+    const key = this.baseKey(targetW, targetH, options);
+    if (this.cache.has(key)) return;
+    const base = renderCarouselBase(ctx, img, targetW, targetH, options);
+    if (this.cache.size >= 2) {
+      const first = this.cache.keys().next().value;
+      if (first !== undefined) this.cache.delete(first);
+    }
+    this.cache.set(key, base);
+  }
+
+  /** Cache key of step 1 for this size and options */
+  baseKey(targetW: number, targetH: number, options: CarouselRenderOptions): string {
+    return `${targetW}x${targetH}|${options.fitMode}|${metricsKey(options.heroColorMetrics)}|${editCropKey(options.crop)}|${correctionsKey(options.corrections)}`;
+  }
+
+  hasBase(imageKey: string, key: string): boolean {
+    return imageKey === this.imageKey && this.cache.has(key);
+  }
+
+  /**
+   * Stores a step-1 result computed elsewhere (Düzeltme runs in the worker with the same applyCorrections).
+   * Ignored if the image changed meanwhile.
+   */
+  setBase(imageKey: string, key: string, base: CarouselBase): void {
+    if (imageKey !== this.imageKey && this.imageKey !== '') return;
+    this.imageKey = imageKey;
+    if (this.cache.size >= 2 && !this.cache.has(key)) {
+      const first = this.cache.keys().next().value;
+      if (first !== undefined) this.cache.delete(first);
+    }
+    this.cache.set(key, base);
   }
 
   reset() {

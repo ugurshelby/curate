@@ -1,16 +1,20 @@
 /**
  * "AI ile onar" sunucu proxy'si (yalnız sunucuda çalışır; istemci paketine girmez).
- * Akış: AI_ENABLED → şifre (IP başına yanlış şifre sınırı) → görev → boyut → kota → Vertex → JPEG.
+ * Erişim (Faz P1): PIN yeni cihazda bir kez girilir (PUT), sunucu imzalı HttpOnly çerez verir;
+ * GET/POST yalnız bu çerezle çalışır. PIN ve Vertex anahtarı tarayıcıya hiç inmez.
+ * Akış: AI_ENABLED → yapılandırma → aynı köken → çerez → görev → boyut → kota (atomik) → Vertex → JPEG.
  * Fotoğraf saklanmaz, loglanmaz. Log satırı: görev, model, süre, boyut, tahmini maliyet.
  */
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import sharp from 'sharp';
 import {
   AI_DEFAULT_DAILY_LIMIT,
   AI_DEFAULT_MONTHLY_LIMIT,
   AI_DEADLINE_MARGIN_MS,
+  AI_DEVICE_COOKIE,
+  AI_DEVICE_COOKIE_PATH,
+  AI_DEVICE_MAX_AGE_S,
   AI_ERRORS,
-  AI_HEADER_PASSWORD,
   AI_HEADER_REMAINING_DAY,
   AI_HEADER_REMAINING_MONTH,
   AI_HEADER_TASK,
@@ -19,10 +23,21 @@ import {
   AI_MAX_RESPONSE_BYTES,
   AI_OUTPUT_QUALITY_STEPS,
   AI_OUTPUT_SHRINK,
+  AI_PIN_FAIL_LIMIT_DAY,
+  AI_PIN_FAIL_LIMIT_IP_DAY,
+  AI_PIN_FAIL_LIMIT_MONTH,
+  AI_PIN_PATTERN,
   AI_RETRY_WAIT_MS,
   AI_TASKS,
-  AI_WRONG_PASSWORD_LIMIT,
+  AI_HEADER_STYLE,
+  AI_PLAN_COST_TRY,
+  AI_PLAN_EST_SECONDS,
+  AI_PLAN_MAX_TEXT,
+  AI_PLAN_MODELS,
+  AI_PLAN_TASK,
   AiErrorCode,
+  buildPlanBody,
+  isAiPlanStyle,
   AiTask,
   aiModelId,
   buildVertexBody,
@@ -30,13 +45,16 @@ import {
   vertexEndpoint,
 } from './config';
 import { CounterStore, DAY_TTL_S, MONTH_TTL_S, counterStoreFromEnv, quotaKeys } from './quota';
+import { SESSION_COOKIE, sessionCookie, signSession, verifySession } from '../access/session';
+import { validatePlan } from '../engine/ai-plan';
 
 type EnvLike = Record<string, string | undefined>;
 
 export interface AiServerConfig {
   enabled: boolean;
   apiKey: string | null;
-  password: string | null;
+  /** 4 haneli PIN; biçim tutmazsa null (→ not_configured) */
+  pin: string | null;
   dailyLimit: number;
   monthlyLimit: number;
 }
@@ -47,10 +65,11 @@ function positiveInt(v: string | undefined, fallback: number): number {
 }
 
 export function readAiConfig(env: EnvLike): AiServerConfig {
+  const pin = (env.CURATE_AI_PASSWORD ?? '').trim();
   return {
     enabled: (env.AI_ENABLED ?? 'true').trim().toLowerCase() !== 'false',
     apiKey: env.VERTEX_API_KEY || null,
-    password: env.CURATE_AI_PASSWORD || null,
+    pin: AI_PIN_PATTERN.test(pin) ? pin : null,
     dailyLimit: positiveInt(env.AI_DAILY_LIMIT, AI_DEFAULT_DAILY_LIMIT),
     monthlyLimit: positiveInt(env.AI_MONTHLY_LIMIT, AI_DEFAULT_MONTHLY_LIMIT),
   };
@@ -82,8 +101,14 @@ export function defaultAiDeps(env: EnvLike = process.env): AiDeps {
 const ERROR_STATUS: Record<AiErrorCode, number> = {
   disabled: 503,
   not_configured: 503,
-  wrong_password: 401,
-  password_locked: 429,
+  forbidden: 403,
+  pin_required: 401,
+  wrong_pin: 401,
+  pin_locked_ip: 429,
+  pin_locked_day: 429,
+  pin_locked_month: 429,
+  service_error: 503,
+  server_error: 500,
   bad_task: 400,
   too_large: 413,
   bad_image: 415,
@@ -93,15 +118,29 @@ const ERROR_STATUS: Record<AiErrorCode, number> = {
   model_busy: 503,
   model_error: 502,
   no_image: 502,
+  bad_plan: 502,
   canceled: 499,
   network: 502,
 };
 
-function errorResponse(code: AiErrorCode, extraHeaders?: Record<string, string>): Response {
+/** Extra headers as pairs so a response can carry several Set-Cookie lines */
+type HeaderPairs = Record<string, string> | [string, string][];
+
+function jsonHeaders(extra?: HeaderPairs): Headers {
+  const h = new Headers({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+  for (const [k, v] of Array.isArray(extra) ? extra : Object.entries(extra ?? {})) h.append(k, v);
+  return h;
+}
+
+function errorResponse(code: AiErrorCode, extraHeaders?: HeaderPairs): Response {
   return new Response(JSON.stringify({ error: code, message: AI_ERRORS[code] }), {
     status: ERROR_STATUS[code],
-    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...extraHeaders },
+    headers: jsonHeaders(extraHeaders),
   });
+}
+
+function jsonResponse(body: unknown, extraHeaders?: HeaderPairs): Response {
+  return new Response(JSON.stringify(body), { status: 200, headers: jsonHeaders(extraHeaders) });
 }
 
 export function clientIp(req: Request): string {
@@ -110,40 +149,106 @@ export function clientIp(req: Request): string {
   return req.headers.get('x-real-ip')?.trim() || 'unknown';
 }
 
-/** Başlıktaki şifre encodeURIComponent ile gelir (Türkçe karakterler başlıkta güvenli değil) */
-function readPassword(req: Request): string {
-  const raw = req.headers.get(AI_HEADER_PASSWORD) ?? '';
-  try {
-    return decodeURIComponent(raw);
-  } catch {
-    return raw;
-  }
-}
-
 function sameSecret(a: string, b: string): boolean {
   const ha = createHash('sha256').update(a, 'utf8').digest();
   const hb = createHash('sha256').update(b, 'utf8').digest();
   return timingSafeEqual(ha, hb);
 }
 
+// --- Cihaz çerezi ---
+
+/** İmza anahtarı: HMAC(VERTEX_API_KEY, PIN). PIN veya anahtar değişince eski çerezler geçersiz olur. */
+function deviceKey(config: AiServerConfig): Buffer {
+  return createHmac('sha256', config.apiKey as string).update(`curate-device-v1:${config.pin}`, 'utf8').digest();
+}
+
+/** Sayaç anahtarlarında PIN'e bağlı kısa etiket (PIN'in kendisinden veya düz özetinden türetilmez) */
+function pinTag(config: AiServerConfig): string {
+  return createHmac('sha256', deviceKey(config)).update('counter', 'utf8').digest('hex').slice(0, 12);
+}
+
+function sign(config: AiServerConfig, payload: string): string {
+  return createHmac('sha256', deviceKey(config)).update(payload, 'utf8').digest('base64url');
+}
+
+export function issueDeviceToken(config: AiServerConfig, nowMs: number): string {
+  const payload = `v1.${Math.floor(nowMs / 1000)}`;
+  return `${payload}.${sign(config, payload)}`;
+}
+
+export function verifyDeviceToken(config: AiServerConfig, token: string | null, nowMs: number): boolean {
+  if (!token) return false;
+  const m = /^(v1\.(\d{1,12}))\.([A-Za-z0-9_-]{43})$/.exec(token);
+  if (!m) return false;
+  const issued = Number(m[2]);
+  const nowS = Math.floor(nowMs / 1000);
+  if (issued > nowS + 60 || nowS - issued > AI_DEVICE_MAX_AGE_S) return false;
+  const expected = Buffer.from(sign(config, m[1]), 'utf8');
+  const got = Buffer.from(m[3], 'utf8');
+  return expected.length === got.length && timingSafeEqual(expected, got);
+}
+
+export function readCookie(req: Request, name: string): string | null {
+  const raw = req.headers.get('cookie');
+  if (!raw) return null;
+  for (const part of raw.split(';')) {
+    const i = part.indexOf('=');
+    if (i < 0) continue;
+    if (part.slice(0, i).trim() === name) return part.slice(i + 1).trim();
+  }
+  return null;
+}
+
+function deviceCookie(token: string, maxAge: number): string {
+  return `${AI_DEVICE_COOKIE}=${token}; Path=${AI_DEVICE_COOKIE_PATH}; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Strict`;
+}
+
+/** Clears the app session (D27) and the legacy AI-only cookie */
+const CLEAR_COOKIES: [string, string][] = [
+  ['Set-Cookie', sessionCookie('', 0)],
+  ['Set-Cookie', deviceCookie('', 0)],
+];
+
+// --- Kapılar ---
+
 type GateResult = { ok: true } | { ok: false; response: Response };
 
-/** Ortak kapı: açık mı, ayarlı mı, şifre doğru mu (yanlışlar IP başına sayılır) */
-async function gate(req: Request, deps: AiDeps): Promise<GateResult> {
-  const { config, counter } = deps;
-  if (!config.enabled) return { ok: false, response: errorResponse('disabled') };
-  if (!config.apiKey || !config.password) return { ok: false, response: errorResponse('not_configured') };
+/** Başka siteden gelen istek (CSRF savunması; SameSite=Strict çerezin yanında ikinci kat) */
+function crossSite(req: Request): boolean {
+  const site = req.headers.get('sec-fetch-site');
+  return site !== null && site !== 'same-origin' && site !== 'none';
+}
 
-  const now = new Date(deps.now());
-  const failKey = quotaKeys.wrongPassword(clientIp(req), now);
-  if ((await counter.get(failKey)) >= AI_WRONG_PASSWORD_LIMIT) {
-    return { ok: false, response: errorResponse('password_locked') };
-  }
-  if (!sameSecret(readPassword(req), config.password)) {
-    await counter.incr(failKey, DAY_TTL_S);
-    return { ok: false, response: errorResponse('wrong_password') };
-  }
+/** Açık mı, ayarlı mı, aynı kökenden mi */
+function baseGate(req: Request, deps: AiDeps): GateResult {
+  const { config } = deps;
+  if (!config.enabled) return { ok: false, response: errorResponse('disabled') };
+  if (!config.apiKey || !config.pin) return { ok: false, response: errorResponse('not_configured') };
+  if (crossSite(req)) return { ok: false, response: errorResponse('forbidden') };
   return { ok: true };
+}
+
+/** Configured and same-origin; NOT tied to AI_ENABLED, so the app gate (D27) still pairs a device when AI is off */
+function accessGate(req: Request, deps: AiDeps): GateResult {
+  const { config } = deps;
+  if (!config.apiKey || !config.pin) return { ok: false, response: errorResponse('not_configured') };
+  if (crossSite(req)) return { ok: false, response: errorResponse('forbidden') };
+  return { ok: true };
+}
+
+/** baseGate + a valid device: the app session cookie (D27) or, for one release, the legacy AI cookie */
+async function deviceGate(req: Request, deps: AiDeps): Promise<GateResult> {
+  const base = baseGate(req, deps);
+  if (!base.ok) return base;
+  const { config } = deps;
+  const session = readCookie(req, SESSION_COOKIE);
+  if (session && (await verifySession({ apiKey: config.apiKey as string, pin: config.pin as string }, session, deps.now())).ok) {
+    return { ok: true };
+  }
+  const legacy = readCookie(req, AI_DEVICE_COOKIE);
+  if (verifyDeviceToken(config, legacy, deps.now())) return { ok: true };
+  // a broken or foreign cookie is cleared so the device starts clean
+  return { ok: false, response: errorResponse('pin_required', session || legacy ? CLEAR_COOKIES : undefined) };
 }
 
 async function remaining(deps: AiDeps): Promise<{ day: number; month: number }> {
@@ -152,15 +257,86 @@ async function remaining(deps: AiDeps): Promise<{ day: number; month: number }> 
   return { day: Math.max(0, deps.config.dailyLimit - d), month: Math.max(0, deps.config.monthlyLimit - m) };
 }
 
-/** GET: durum ve kalan hak (şifre doğrulaması da buradan; para harcamaz) */
+/** GET: cihaz eşli mi ve kalan hak (para harcamaz, sayaç artırmaz) */
 export async function handleAiStatus(req: Request, deps: AiDeps): Promise<Response> {
-  const g = await gate(req, deps);
+  const g = await deviceGate(req, deps);
   if (!g.ok) return g.response;
-  const r = await remaining(deps);
-  return new Response(
-    JSON.stringify({ enabled: true, remainingDay: r.day, remainingMonth: r.month, counter: deps.counter.kind }),
-    { status: 200, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } },
-  );
+  try {
+    const r = await remaining(deps);
+    return jsonResponse({ enabled: true, remainingDay: r.day, remainingMonth: r.month, counter: deps.counter.kind });
+  } catch {
+    return errorResponse('service_error');
+  }
+}
+
+const MAX_UNLOCK_BODY = 256;
+
+/**
+ * PUT: PIN ile cihaz eşleme. Kaba kuvvete karşı üç sayaç (IP/gün, genel gün, genel ay).
+ * Önce kilit okunur, sonra üç sayaç birden ayrılır (INCR); sınırı aşan ayırma geri alınır ve reddedilir.
+ * Böylece paralel tahminler de sınırı geçemez. Doğru PIN ayırmayı geri alır ve çerez verir.
+ */
+export async function handleAiUnlock(req: Request, deps: AiDeps): Promise<Response> {
+  const g = accessGate(req, deps);
+  if (!g.ok) return g.response;
+  const { config, counter } = deps;
+
+  let pin = '';
+  try {
+    const text = await req.text();
+    if (text.length > MAX_UNLOCK_BODY) return errorResponse('wrong_pin');
+    const body = JSON.parse(text) as { pin?: unknown };
+    pin = typeof body.pin === 'string' ? body.pin : '';
+  } catch {
+    pin = '';
+  }
+
+  const now = new Date(deps.now());
+  const tag = pinTag(config);
+  const keys = [
+    { key: quotaKeys.pinFailIp(tag, clientIp(req), now), limit: AI_PIN_FAIL_LIMIT_IP_DAY, ttl: DAY_TTL_S, code: 'pin_locked_ip' as const },
+    { key: quotaKeys.pinFailDay(tag, now), limit: AI_PIN_FAIL_LIMIT_DAY, ttl: DAY_TTL_S, code: 'pin_locked_day' as const },
+    { key: quotaKeys.pinFailMonth(tag, now), limit: AI_PIN_FAIL_LIMIT_MONTH, ttl: MONTH_TTL_S, code: 'pin_locked_month' as const },
+  ];
+
+  try {
+    const current = await Promise.all(keys.map((k) => counter.get(k.key)));
+    const lockedNow = keys.find((k, i) => current[i] >= k.limit);
+    if (lockedNow) return errorResponse(lockedNow.code);
+
+    const reserved = await Promise.all(keys.map((k) => counter.incr(k.key, k.ttl)));
+    const over = keys.find((k, i) => reserved[i] > k.limit);
+    const undo = () => Promise.all(keys.map((k) => counter.decr(k.key)));
+    if (over) {
+      await undo();
+      return errorResponse(over.code);
+    }
+
+    if (!AI_PIN_PATTERN.test(pin) || !sameSecret(pin, config.pin as string)) {
+      deps.log({ status: 'wrong_pin' });
+      return errorResponse('wrong_pin');
+    }
+
+    await undo();
+    deps.log({ status: 'paired' });
+    const cookies: [string, string][] = [
+      ['Set-Cookie', sessionCookie(await signSession({ apiKey: config.apiKey as string, pin: config.pin as string }, deps.now()))],
+      ['Set-Cookie', deviceCookie('', 0)],
+    ];
+    if (!config.enabled) return jsonResponse({ enabled: false }, cookies);
+    const r = await remaining(deps);
+    return jsonResponse({ enabled: true, remainingDay: r.day, remainingMonth: r.month, counter: counter.kind }, cookies);
+  } catch {
+    return errorResponse('service_error');
+  }
+}
+
+/** DELETE: "Bu cihazı unut" — çerezi siler */
+export async function handleAiForget(req: Request): Promise<Response> {
+  if (crossSite(req)) return errorResponse('forbidden');
+  const headers = new Headers({ 'Cache-Control': 'no-store' });
+  for (const [k, v] of CLEAR_COOKIES) headers.append(k, v);
+  return new Response(null, { status: 204, headers });
 }
 
 /** Vertex yanıtındaki ilk görsel parçası */
@@ -207,45 +383,153 @@ function isAbort(err: unknown): boolean {
 }
 
 /** POST: tek görsel, tek görev */
-export async function handleAiPost(req: Request, deps: AiDeps): Promise<Response> {
-  const started = deps.now();
-  const g = await gate(req, deps);
-  if (!g.ok) return g.response;
-
-  const taskRaw = req.headers.get(AI_HEADER_TASK);
-  if (!isAiTask(taskRaw)) return errorResponse('bad_task');
-  const task: AiTask = taskRaw;
-
+/** Reads and checks the posted JPEG (size, format) */
+async function readJpeg(req: Request): Promise<{ input: Buffer; width: number; height: number } | Response> {
   const declared = Number(req.headers.get('content-length') ?? 0);
   if (declared > AI_MAX_INPUT_BYTES) return errorResponse('too_large');
   const input = Buffer.from(await req.arrayBuffer());
   if (input.length > AI_MAX_INPUT_BYTES) return errorResponse('too_large');
   if (input.length === 0) return errorResponse('bad_image');
-
-  let width = 0;
-  let height = 0;
   try {
     const meta = await sharp(input).metadata();
     if (meta.format !== 'jpeg' || !meta.width || !meta.height) return errorResponse('bad_image');
-    width = meta.width;
-    height = meta.height;
+    return { input, width: meta.width, height: meta.height };
   } catch {
     return errorResponse('bad_image');
   }
+}
 
-  // Kota: model çağrısından önce sayılır, başarısızlıkta geri alınmaz (Google yine ücretlendirebilir)
+/** Atomic quota reservation before the model call (not given back if the model fails: Google may still bill) */
+async function reserveQuota(deps: AiDeps): Promise<Record<string, string> | Response> {
   const nowDate = new Date(deps.now());
-  const left = await remaining(deps);
-  if (left.day <= 0) return errorResponse('quota_day');
-  if (left.month <= 0) return errorResponse('quota_month');
-  await Promise.all([
-    deps.counter.incr(quotaKeys.day(nowDate), DAY_TTL_S),
-    deps.counter.incr(quotaKeys.month(nowDate), MONTH_TTL_S),
-  ]);
-  const quotaHeaders = {
-    [AI_HEADER_REMAINING_DAY]: String(left.day - 1),
-    [AI_HEADER_REMAINING_MONTH]: String(left.month - 1),
-  };
+  const dayKey = quotaKeys.day(nowDate);
+  const monthKey = quotaKeys.month(nowDate);
+  try {
+    const [usedDay, usedMonth] = await Promise.all([deps.counter.incr(dayKey, DAY_TTL_S), deps.counter.incr(monthKey, MONTH_TTL_S)]);
+    if (usedDay > deps.config.dailyLimit || usedMonth > deps.config.monthlyLimit) {
+      await Promise.all([deps.counter.decr(dayKey), deps.counter.decr(monthKey)]);
+      return errorResponse(usedDay > deps.config.dailyLimit ? 'quota_day' : 'quota_month');
+    }
+    return {
+      [AI_HEADER_REMAINING_DAY]: String(deps.config.dailyLimit - usedDay),
+      [AI_HEADER_REMAINING_MONTH]: String(deps.config.monthlyLimit - usedMonth),
+    };
+  } catch {
+    return errorResponse('service_error');
+  }
+}
+
+/** First text part of a Vertex generateContent answer */
+export function extractText(json: unknown): string | null {
+  const parts = (json as { candidates?: { content?: { parts?: { text?: unknown; thought?: unknown }[] } }[] })?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return null;
+  for (const p of parts) if (typeof p?.text === 'string' && !p.thought) return p.text;
+  return null;
+}
+
+/**
+ * AI Preset (task P, D28): the photo preview goes to a vision model that answers with a JSON plan only.
+ * Models are tried in order; 404 (unknown/retired id) costs nothing and moves to the next one.
+ * The plan is validated and clamped here and again in the browser. No pixels come back.
+ */
+async function handleAiPlan(req: Request, deps: AiDeps, started: number): Promise<Response> {
+  const style = req.headers.get(AI_HEADER_STYLE);
+  if (!isAiPlanStyle(style)) return errorResponse('bad_task');
+  const jpeg = await readJpeg(req);
+  if (jpeg instanceof Response) return jpeg;
+  const quota = await reserveQuota(deps);
+  if (quota instanceof Response) return quota;
+
+  const body = JSON.stringify(buildPlanBody(style, jpeg.input.toString('base64')));
+  const logBase = { task: AI_PLAN_TASK, style, inBytes: jpeg.input.length, inW: jpeg.width, inH: jpeg.height, costTry: AI_PLAN_COST_TRY };
+  const finish = (status: string, extra: Record<string, unknown> = {}) => deps.log({ ...logBase, status, ms: deps.now() - started, ...extra });
+
+  let attempts = 0;
+  let res: Response | null = null;
+  let model: string = AI_PLAN_MODELS[0];
+  for (let mi = 0; mi < AI_PLAN_MODELS.length; ) {
+    model = AI_PLAN_MODELS[mi];
+    attempts++;
+    const left = deps.budgetMs - (deps.now() - started);
+    if (left <= 0) {
+      finish('timeout', { model, attempts });
+      return errorResponse('timeout', quota);
+    }
+    const timeout = AbortSignal.timeout(left);
+    const signal = req.signal ? AbortSignal.any([req.signal, timeout]) : timeout;
+    try {
+      res = await deps.fetchFn(vertexEndpoint(model), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': deps.config.apiKey as string },
+        body,
+        signal,
+        cache: 'no-store',
+      });
+    } catch (err) {
+      if (req.signal?.aborted) {
+        finish('canceled', { model, attempts });
+        return errorResponse('canceled', quota);
+      }
+      finish(isAbort(err) ? 'timeout' : 'network', { model, attempts });
+      return errorResponse(isAbort(err) ? 'timeout' : 'network', quota);
+    }
+    if (res.status === 404) {
+      mi++;
+      continue;
+    }
+    const retryable = res.status === 429 || res.status === 503;
+    const remainingAfterWait = deps.budgetMs - (deps.now() - started) - AI_RETRY_WAIT_MS;
+    if (retryable && attempts === 1 && remainingAfterWait > AI_PLAN_EST_SECONDS * 1000) {
+      await deps.sleep(AI_RETRY_WAIT_MS);
+      continue;
+    }
+    break;
+  }
+
+  if (!res || !res.ok) {
+    const st = res?.status ?? 0;
+    finish(`vertex_${st}`, { model, attempts });
+    return errorResponse(st === 429 || st === 503 ? 'model_busy' : 'model_error', quota);
+  }
+
+  let text: string | null = null;
+  try {
+    text = extractText(await res.json());
+  } catch {
+    text = null;
+  }
+  let parsed: unknown = null;
+  try {
+    parsed = text && text.length <= AI_PLAN_MAX_TEXT ? JSON.parse(text) : null;
+  } catch {
+    parsed = null;
+  }
+  const v = validatePlan(parsed);
+  if (!v.ok) {
+    finish('bad_plan', { model, attempts, reason: v.reason, textBytes: text?.length ?? 0 });
+    return errorResponse('bad_plan', quota);
+  }
+  finish('ok', { model, attempts, regions: v.plan.regions.length, notes: v.notes.length });
+  return jsonResponse({ plan: v.plan, model }, Object.entries(quota));
+}
+
+export async function handleAiPost(req: Request, deps: AiDeps): Promise<Response> {
+  const started = deps.now();
+  const g = await deviceGate(req, deps);
+  if (!g.ok) return g.response;
+
+  const taskRaw = req.headers.get(AI_HEADER_TASK);
+  if (taskRaw === AI_PLAN_TASK) return handleAiPlan(req, deps, started);
+  if (!isAiTask(taskRaw)) return errorResponse('bad_task');
+  const task: AiTask = taskRaw;
+
+  const jpeg = await readJpeg(req);
+  if (jpeg instanceof Response) return jpeg;
+  const { input, width, height } = jpeg;
+
+  // Kota: model çağrısından önce atomik ayrılır, sınırı aşan ayırma geri alınır (reserveQuota)
+  const quotaHeaders = await reserveQuota(deps);
+  if (quotaHeaders instanceof Response) return quotaHeaders;
 
   const cfg = AI_TASKS[task];
   const model = aiModelId(task);

@@ -1,219 +1,144 @@
-# Curate Design System (CDS) v2.0.0
+# Curate Tasarım Sistemi (CDS) v3
 
-> **Tarih:** 2026-10-02 · **Konum:** `design/CURATE_DESIGN_SYSTEM.md`
-> **Otorite:** Curate arayüzünde tek tasarım otoritesi (AGENTS.md §1). Ürün kararlarını (özellik, öncelik) değiştirmez.
-> **Son doğrulama:** 2026-10-02 (mobil ölçümler bölüm 6'da).
+> **Tarih:** 2026-10-08 · **Son doğrulama:** 2026-10-08
+> **Dayanak:** `design/skills/apple-design/SKILL.md` §1–17 (ilkeler). Curate bu temelin üstünde küçük, gerekçeli sapmalarla kendi dilini kurar. §18 (Rosso) ve açık tema dosyaları (`DESIGN.md`, `theme.css`, `variables.css`, `tokens.json`) Curate'in değildir.
+> **Kaynak sırası:** renk ve yarıçap değerleri `app/globals.css` `:root` (tek kaynak) → `tailwind.config.ts` yalnız bağlar → `design/tokens.curate.json` kopyadır (`tests/color-tokens.test.ts` eşitliği denetler). Canvas/export içerik renkleri `lib/ui/colors.ts`.
+> **Denetim:** `tests/color-tokens.test.ts`, `tests/ui-rules.test.ts`, `scripts/audit-ui.mjs` (Prosedür 2).
 
-## 0. Kimlik ve Dayanaklar
+## 0. Kimlik
+Tek kişilik, mobil öncelikli (390×844) bir fotoğraf stüdyosu. **Fotoğraf tek kahramandır.** Arayüz OLED siyah zemin üstünde yükseltilmiş nötr yüzeyler ve tek vurgudan (iOS mavisi) oluşur. Kullanıcı fotoğrafçı değildir: arayüz sonucu ve eylemi söyler, motoru anlatmaz.
 
-Curate **tek kişilik, kişisel bir araçtır; birincil kullanım mobildir** (sahip kararı, 2026-10-02). Referans cihaz: 390×844 (Redmi Note 12 Pro 5G sınıfı, Chrome Android). Masaüstü ikincildir ve mobil düzenin genişlemiş hâlidir.
+İlkeler (apple-design §16'dan): saygı (arayüz görüntünün önüne geçmez), açıklık (tek ana eylem), derinlik (yükseltme ile hiyerarşi), tutarlılık (aynı kontrol aynı yerde), geri alınabilirlik (onay yalnız geri dönüşsüz eylemde).
 
-Kimlik: **OLED siyah zemin + nötr yüzeyler + tek vurgu: iOS mavisi** (Faz C, sahip kararı 2026-10-03; amber fotoğraflarla yarıştığı için kalktı). Apple'ın *kurallarını* (yay fiziği, anlık geri bildirim, tipografi, cam malzeme, sadelik) bu paleti koruyarak uyarlarız; Apple'ın *renklerini* almayız.
+### Apple'dan sapmalar (gerekçeli)
+| Sapma | Apple | Curate | Gerekçe |
+|---|---|---|---|
+| S1 Zemin | Koyu modda sistem zemini `#000`, gruplu içerikte `#1C1C1E` | Her ekranda `#000` | OLED, fotoğrafın en iyi göründüğü zemin; sahip kararı |
+| S2 Vurgu kullanımı | Mavi bağlantı ve kontrollerde serbest | Yalnız seçili öğe, kaydırıcı, ana eylem, odak halkası | Fotoğrafla yarışmasın; sahip kararı (D08) |
+| S3 Dolgu mavisi | `#0A84FF` dolgu | Dolgu `#0071E3` | Beyaz yazı `#0A84FF` üstünde 3,65:1, `#0071E3` üstünde 4,70:1 |
+| S4 Yazı tipi | SF Pro | iOS/macOS'ta SF, diğerlerinde self-host Inter | Sahibin telefonu Android, SF yok |
+| S5 En küçük yazı | 11 pt (Caption 2) | 12 px | Sahip kararı (Faz M1), telefonda okunurluk |
+| S6 Kart malzemesi | Gruplu liste, düz yüzey | Opak yüzey 1 + üstte %6 beyaz ışıltı + üst kenar ışık çizgisi | Siyah zeminde kartlar düz blok gibi görünüyordu (sahip gözlemi) |
 
-Bu dosyanın dayandığı gerçek dosyalar:
-
-| Dosya | Rol |
-|---|---|
-| `design/skills/apple-design/SKILL.md` **§1–17** | Davranış, hareket, malzeme, tipografi, ilkeler. Burada anılan her kural buradan gelir. |
-| `design/skills/animate/SKILL.md`, `RECIPES.md` | Yeni hareket yazarken karar sırası, easing/süre tabloları, hazır tarifler. |
-| `design/skills/improve-animations/` | Yalnız sahip isterse: hareket denetimi ve plan üretimi (kodu değiştirmez). |
-| `design/skills/redesign-existing-projects/SKILL.md` | Yalnız denetim merceği. Bölüm 10'daki istisnalara bakın. |
-| `design/tokens.curate.json` | Token referansı (koda import edilmez). Kod doğruluk kaynağı: `tailwind.config.ts`, `app/globals.css`. |
-
-**Curate'e ait OLMAYANLAR:** `apple-design/SKILL.md` §18 (Rosso marka bölümü: mor vurgu, "Rosso projesi"), `apple-design/DESIGN.md`, `theme.css`, `variables.css`, `tokens.json` (açık tema, Frost/Carbon paleti, 980px hap buton). Curate'in mavisi bu dosyalardan değil, Apple koyu sistem mavisinden (`#0A84FF`) gelir ve yalnız aşağıdaki tabloyla tanımlıdır. Bunlar Curate'e uygulanmaz. Yalnız şu fikirler alınır: tipografide boyuta bağlı tracking, gölge yerine ince kenar çizgisi, tek kromatik vurgu.
-
----
-
-## 1. Felsefe (apple-design §16'dan Curate'e)
-
-1. **Fotoğraf tek kahramandır** (Deference). Arayüz görüntünün önüne geçmez, onu kapatmaz.
-2. **Sadelik ≠ minimalizm.** Varsayılan akışta yalnız preset seçimi görünür; ince ayar ve araçlar bir seviye aşağıda (progressive disclosure). Zorunlu slider yoktur (spec §3.1).
-3. **Kullanıcı hâkimiyeti.** Her işlem geri alınabilir veya zararsızdır; onay penceresi yalnız geri döndürülemez eylemde (örn. "Seriyi temizle").
-4. **Tutarlılık.** Aynı görünen kontrol aynı yerde, aynı davranışla durur.
-5. **Zanaat.** Hiçbir değer rastgele değildir; her boşluk/süre/yarıçap token'dan gelir.
-
----
-
-## 2. Renk (Faz C) — DEĞİŞMEZ
-
-**Tek kaynak: `app/globals.css` `:root` değişkenleri** ("R G B" kanalı, Tailwind `rgb(var(--x) / <alpha-value>)` ile bağlanır; `tailwind.config.ts`'te değer yok). Canvas/export içeriği renkleri (arayüz paleti değil) `lib/ui/colors.ts`'te. `tests/color-tokens.test.ts` paleti, kontrast eşiklerini ve "başka yerde sabit renk yok" kuralını denetler.
-
+## 1. Renk (değişmez; sahip kararı D08)
 | Rol | Değişken | Tailwind | Değer |
 |---|---|---|---|
 | Zemin | `--base` | `bg-base` | `#000000` |
-| Yüzey 1 (kart, panel, sheet) | `--surface-1` | `bg-surface` | `#1C1C1E` |
+| Yüzey 1 (kart, panel, sayfa) | `--surface-1` | `bg-surface` | `#1C1C1E` |
 | Yüzey 2 (çip, giriş, ikincil düğme) | `--surface-2` | `bg-surface-2` | `#2C2C2E` |
 | Ayırıcı (tek ince çizgi) | `--separator` | `border-separator` | `#38383A` |
 | Yazı 1 / 2 / 3 | `--ink-1/2/3` | `text-ink-1/2/3` | `#FFFFFF` / `#AEAEB2` / `#8E8E93` |
-| Vurgu (çizgi, kaydırıcı, ikon, odak, koyu zeminde yazı) | `--accent` | `text-accent`, `border-accent`, `accent-accent` | `#0A84FF` |
-| Vurgu dolgusu (düğme/seçili segment zemini) | `--accent-fill` | `bg-accent-fill` | `#0071E3` (sahip onayı 2026-10-03) |
+| Vurgu (çizgi, ikon, kaydırıcı, odak, koyu zeminde yazı) | `--accent` | `text-accent` | `#0A84FF` |
+| Vurgu dolgusu (ana düğme, seçili segment) | `--accent-fill` | `bg-accent-fill` | `#0071E3` |
 | Vurgu üstü yazı | `--on-accent` | `text-on-accent` | `#FFFFFF` |
-| Hata / silme | `--danger` | `text-danger`, `bg-danger/10` | `#FF453A` |
+| Hata / silme | `--danger` | `text-danger` | `#FF453A` |
 | Başarı | `--success` | `text-success` | `#30D158` |
 | Devre dışı | `--disabled-surface`, `--disabled-ink` | `bg-disabled`, `text-disabled-ink` | `#2C2C2E`, `#636366` |
 
-**Vurgu yalnız:** seçili öğe (preset çipi, sekme/segment, seçili kare), kaydırıcı dolgusu, ana eylem (Export, Kullan, İndir, Devam), odak halkası (2 px). Başka hiçbir yerde: simge, başlık, uyarı metni, rozet zemini, kart üzerine gelme rengi vurgu almaz.
+Kurallar: fotoğraf üstündeki her şey renksiz (beyaz/siyah + alfa; kırp çerçevesi, tutamaklar, Story bantları, platform katmanları). Yeşil yalnız başarı, kırmızı yalnız hata/silme; platform renkleri (TikTok kırmızısı vb.) yok. Kodda hex/rgb sabiti yok.
 
-Kurallar:
-- **Yeşil yalnız başarı, kırmızı yalnız hata/silme.** Platform seçimi ve Instagram/TikTok etiketleri nötr gri/beyaz veya vurgu ile gösterilir; TikTok kırmızısı ve durum olarak yeşil yoktur.
-- **Fotoğrafın üstüne binen her şey renksiz:** kırp çerçevesi ve tutamaklar beyaz, üçler çizgileri beyaz %30, Story güvenli alan bantları ve seçili hücre halkası beyaz/siyah ve yarı saydam, Instagram/TikTok katmanları beyaz/siyah. Bunlar Tailwind `white`/`black` (+ alfa) olarak kalır; kromatik palet sınıfı (amber, rose, zinc vb.) ve hex/rgb sabiti yoktur.
-- **Rozetler** ("Büyütülmüş", "AI sonucu"): nötr gri zemin; küçük simge rozetinde simge mavi.
-- **Durumlar:** basma = vurgu dolgusunda %80 opaklık, yüzeyde bir kademe açık (yüzey 2 → ayırıcı tonu, yüzey 1 → yüzey 2) ve `scale(0.97)`; odak = 2 px vurgu halkası (`:focus-visible`); devre dışı = yüzey `#2C2C2E` + yazı `#636366` (`button:disabled`, opaklık düşürme yok).
-- Apple "ışık yakalayan 1px kenar" kuralı: cam yüzeylerde `inset 0 1px 0` beyaz %12 (`--ink-1` ile).
-- Gölge yerine kenar çizgisi ve yüzey tonu tercih edilir (derinlik hiyerarşisi). `color-scheme: dark` yerel denetimleri (kaydırıcı izi) koyu çizer.
-
-**Kontrast (WCAG 2.1, ölçüm 2026-10-03; normal yazı ≥ 4,5:1, büyük yazı ve bileşen ≥ 3:1):**
-
-| Ön plan | Zemin | Oran | Sonuç |
-|---|---|---|---|
-| Yazı 1 `#FFFFFF` | zemin / yüzey 1 / yüzey 2 | 21,00 / 17,01 / 13,94 | geçer |
-| Yazı 2 `#AEAEB2` | zemin / yüzey 1 / yüzey 2 | 9,50 / 7,69 / 6,30 | geçer |
-| Yazı 3 `#8E8E93` | zemin / yüzey 1 / yüzey 2 | 6,44 / 5,22 / **4,27** | yüzey 2 üstünde 4,5 altı: yazı 3 yalnız zemin ve yüzey 1 üstünde kullanılır |
-| Vurgu `#0A84FF` | zemin / yüzey 1 / yüzey 2 | 5,76 / 4,66 / **3,82** | zemin ve yüzey 1 üstünde yazı olur; yüzey 2 üstünde yalnız çizgi, ikon, kaydırıcı (≥ 3) |
-| Beyaz yazı | vurgu dolgusu `#0A84FF` | **3,65** | normal yazı için 4,5 altı |
-| Beyaz yazı | vurgu dolgusu `#0071E3` | 4,70 | geçer |
-| Hata `#FF453A` | zemin / yüzey 1 | 6,16 / 4,99 | geçer |
-| Başarı `#30D158` | zemin / yüzey 1 | 10,39 / 8,42 | geçer |
-| Devre dışı `#636366` | yüzey 2 | 2,33 | devre dışı öğeler WCAG'de muaf |
-| Ayırıcı `#38383A` | zemin / yüzey 1 | 1,79 / 1,45 | süs çizgisi; çip/düğme kenarı 3:1'in altında, kontrolü etiketi ve dolgusu tanıtır |
-
-Canlı denetim: `node scripts/audit-ui.mjs` ekranlardaki her metni hesaplanmış renk ve arka planla ölçer (42 ekran, en düşük oran 4,70).
-
----
-
-## 3. Tipografi (apple-design §15)
-
-- Aile: `-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, sans-serif`. Android'de fiilen `system-ui`/Inter çözülür; özel font eklenmez.
-- Monospace yalnız sayısal veride (`tabular-nums`: yüzde, boyut, sıra numarası). Etiket ve başlıkta kullanılmaz.
-- **Tracking boyuta bağlıdır, tek değer yok:**
-
-| Rol | Boyut | Ağırlık | Tracking | Satır yüksekliği |
-|---|---|---|---|---|
-| Display | 24–32px | 600 | `-0.03em` | 1.1 |
-| Title | 16–18px | 500–600 | `-0.02em` | 1.25 |
-| Body / etiket | 13–15px | 400–500 | `-0.01em` | 1.4 |
-| Caption | **12px** | 500 | `+0.01em` | 1.3 |
-
-- **Alt sınır 12px** (sahip kararı, Faz M1). Okunması gereken hiçbir metin 12px'in altına inmez (rozet numaraları, kart adları, mockup katmanları dâhil). Cam yüzey üstünde metin `text-secondary` değil `text-primary` ve en az 500 ağırlık (apple-design §12 "vibrancy").
-- Boşluklar `rem`/`em` veya 4px ızgarasında (4, 8, 12, 16, 20, 24, 40).
-
----
-
-## 4. Yarıçap
-
-`radius-sm` 8 · `radius-md` 12 · `radius-lg` 18 · `radius-sheet` 28 · `radius-full` 9999 (hap/durum). İç yarıçap = dış yarıçap − dolgu.
-
----
-
-## 5. Malzeme: Liquid Glass (apple-design §12)
-
-- Dolgu yüzey 1 %72 (`--surface-1`), `backdrop-filter: blur(20px)`, 1px ayırıcı kenar, üstte rim light.
-- **Ekranda aynı anda en çok 3 cam yüzey.** Cam üstüne cam konmaz (okunabilirlik çöker). Sayım mobil düzenleme modunda yapılır: header + panel + filmstrip = 3; fotoğraf üstündeki küçük kontroller (Fit/Fill) cam değil, düz `bg-black/60` + kenar kullanır.
-- Büyük yüzey daha kalın okunur (daha güçlü blur + daha derin kenar); küçük çip daha hafif.
-- Fotoğraf sahnesi (stage) cam altında **bulanıklaştırılmaz**; cam yalnız kromun kendisindedir.
-- Erişilebilirlik (apple-design §14):
-  - `@media (prefers-reduced-transparency: reduce)` → cam yüzey opak yüzey 1 (`--surface-1`), blur yok.
-  - `@media (prefers-contrast: more)` → opak yüzey + yazı 2 renginde kenar.
-
----
-
-## 6. Mobil Yerleşim Sözleşmesi (KRİTİK)
-
-> **DEĞİŞMEZ KURAL: Fotoğraf hiçbir zaman header'ın, düzenleme panelinin ya da filmstrip'in altında/arkasında kalmaz.**
-> Ölçülebilir hâli: `stage.top ≥ header.bottom` ve `stage.bottom ≤ bottomStack.top` (piksel olarak, her durumda).
-
-### 6.1 Yapı: örtüşme yok, akış var
-
-Üç bölgeli dikey **flex sütunu** kurulur; hiçbir bölge `position:absolute` ile görselin üstüne bindirilmez:
-
-```
-┌──────────────┐ header      (sabit yükseklik, tek satır)
-│              │
-│    STAGE     │ flex: 1 1 0; min-height: 0   ← görsel yalnız burada, kalan alana sığar
-│              │
-├──────────────┤ bottomStack (filmstrip + panel; yüksekliği sınırlı)
-└──────────────┘
-```
-
-- Kök yükseklik `100dvh` (asla `100vh`: Android Chrome adres çubuğu `vh`'yi şişirir, alt bölge ekran dışına taşar).
-- Görsel, stage içinde **CSS ile** sığdırılır (`aspect-ratio: 4/5; max-width:100%; max-height:100%`). `scale(0.88)`, `-translate-y-2` ve sabit `padding-bottom: …+280px` gibi **tahminî telafi hileleri yasaktır**; düzen gerçek yüksekliği kendisi paylaşır.
-- Stage'in alt/üst boşluğu panelin gerçek ölçüsünden gelir, sabit sayıdan değil.
-
-### 6.2 Bütçe (390×844 referansı)
-
-| Bölge | Kural |
-|---|---|
-| Header | Tek satır, **en çok 56px** + `safe-area-inset-top`. Satır kırmaz. Başlık alt yazısı (`1080 × 1350 px`) 640px altında gizlenir. İkincil kontroller (IG/TikTok önizleme, Temizle) taşma/overflow menüsüne gider. İçerik 390px'e sığmalıdır (yatay taşma 0). |
-| Bottom stack (panel açık) | **En çok `40dvh`** (844'te ≈ 338px), filmstrip dâhil. İçerik bu sınırda **kendi içinde kaydırılır** (`overflow-y:auto; overscroll-behavior:contain`). Panel yüksekliği içeriğe göre büyümez. |
-| Stage (panel açık) | **En az `34dvh`** (844'te ≈ 287px) yükseklik garantisi. Sınır sağlanamıyorsa panel küçülür, stage değil. |
-| Panel kapalı | Yalnız filmstrip (≤ 96px). Stage kalan her şeyi alır. |
-
-### 6.3 Panel içeriği (mobil)
-
-- **Preset seçici: tek satır, yatay kaydırmalı kartlar** (snap, kart ≈ 112×72). Dikey 2 sütunlu ızgara mobilde kullanılmaz (7 kart 4 satır = ≈270px harcar).
-- Yoğunluk slider'ı, preset seçildiğinde preset satırının hemen altında görünür (katmanlı ifşa; zorunlu değil).
-- İkincil araçlar (`.cube` LUT, Hero Harmonize) varsayılan olarak **kapalı bir "Araçlar" satırının** altındadır.
-- İsteğe bağlı iki durak (detent): *peek* (preset satırı) ve *açık* (≤ 40dvh). Geçiş yay fiziğiyle (bölüm 7); sürükleme tutamağı varsa bırakma hızı yaya aktarılır (apple-design §5–6).
-- Filmstrip düzenleme modunda küçülmez/gizlenmez ama bottom stack bütçesine dâhildir.
-
-### 6.4 Dokunma, güvenli alan, hover
-
-- Her etkileşimli öğe **en az 44×44px** dokunma alanı (görsel ikon küçük olabilir; hit-area 44px). Alt sınır istisnası yoktur: kapatma, önizleme geçişi, Fit/Fill, araç düğmeleri dâhil.
-- Güvenli alan: `env(safe-area-inset-*, 0px)` (yedek değer 0; `34px` yedeği yanlış boşluk üretir). Sayfa `viewport-fit=cover` ile açılır.
-- `:hover` yalnız `@media (hover: hover) and (pointer: fine)` içinde; dokunmatikte `:active` ile `scale(0.97)`.
-- Filmstrip sıralaması Pointer Events ile (`components/studio/Filmstrip.tsx`): dokunmatikte 350ms basılı tut → sürükle (1:1 takip, `setPointerCapture`), fare ile 6px hareket. Basılı tutma dolmadan hareket yatay kaydırmadır. Gerçek telefonda doğrulanmadı.
-
-### 6.5 Doğrulama (her UI değişikliğinde)
-
-390×844, 360×740, 430×932 ve yatay 844×390'da, düzenleme paneli açık ve preset seçili hâlde: (a) stage ile header/bottom stack kesişmez, (b) `document.documentElement.scrollWidth ≤ innerWidth`, (c) 44px altı etkileşimli öğe yok, (d) 12px altı metin yok, (e) en çok 3 görünür cam yüzey. Tarayıcı yoksa bu maddeler "doğrulanmadı" olarak işaretlenir. Betik: `docs/procedures.md` Prosedür 2.
-
----
-
-## 7. Hareket (apple-design §1–11, 14; animate skill)
-
-Önce `animate/SKILL.md` Adım 1: sıklık kapısı. Preset değiştirme, araç seçimi, klavye/hızlı eylem: **animasyon yok** (anlık). Yalnız sheet, menü ve rastlantısal geçişler hareket eder.
-
-1. **Anlık geri bildirim:** basma anında (`pointerdown`/`:active`) `scale(0.97)`, 100–160ms. Bırakmayı beklemez.
-2. **Yay > süre.** Dokunulan/sürüklenen her şey yay kullanır. Varsayılan: sönüm `1.0`, tepki `0.3–0.4s` (sıçrama yok). Sıçrama (`≈0.8`) yalnız hareketle (fırlatma) gelen etkileşimlerde (sheet bırakma). Elde yay kütüphanesi yoksa CSS karşılığı: `cubic-bezier(0.32,0.72,0,1)` (sheet, ≤ 380ms) ve `cubic-bezier(0.23,1,0.32,1)` (diğer UI, ≤ 250ms). `ease-in`, `scale(0)`, `transition: all` yasak.
-3. **Yalnız `transform` ve `opacity`.** `width/height/top/left/padding` animasyonu yok. Sheet açılışı `translateY`, düzen değişimi (stage küçülmesi) gerekiyorsa tek geçişte ve süre ≤ 300ms.
-4. **Kesintiye uğrayabilirlik:** hiçbir geçiş girişi kilitlemez; yeni hedef mevcut değerden başlar (yay) — hızlı tetiklenenlerde keyframe değil transition.
-5. **Simetri:** sheet geldiği yoldan gider (aşağıdan gelen aşağı kapanır). Menü/popover tetikleyiciden açılır (`transform-origin` = tetikleyici).
-6. **Bozulmayan kare:** canlı önizleme sürüklemesi (slider) sırasında arayüz her karede 1:1 yanıt verir; ağır işlem giriş yolunu bloke etmez (bkz. bölüm 8).
-7. **Azaltılmış hareket:** `prefers-reduced-motion: reduce` → kaydırma/yay yerine ≤ 200ms opacity geçişi; sıçrama kaldırılır.
-8. Yeni hareket kütüphanesi (örn. `motion`) bağımlılık olarak yalnız sahip onayıyla eklenir (AGENTS.md §3); önce CSS/WAAPI.
-
----
-
-## 8. Performans, tasarımın parçasıdır
-
-- **Canlı önizleme ve export aynı çizim fonksiyonunu, aynı parametre şemasıyla** çağırır; önizleme yalnız ölçek farkıyla (hedef 1080×1350 veya `devicePixelRatio`'ya uygun daha küçük) çalışır. Önizleme tam çözünürlüklü orijinali işlemez.
-- Slider sürüklemesi `requestAnimationFrame` ile birleştirilir (kare başına en çok bir yeniden çizim); önceki çizim bitmeden yenisi kuyruğa girmez.
-- Ana thread'de kare başına bütçe ≈ 8–12ms. Daha ağır piksel işi worker/GPU'ya gider. Seçenekler ve öneri: `docs/reports/2026-10-02-audit.md` §2.
-
----
-
-## 9. Uygulama Eşlemesi
-
-| Tasarım | Tailwind | CSS değişkeni / sınıf |
+### Kontrast (WCAG 2.1; yazı ≥ 4,5, büyük yazı ve bileşen ≥ 3; ölçüm 2026-10-08)
+| Ön plan | Zemin / yüzey 1 / yüzey 2 / kart üstü `#2A2A2C` / çip `#2E2E30` | Kullanım |
 |---|---|---|
-| Zemin | `bg-base` | `--base` |
-| Panel, sheet | `bg-surface` | `--surface-1` |
-| Çip, giriş, ikincil düğme | `bg-surface-2` | `--surface-2` |
-| Ayırıcı | `border-separator` | `--separator` |
-| Vurgu | `text-accent`, `border-accent`, `bg-accent-fill` | `--accent`, `--accent-fill` |
-| Cam | `glass-panel` | `.glass-panel` |
-| Dokunma hedefi | `touch-target` | `.touch-target` |
-| Stüdyo kökü (100dvh, flex sütun) | — | `.studio-root` |
-| Sahne alanı (cq birimleriyle sığdırma) | `w-[min(100cqw,calc(100cqh*4/5))]` | `.stage-fit` (`container-type: size`) |
-| Basma geri bildirimi | — | `.press` (`scale(0.97)`, 120ms) |
-| Panel girişi | — | `.animate-panel-in` (220ms, transform + opacity) |
-| Ortak iskelet | — | `components/studio/StudioShell.tsx`; ölçüm işaretleri `[data-stage]`, `[data-bottom-stack]` |
+| Yazı 1 `#FFF` | 21,00 / 17,01 / 13,94 / 14,32 / 13,55 | her yerde |
+| Yazı 2 `#AEAEB2` | 9,50 / 7,69 / 6,30 / 6,48 / 6,13 | her yerde |
+| Yazı 3 `#8E8E93` | 6,44 / 5,22 / **4,27** / **4,39** / **4,16** | yalnız zemin ve düz yüzey 1 üstünde; kartta, çipte, yüzey 2'de yazı 3 yok |
+| Vurgu `#0A84FF` | 5,76 / 4,66 / 3,82 / 3,93 / 3,72 | yazı olarak yalnız zemin ve yüzey 1; diğerlerinde yalnız ikon/çizgi |
+| Beyaz / vurgu dolgusu `#0071E3` | 4,70 | ana düğme |
+| Hata / başarı | zemin 6,16 / 10,39 · yüzey 1 4,99 / 8,42 | |
+| Ayırıcı / zemin | 1,79 | süs çizgisi; kontrolü çizgi değil dolgu ve etiket tanıtır |
 
-## 10. Kullanılan Skill'lerdeki İstisnalar
+## 2. Tipografi (apple-design §15)
+- **Yığın:** `-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", var(--font-inter), system-ui, sans-serif`. Apple cihazlarda SF, Android ve masaüstünde **Inter** (değişken, latin + latin-ext: ğ ş ı İ), `next/font/google` ile build sırasında indirilir ve aynı alan adından sunulur: çalışma anında dış istek yok (S4).
+- **Ölçek** (`tailwind.config.ts` `fontSize`):
 
-- `redesign-existing-projects` "saf `#000000` yerine kırık siyah" ve "Inter kullanma" der. **Curate için geçersizdir:** OLED siyah ve sistem/Inter yığını bilinçli kimliktir. Geçerli kalan: `100vh` yerine `100dvh`, sayı için `tabular-nums`, tek vurgu rengi, tutarlı gri ailesi.
-- `animate` skill'i `review-animations`, `find-animation-opportunities`, `pick-ui-library` adlı skill'lere atıf yapar; **bunlar repoda yoktur.** Atıf görülürse yok sayılır; bileşen ihtiyacı için yeni paket eklemeden önce sahip onayı alınır.
+| Sınıf | Boyut | Ağırlık | Harf aralığı | Satır | Kullanım |
+|---|---|---|---|---|---|
+| `text-display` | 28 px | 600 | −0,02em | 1,15 | Sayfa başlığı (ana sayfa) |
+| `text-title` | 20 px | 600 | −0,02em | 1,2 | Kart başlığı, sayfa başlığı |
+| `text-headline` | 17 px | 600 | −0,01em | 1,3 | Modül başlığı, bölüm başlığı |
+| `text-body` | 15 px | 400 | −0,005em | 1,45 | Gövde, düğme metni |
+| `text-subhead` | 14 px | 500 | 0 | 1,4 | Kart alt başlığı, liste |
+| `text-footnote` | 13 px | 400 | 0 | 1,4 | Yardımcı metin |
+| `text-caption` | 12 px | 500 | +0,01em | 1,35 | Rozet, etiket, not |
 
-## 11. Kalibrasyon Seti
+- Alt sınır **12 px**; gövde satır yüksekliği 1,4–1,5; büyük başlıkta negatif harf aralığı. Hiyerarşi boyut + ağırlık + satır birlikte.
+- **Monospace arayüzde yok.** Sayılar `num-metric` (`tabular-nums`) ile hizalanır, yazı tipi değişmez. İstisna: fotoğrafın parçası olan analog tarih damgası (export içeriği, arayüz değil).
+- Cam yüzey üstünde yazı en az 500 ağırlık ve yazı 1 (vibrancy, §12).
 
-Test fotoğrafları `public/reference-images/` altındadır (eski `design/reference-images/` yolu yoktur). Parlak sahne (`gun-batimi-gunese-dokunan-eleman`, `gol-evi`) üstünde cam/kontrol okunabilirliği; koyu sahne (`ic-mekan-bar`, `sehir-isiklari-otoyol`) üstünde mavi vurgu ve fotoğraf üstü beyaz katmanlar; mimari/portre (`tabela`, `kovboy`) üstünde çerçeve şeffaflığı bu karelerle denenir. Bu bölümdeki okunabilirlik iddiaları 2026-10-02'de yeniden ölçülmedi.
+## 3. Boşluk ve yarıçap
+- 4 px ızgarası: 4, 8, 12, 16, 20, 24, 32, 40.
+- Yarıçap: `rounded-sm` 8 · `rounded-md` 12 · `rounded-lg` 18 · `rounded-sheet` 28 · `rounded-full` (hap). İç yarıçap = dış − dolgu. Kart 20 (`rounded-[20px]`), düğme 12, çip ve rozet hap.
+
+## 4. Malzeme ve derinlik (apple-design §12)
+Üç kademe: **zemin `#000` → yüzey 1 `#1C1C1E` → yüzey 2 `#2C2C2E`**. Gölge yerine ton ve ışık çizgisi.
+
+| Sınıf | Ne | Tanım |
+|---|---|---|
+| `.material-card` | Kart (opak) | yüzey 1 + `linear-gradient(beyaz %6 → %2 → 0)` ışıltı + 1 px ayırıcı kenar + üst kenarda `inset 0 1px 0` beyaz %12 ışık çizgisi |
+| `.material-chip` | Rozet, etiket (opak) | beyaz %8 dolgu + beyaz %10 kenar, hap |
+| `.glass-panel` | Cam: header, alt panel, alt çubuk | yüzey 1 %72 + `blur(20px)` + ayırıcı kenar + üst ışık çizgisi |
+
+- **Ekranda en çok 3 cam (bulanık/yarı saydam) yüzey.** Opak kart ve çipler bu sayıya girmez. Cam üstüne cam konmaz. Fotoğraf sahnesi cam altında bulanıklaştırılmaz.
+- Modal sayfa: zemin karartma (siyah %70) + aşağıdan gelen sayfa (`rounded-sheet` üst köşeler).
+- `prefers-reduced-transparency: reduce` → cam opak yüzey 1, blur yok. `prefers-contrast: more` → opak yüzey + yazı 2 renginde kenar.
+
+## 5. Hareket (apple-design §1–11, §14; `animate` skill)
+- **Sıklık kapısı:** preset değiştirme, sekme, araç seçimi anlıktır (animasyon yok). Hareket yalnız sayfa/menü açılışı, modül geçişi ve basma geri bildiriminde.
+- **Basma:** `pointerdown` anında `scale(0.98)` (küçük düğmede `.press-sm` 0,96), 160 ms, `--ease-spring` `cubic-bezier(0.32, 0.72, 0, 1)`. Bırakmayı beklemez.
+- **Modül geçişi:** View Transitions API varsa paylaşılan öğe geçişi: ana sayfa kartının başlığı modül header başlığına dönüşür (`view-transition-name: module-title`), kök 220 ms çapraz geçiş. API yoksa anlık geçiş (zarif geri dönüş). `prefers-reduced-motion` → yalnız 160 ms opaklık.
+- **Sayfa (sheet):** aşağıdan `translateY`, 380 ms `--ease-drawer`; geldiği yoldan gider.
+- **Sürükleme/yakınlaştırma:** 1:1 doğrudan manipülasyon, sınırda lastik bant (rubber-band), bırakınca 240 ms `--ease-out` ile yerine.
+- Yalnız `transform` ve `opacity`; `transition: all`, `ease-in`, `scale(0)` yok. Yeni hareket kütüphanesi yok (CSS + Web Animations).
+
+## 6. Mobil yerleşim sözleşmesi (KRİTİK, değişmez)
+> **Fotoğraf hiçbir zaman header'ın, düzenleme panelinin ya da filmstrip'in altında kalmaz.** Ölçüt: `stage.top ≥ header.bottom` ve `stage.bottom ≤ bottomStack.top`.
+
+- Üç bölgeli dikey flex sütun: header (≤ 56 px + güvenli alan) / sahne (`flex: 1 1 0; min-height: 0`, panel açıkken ≥ 34dvh) / alt yığın (panel + çubuk, ≤ 40dvh, içerik kendi içinde kayar). Hiçbir bölge görselin üstüne `absolute` bindirilmez.
+- Kök `100dvh` (yalnız `100vh` yasak). Görsel sahnede CSS ile sığar (`.stage-fit`, `cq` birimleri). Tahminî telafi hileleri (`scale(0.88)`, sabit `padding-bottom`) yasak.
+- Header tek satır; 390 px'e sığar, yatay taşma 0. Panel kapalıyken yalnız filmstrip (≤ 96 px).
+- Preset seçici: tek satır yatay kaydırmalı kartlar. İkincil araçlar kapalı "Araçlar" satırında.
+- Dokunma hedefi ≥ 44×44 px (simge küçük olabilir, alan 44). Güvenli alan `env(safe-area-inset-*, 0px)`; sayfa `viewport-fit=cover`. `:hover` yalnız `(hover: hover) and (pointer: fine)`.
+- **Geniş ekran:** içerik ortalı ve sınırlı: ana sayfa `max-w-[1040px]`, modül kromu `min(42rem, 100% − 24px)`. Ana sayfa ızgarası 1 sütun (< 640), 2 sütun (≥ 640), 3 sütun (≥ 1024).
+- **Doğrulama (her UI değişikliğinde):** Prosedür 2, 360×740 / 390×844 / 430×932, panel açık: örtüşme yok, yatay kaydırma yok, 44 px altı hedef yok, 12 px altı yazı yok, ≤ 3 cam, kontrast eşikleri. Yatay 844×390 elle. Tarayıcı yoksa "doğrulanmadı".
+
+## 7. Bilgi yoğunluğu ve metin
+- Kart yüzünde **sonuç ve eylem**, motor değil. Yasak ifadeler (kart yüzü, başlık, rozet, düğme): Lanczos, konvolüsyon, convolution, EXIF, GPS, LUT, `.cube`, hero renk eşitleme yüzdesi, "Client-Side", "Sanitized", "Engine", proxy, piksel matematiği. Teknik ayrıntı yalnız "Gelişmiş" alanında veya bilgi balonunda. Liste `tests/ui-rules.test.ts`'te.
+- Altbilgi yok; yerine tek güven rozeti: **"Yerel ve gizli işleme"** (dokununca açıklama: fotoğraflar cihazda işlenir; tek istisna "AI ile onar").
+- Tüm arayüz metni Türkçe, sade, kısa; tek dosya `lib/i18n/tr.ts`. Kart alt başlığı en çok ~60 karakter.
+- Etiket/rozet: `.material-chip`, `text-caption`, yatay 10 px dolgu; boyut yerine ne yaptığını söyler ("Instagram · TikTok", "2–6 fotoğraf").
+
+## 8. Eylem odağı
+- Ana sayfada **tek** "Fotoğraf ekle" yolu: büyük bırakma yüzeyi (dokun = dosya seçici, sürükle = bırak). Üst çubukta ikinci bir "Fotoğraf Yükle" yok.
+- Bırakma yüzeyi form kutusu değil, davet eden yüzeydir: sürüklerken büyür (`scale(1.01)`), kenarı vurguya döner, metni "Bırak" olur.
+- Bir ekranda tek vurgu dolgulu düğme (ana eylem). Kart içinde mavi düğme başlığı ezmez.
+
+## 9. Bileşen envanteri
+Her bileşenin durumları: **normal / basılı / odak / devre dışı / yükleniyor**. Odak her yerde 2 px vurgu halkası (`:focus-visible`, 2 px boşluk). Devre dışı: yüzey `#2C2C2E` + yazı `#636366`, opaklık düşürme yok. Basılı: §5.
+
+| Bileşen | Tanım | Durumlar |
+|---|---|---|
+| Ana düğme | `bg-accent-fill text-on-accent`, h-11/12, `rounded-md`, `text-body` 600 | basılı: dolgu %80 + `press`; yükleniyor: etiket "Hazırlanıyor…", devre dışı |
+| İkincil düğme | `bg-surface-2 text-ink-1`, h-11 | basılı: ayırıcı tonu |
+| Yıkıcı düğme | `text-danger`, zemin `danger/10`; onay gerektirir | |
+| Çip / filtre | `.material-chip` veya `bg-surface-2`, seçili: `bg-accent-fill` | aria-pressed |
+| Segment | `role=radiogroup`/`tablist`, kap `bg-surface-2`, seçili dolgu vurgu | en çok 3–4 seçenek |
+| Kaydırıcı | yerel `input[type=range]`, `accent-accent`, h-11 dokunma, tek değer göstergesi, "Sıfırla" ve çift dokunma ile varsayılan | sürüklerken önizleme yarı çözünürlük |
+| Sekme çubuğu | 2–3 eşit sekme (segment görünümü) | |
+| Alt sayfa | `rounded-sheet` üst, zemin karartma, kapat düğmesi 44 px, iç kaydırma `overscroll-contain` | |
+| Kart | `.material-card`, `rounded-[20px]`, `p-4/5`; simge + başlık + alt başlık + rozet | basılı: `scale(0.98)`; hover (yalnız fare): kenar yazı 3 tonu |
+| Rozet | `.material-chip text-caption` | |
+| Bildirim (toast) | yüzey 1, ayırıcı kenar, üst ortada, 4 sn, `role=status` | |
+| Boş durum | simge (devre dışı tonu) + tek cümle + tek eylem | |
+| Hata durumu | `text-danger` cümle + çözüm eylemi; `role=alert` | |
+| İlerleme | ince çubuk (vurgu dolgusu) + "x/y" | |
+| Önce/sonra | basılı tut → orijinal; rozet "Orijinal" (siyah %70 zemin, beyaz yazı) | |
+
+## 10. Erişilebilirlik
+Kontrast tablosu §1; hedef 44 px; görünür odak halkası; `prefers-reduced-motion`, `prefers-reduced-transparency`, `prefers-contrast` desteklenir; simge düğmelerde `aria-label`; tüm metin Türkçe ve `lang="tr"`.
+
+## 11. Skill istisnaları
+`redesign-existing-projects` "saf siyah kullanma" ve "Inter kullanma" der: Curate'te saf siyah bilinçli kimliktir (S1); Inter yalnız SF'nin bulunmadığı cihazlarda yedek olarak (S4). `animate` ve `improve-animations` skill'lerindeki repoda olmayan skill atıfları sahip onayıyla silindi (2026-10-08).
+
+## 12. Kalibrasyon seti
+`public/reference-images/` (13 görsel). Parlak sahne (`gun-batimi-gunese-dokunan-eleman`, `gol-evi`) üstünde cam okunurluğu; koyu sahne (`ic-mekan-bar`, `sehir-isiklari-otoyol`) üstünde beyaz katmanlar; mimari/portre (`tabela`, `kovboy`) üstünde kırp çerçevesi.

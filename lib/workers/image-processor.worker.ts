@@ -9,13 +9,15 @@ import { applyPresetToImageData, CURATE_PRESETS } from '../engine/presets';
 import { extractColorMetrics, applyHarmonizeSync } from '../engine/harmonize';
 import { extractAdaptiveGradient } from '../engine/adaptive-gradient';
 import { ColorMetrics, PresetProfile } from '../core/types';
+import { applyCorrections, CorrectionParams } from '../engine/corrections';
 
 export type WorkerTaskType =
   | 'UPSCALE_LANCZOS'
   | 'APPLY_PRESET'
   | 'HARMONIZE_SYNC'
   | 'EXTRACT_METRICS'
-  | 'ADAPTIVE_GRADIENT';
+  | 'ADAPTIVE_GRADIENT'
+  | 'APPLY_CORRECTIONS';
 
 export interface WorkerTaskRequest {
   taskId: string;
@@ -26,6 +28,9 @@ export interface WorkerTaskRequest {
   presetIntensity?: number;
   refMetrics?: ColorMetrics;
   harmonizeStrength?: number;
+  corrections?: CorrectionParams;
+  /** export pixels per render pixel (Düzeltme radii) */
+  correctionScale?: number;
 }
 
 export interface WorkerTaskResponse {
@@ -55,10 +60,20 @@ if (typeof self !== 'undefined') {
       presetIntensity,
       refMetrics,
       harmonizeStrength,
+      corrections,
+      correctionScale,
     } = event.data;
 
     try {
       switch (type) {
+        case 'APPLY_CORRECTIONS': {
+          if (!imageData || !corrections) throw new Error('Missing imageData or corrections');
+          const result = applyCorrections(imageData, corrections, correctionScale ?? 1);
+          const response: WorkerTaskResponse = { taskId, success: true, type, resultImageData: result };
+          ctx.postMessage(response, [result.data.buffer]);
+          break;
+        }
+
         case 'UPSCALE_LANCZOS': {
           if (!imageData || !scaleFactor) throw new Error('Missing imageData or scaleFactor');
           const result = upscaleLanczos3(imageData, scaleFactor);

@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/lib/i18n/tr";
 import React, { useEffect, useState } from "react";
 import { Check, X, RefreshCw } from "lucide-react";
 import { REFERENCE_IMAGES, referenceImageUrl, fetchReferenceFiles } from "@/lib";
@@ -57,7 +58,7 @@ export function ReferencePicker({ open, onClose, onConfirm, maxSelect }: Referen
       onConfirm(files);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Referans görseller yüklenemedi.");
+      setError(err instanceof Error ? err.message : tr.reference.loadFailed);
       setBusy(false);
     }
   };
@@ -72,25 +73,25 @@ export function ReferencePicker({ open, onClose, onConfirm, maxSelect }: Referen
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Referans görsel seç"
+        aria-label={tr.reference.title}
         className="w-full max-w-lg max-h-[85dvh] flex flex-col rounded-t-[28px] sm:rounded-[28px] bg-surface border border-separator shadow-2xl pb-[var(--safe-area-bottom)]"
       >
         <div className="shrink-0 flex items-center justify-between gap-2 pl-5 pr-2 pt-2">
           <div className="flex flex-col py-2">
-            <span className="text-[15px] font-semibold text-ink-1">Referans Görsel Yükle</span>
+            <span className="text-[15px] font-semibold text-ink-1">{tr.common.loadReference}</span>
             <span className="text-xs text-ink-3">
               {maxSelect <= 0
-                ? "Bu modülde yer kalmadı."
+                ? tr.reference.noRoom
                 : single
-                  ? "Bir görsel seç."
-                  : `En çok ${maxSelect} görsel seçebilirsin.`}
+                  ? tr.reference.pickOne
+                  : tr.reference.pickMax(maxSelect)}
             </span>
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={busy}
-            aria-label="Kapat"
+            aria-label={tr.common.close}
             className="touch-target press rounded-full text-ink-2 hover:text-ink-1"
           >
             <X className="w-5 h-5" />
@@ -143,7 +144,7 @@ export function ReferencePicker({ open, onClose, onConfirm, maxSelect }: Referen
               disabled={busy}
               className="touch-target press h-11 px-4 rounded-xl bg-surface-2 text-sm text-ink-1"
             >
-              {maxSelect >= REFERENCE_IMAGES.length ? "Hepsi" : `İlk ${maxSelect}`}
+              {maxSelect >= REFERENCE_IMAGES.length ? tr.reference.all : tr.reference.firstN(maxSelect)}
             </button>
           )}
           <button
@@ -153,7 +154,7 @@ export function ReferencePicker({ open, onClose, onConfirm, maxSelect }: Referen
             className="touch-target press flex-1 h-11 rounded-xl bg-accent-fill text-on-accent text-sm font-semibold flex items-center justify-center gap-2"
           >
             {busy && <RefreshCw className="w-4 h-4 animate-spin" />}
-            <span>{busy ? "Yükleniyor" : `Ekle (${selected.length})`}</span>
+            <span>{busy ? tr.reference.loading : tr.reference.addN(selected.length)}</span>
           </button>
         </div>
       </div>

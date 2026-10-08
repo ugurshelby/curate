@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { requestAiRepair, fetchAiStatus } from '../lib/ai/client';
+import { requestAiRepair, fetchAiStatus, unlockAi, forgetAiDevice, clearLegacyAiPassword } from '../lib/ai/client';
 import { findSuspectRegion, diffSize, DIFF_BLOCK } from '../lib/ai/diff-check';
 import { studioStore, acceptAiResult, AI_EVICT_CONFIRM } from '../lib/core/state-machine';
 import { registerUrl } from '../lib/engine/proxy';
 import { StudioItem } from '../lib/core/types';
 
 describe('AI client requests', () => {
-  it('sends task, URI-encoded password and the JPEG; returns the image blob and remaining quota', async () => {
+  it('sends task and the JPEG with the device cookie (no password header); returns the image blob and remaining quota', async () => {
     const f = vi.fn(
       async () =>
         new Response(new Uint8Array([1, 2, 3]), {
@@ -14,7 +14,7 @@ describe('AI client requests', () => {
           headers: { 'Content-Type': 'image/jpeg', 'x-curate-remaining-day': '19', 'x-curate-remaining-month': '149' },
         }),
     );
-    const r = await requestAiRepair('B', new Blob([new Uint8Array([9])], { type: 'image/jpeg' }), 'Ğüş', undefined, f as unknown as typeof fetch);
+    const r = await requestAiRepair('B', new Blob([new Uint8Array([9])], { type: 'image/jpeg' }), undefined, f as unknown as typeof fetch);
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.blob.size).toBe(3);
@@ -25,26 +25,31 @@ describe('AI client requests', () => {
     expect(url).toBe('/api/ai');
     const h = init.headers as Record<string, string>;
     expect(h['x-curate-task']).toBe('B');
-    expect(h['x-curate-password']).toBe(encodeURIComponent('Ğüş'));
-    expect(h['x-curate-password']).toMatch(/^[\x20-\x7e]+$/);
+    expect(Object.keys(h).some((k) => /password|pin/i.test(k))).toBe(false);
+    expect(init.credentials).toBe('same-origin');
   });
 
   it('maps server errors to plain Turkish messages', async () => {
     const json = (status: number, error: string) =>
       vi.fn(async () => new Response(JSON.stringify({ error, message: 'x' }), { status }));
     const cases: [number, string, string][] = [
-      [401, 'wrong_password', 'Şifre yanlış.'],
+      [401, 'wrong_pin', 'PIN yanlış.'],
+      [401, 'pin_required', 'Bu cihazı eşlemek için PIN’ini gir.'],
+      [503, 'service_error', 'Sunucu sayacına ulaşılamadı. Biraz sonra tekrar dene.'],
       [429, 'quota_day', 'Bugünkü AI hakkı doldu.'],
       [504, 'timeout', 'Süre aşıldı. Tekrar dene.'],
       [502, 'no_image', 'Model görsel döndürmedi.'],
     ];
     for (const [status, code, message] of cases) {
-      const r = await requestAiRepair('B', new Blob(['x']), 'p', undefined, json(status, code) as unknown as typeof fetch);
+      const r = await requestAiRepair('B', new Blob(['x']), undefined, json(status, code) as unknown as typeof fetch);
       expect(r).toEqual({ ok: false, code, message });
     }
     // Vercel'in kendi zaman aşımı sayfası (JSON değil)
     const html = vi.fn(async () => new Response('<html>timeout</html>', { status: 504 }));
-    expect(await requestAiRepair('B', new Blob(['x']), 'p', undefined, html as unknown as typeof fetch)).toMatchObject({ code: 'timeout' });
+    expect(await requestAiRepair('B', new Blob(['x']), undefined, html as unknown as typeof fetch)).toMatchObject({ code: 'timeout' });
+    // Çöken fonksiyon (500, JSON değil) artık "Süre aşıldı" değil
+    const crash = vi.fn(async () => new Response('Internal Server Error', { status: 500 }));
+    expect(await requestAiRepair('B', new Blob(['x']), undefined, crash as unknown as typeof fetch)).toMatchObject({ code: 'server_error' });
   });
 
   it('cancel → canceled (with the cost note), no retry', async () => {
@@ -55,16 +60,39 @@ describe('AI client requests', () => {
           init.signal?.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })));
         }),
     );
-    const p = requestAiRepair('A', new Blob(['x']), 'p', controller.signal, f as unknown as typeof fetch);
+    const p = requestAiRepair('A', new Blob(['x']), controller.signal, f as unknown as typeof fetch);
     controller.abort();
     expect(await p).toEqual({ ok: false, code: 'canceled', message: 'İptal edildi; ücret yansımış olabilir.' });
     expect(f).toHaveBeenCalledTimes(1);
   });
 
-  it('status check verifies the password without a model call', async () => {
+  it('status check reads pairing and quota without a model call', async () => {
     const f = vi.fn(async () => new Response(JSON.stringify({ remainingDay: 5, remainingMonth: 50 }), { status: 200 }));
-    expect(await fetchAiStatus('p', f as unknown as typeof fetch)).toEqual({ ok: true, remainingDay: 5, remainingMonth: 50 });
+    expect(await fetchAiStatus(f as unknown as typeof fetch)).toEqual({ ok: true, remainingDay: 5, remainingMonth: 50 });
     expect((f.mock.calls[0] as unknown as [string, RequestInit])[1].method).toBe('GET');
+    const unpaired = vi.fn(async () => new Response('{"error":"pin_required"}', { status: 401 }));
+    expect(await fetchAiStatus(unpaired as unknown as typeof fetch)).toMatchObject({ ok: false, code: 'pin_required' });
+  });
+
+  it('unlock sends the PIN once as JSON via PUT; forget uses DELETE', async () => {
+    const f = vi.fn(async () => new Response(JSON.stringify({ remainingDay: 20, remainingMonth: 150 }), { status: 200 }));
+    expect(await unlockAi('0000', f as unknown as typeof fetch)).toEqual({ ok: true, remainingDay: 20, remainingMonth: 150 });
+    const [, init] = f.mock.calls[0] as unknown as [string, RequestInit];
+    expect(init.method).toBe('PUT');
+    expect(JSON.parse(init.body as string)).toEqual({ pin: '0000' });
+    const wrong = vi.fn(async () => new Response('{"error":"wrong_pin"}', { status: 401 }));
+    expect(await unlockAi('0000', wrong as unknown as typeof fetch)).toMatchObject({ ok: false, code: 'wrong_pin', message: 'PIN yanlış.' });
+    const del = vi.fn(async () => new Response(null, { status: 204 }));
+    expect(await forgetAiDevice(del as unknown as typeof fetch)).toBe(true);
+    expect((del.mock.calls[0] as unknown as [string, RequestInit])[1].method).toBe('DELETE');
+  });
+
+  it('removes the old plain-text password from localStorage', () => {
+    const removed: string[] = [];
+    vi.stubGlobal('window', { localStorage: { removeItem: (k: string) => removed.push(k) } });
+    clearLegacyAiPassword();
+    expect(removed).toEqual(['curate.ai.password']);
+    vi.unstubAllGlobals();
   });
 });
 

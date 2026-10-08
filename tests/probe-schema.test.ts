@@ -31,29 +31,29 @@ function minimalReport(tests: ProbeTest[]): ProbeReport {
   };
 }
 
-describe('decideEffect: "kabul edildi" ile "etkili" ayrımı', () => {
-  it('yetenek yoksa yok, hata varsa hata', () => {
+describe('decideEffect: accepted vs effective', () => {
+  it('missing capability is yok, an error is hata', () => {
     expect(decideEffect({ supported: false, error: null, delta: 50, noise: 0, minDelta: 8 })).toBe('yok');
     expect(decideEffect({ supported: true, error: 'OverconstrainedError', delta: 50, noise: 0, minDelta: 8 })).toBe('hata');
     expect(decideEffect({ supported: true, error: null, delta: NaN, noise: 0, minDelta: 8 })).toBe('hata');
   });
-  it('fark eşiği ve 3× gürültüyü aşarsa etkili, yoksa kabul-edildi-etkisiz', () => {
+  it('effective only above the threshold and 3x the noise, otherwise kabul-edildi-etkisiz', () => {
     expect(decideEffect({ supported: true, error: null, delta: 20, noise: 1, minDelta: 8 })).toBe('etkili');
     expect(decideEffect({ supported: true, error: null, delta: 7.9, noise: 0, minDelta: 8 })).toBe('kabul-edildi-etkisiz');
-    // Gürültülü sahne: eşik 3 × 5 = 15
+    // Noisy scene: threshold 3 × 5 = 15
     expect(decideEffect({ supported: true, error: null, delta: 12, noise: 5, minDelta: 8 })).toBe('kabul-edildi-etkisiz');
     expect(decideEffect({ supported: true, error: null, delta: 15, noise: 5, minDelta: 8 })).toBe('etkili');
   });
 });
 
-describe('buildSummary: sayım ve "ne mümkün" matrisi', () => {
-  it('her durumu sayar ve tüm matris anahtarlarını doldurur', () => {
+describe('buildSummary: counts and the capability matrix', () => {
+  it('counts every status and fills every matrix key', () => {
     const s = buildSummary([t('a', 'var'), t('b', 'yok'), t('c', 'hata'), t('d', 'etkili')]);
     expect(s.sayım).toEqual({ var: 1, yok: 1, 'kabul-edildi-etkisiz': 0, etkili: 1, hata: 1, atlandı: 0 });
     expect(Object.keys(s.matris).sort()).toEqual([...MATRIX_KEYS].sort());
     expect(s.matris.torch).toEqual({ durum: 'atlandı', ayrıntı: 'Bu kaynakta ölçülmedi', kaynak: null });
   });
-  it('birden çok kaynakta en iyi durumu seçer (etkili > var > etkisiz > hata > yok)', () => {
+  it('picks the best status across sources (etkili > var > etkisiz > hata > yok)', () => {
     const s = buildSummary([t('etki.exposureTime', 'kabul-edildi-etkisiz', 'süre'), t('etki.iso', 'etkili', 'iso')]);
     expect(s.matris.manuelIsoPozlama).toEqual({ durum: 'etkili', ayrıntı: 'iso', kaynak: 'etki.iso' });
     const n = buildSummary([t('native.braket', 'hata'), t('native.braketBurst', 'etkili')]);
@@ -63,10 +63,10 @@ describe('buildSummary: sayım ve "ne mümkün" matrisi', () => {
 });
 
 describe('validateProbeReport', () => {
-  it('geçerli raporda hata yok', () => {
+  it('a valid report has no errors', () => {
     expect(validateProbeReport(minimalReport([t('x', 'var')]))).toEqual([]);
   });
-  it('bozuk alanları yakalar', () => {
+  it('catches broken fields', () => {
     const r = minimalReport([t('x', 'var'), t('x', 'var')]) as unknown as Record<string, unknown>;
     (r.meta as Record<string, unknown>).kaynak = 'ios';
     (r.tests as Record<string, unknown>[])[0].durum = 'belki';
@@ -76,7 +76,7 @@ describe('validateProbeReport', () => {
     expect(errors).toContain('tests[1].id tekrar: x');
     expect(validateProbeReport(null)).toEqual(['rapor nesne değil']);
   });
-  it('docs/probe/SCHEMA.md içindeki JSON örneği şemaya uyar', () => {
+  it('the JSON example in docs/probe/SCHEMA.md is valid', () => {
     const md = read('docs/probe/SCHEMA.md');
     const block = md.match(/```json\n([\s\S]*?)\n```/);
     expect(block).not.toBeNull();
@@ -84,13 +84,13 @@ describe('validateProbeReport', () => {
   });
 });
 
-describe('frameStats (160 px kare özeti)', () => {
+describe('frameStats (160 px frame summary)', () => {
   const solid = (w: number, h: number, rgb: [number, number, number]) => {
     const d = new Uint8ClampedArray(w * h * 4);
     for (let i = 0; i < w * h; i++) d.set([...rgb, 255], i * 4);
     return d;
   };
-  it('düz gri karede parlaklık, oranlar ve sıfır keskinlik', () => {
+  it('flat grey: brightness, ratios and zero sharpness', () => {
     const { stats } = frameStats(solid(16, 12, [128, 128, 128]), 16, 12);
     expect(stats.parlaklık).toBe(128);
     expect(stats.rOran).toBe(1);
@@ -98,14 +98,14 @@ describe('frameStats (160 px kare özeti)', () => {
     expect(stats.keskinlik).toBe(0);
     expect(stats.p50).toBe(128);
   });
-  it('sıcak renkte B/G düşer; dama tahtasında keskinlik yükselir', () => {
+  it('warm colour lowers B/G; a checkerboard raises sharpness', () => {
     expect(frameStats(solid(8, 8, [255, 180, 107]), 8, 8).stats.bOran).toBeLessThan(0.7);
     const w = 16;
     const d = new Uint8ClampedArray(w * w * 4);
     for (let y = 0; y < w; y++) for (let x = 0; x < w; x++) d.set((x + y) % 2 ? [255, 255, 255, 255] : [0, 0, 0, 255], (y * w + x) * 4);
     expect(frameStats(d, w, w).stats.keskinlik).toBeGreaterThan(500);
   });
-  it('sol-üst ve sağ-alt çeyrekleri ayrı ölçer; kare farkı', () => {
+  it('measures top-left and bottom-right quarters; frame difference', () => {
     const w = 10;
     const d = solid(w, w, [0, 0, 0]);
     for (let y = 5; y < 10; y++) for (let x = 5; x < 10; x++) d.set([200, 200, 200, 255], (y * w + x) * 4);
@@ -114,7 +114,7 @@ describe('frameStats (160 px kare özeti)', () => {
     expect(a.stats.sağAlt).toBe(200);
     expect(lumaDiff(a, frameStats(solid(w, w, [0, 0, 0]), w, w))).toBe(50);
   });
-  it('kelvinToRgb: 6600 K ≈ beyaz, 3000 K sıcak (R > G > B)', () => {
+  it('kelvinToRgb: 6600 K is about white, 3000 K is warm (R > G > B)', () => {
     const [r, g, b] = kelvinToRgb(6600);
     expect(Math.min(r, g, b)).toBeGreaterThan(240);
     const [wr, wg, wb] = kelvinToRgb(3000);
@@ -124,18 +124,18 @@ describe('frameStats (160 px kare özeti)', () => {
   });
 });
 
-describe('probe/v1 yardımcıları', () => {
-  it('dosya adı curate-probe-<kaynak>-YYYYMMDD-HHMM.json', () => {
+describe('probe/v1 helpers', () => {
+  it('file name curate-probe-<source>-YYYYMMDD-HHMM.json', () => {
     expect(probeFileName('web', new Date(2026, 9, 8, 9, 5))).toBe('curate-probe-web-20261008-0905.json');
     expect(probeFileName('native', new Date(2026, 0, 2, 23, 59))).toBe('curate-probe-native-20260102-2359.json');
   });
-  it('native kopya (probe-apk/src/probe-schema.ts) ortak gövdede web şemasıyla birebir aynı', () => {
-    const body = (p: string) => read(p).split('// --- ortak gövde ---')[1];
+  it('the native copy (probe-apk/src/probe-schema.ts) equals the web schema in the shared body', () => {
+    const body = (p: string) => read(p).split('// --- shared body ---')[1];
     const web = body('lib/probe/schema.ts');
     expect(web.length).toBeGreaterThan(1000);
     expect(body('probe-apk/src/probe-schema.ts')).toBe(web);
   });
-  it('Kotlin eşikleri EFFECT_MIN ile aynı', () => {
+  it('Kotlin thresholds equal EFFECT_MIN', () => {
     const kt = read('probe-apk/modules/curate-probe/android/src/main/java/app/curate/probe/module/CaptureProbe.kt');
     expect(kt).toMatch(/MIN_LUMA_DELTA = 8\.0/);
     expect(kt).toMatch(/MIN_RATIO_DELTA = 0\.06/);

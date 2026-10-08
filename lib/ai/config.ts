@@ -115,10 +115,30 @@ export const AI_DEADLINE_MARGIN_MS = 10_000;
 export const AI_RETRY_WAIT_MS = 2_000;
 
 // --- Kota ---
-export const AI_DEFAULT_DAILY_LIMIT = 20;
-export const AI_DEFAULT_MONTHLY_LIMIT = 150;
-/** IP başına günlük yanlış şifre sınırı; genel sayaç yok (sahibi kilitlememeli) */
-export const AI_WRONG_PASSWORD_LIMIT = 10;
+/**
+ * Sahip kararı 2026-10-08 (D28): sahibin kullanımında kota kısıtı yok. Bu sayılar yalnız kaçak döngüye karşı
+ * güvenlik ağıdır; Vercel'de AI_DAILY_LIMIT / AI_MONTHLY_LIMIT tanımlıysa onlar geçerlidir.
+ */
+export const AI_DEFAULT_DAILY_LIMIT = 500;
+export const AI_DEFAULT_MONTHLY_LIMIT = 5000;
+// --- PIN ile cihaz eşleme (Faz P1, sahip kararı 2026-10-07) ---
+/** PIN tam olarak 4 rakam; değeri yalnız sunucu ortam değişkeninde (CURATE_AI_PASSWORD) */
+export const AI_PIN_LENGTH = 4;
+export const AI_PIN_PATTERN = /^\d{4}$/;
+/**
+ * Yanlış PIN sınırları. Yalnız PIN girişi (PUT) sayılır; eşlenmiş cihazın çerez yolu bunlara dokunmaz,
+ * kilit sahibin telefonunu etkilemez. Ay sınırı yılda en çok 360 deneme demek (10.000 olasılıkta ≈ %3,6).
+ */
+export const AI_PIN_FAIL_LIMIT_IP_DAY = 5;
+export const AI_PIN_FAIL_LIMIT_DAY = 10;
+export const AI_PIN_FAIL_LIMIT_MONTH = 30;
+/** Cihaz çerezi: HttpOnly, imzalı, yalnız /api/ai yoluna gider */
+export const AI_DEVICE_COOKIE = 'curate_ai';
+export const AI_DEVICE_COOKIE_PATH = '/api/ai';
+/** Cihaz 365 gün hatırlanır (sahip kararı S2) */
+export const AI_DEVICE_MAX_AGE_S = 365 * 24 * 3600;
+/** Eski sürümün tarayıcıda tuttuğu şifre anahtarı; açılışta silinir */
+export const AI_LEGACY_PASSWORD_KEY = 'curate.ai.password';
 
 // --- Oran ---
 export const AI_ASPECT_RATIOS = ['1:1', '4:3', '3:4', '3:2', '2:3', '4:5', '5:4', '16:9', '9:16'] as const;
@@ -168,9 +188,135 @@ export function buildVertexBody(task: AiTask, jpegBase64: string, width: number,
   };
 }
 
+// --- AI Preset: Işık ve Renk Planı (sahip kararı D28; tasarım docs/reports/2026-10-08-ai-preset-ozeti.md) ---
+/** Görev kodu: görsel ÜRETMEZ, yalnız JSON plan döner; Curate planı yerelde uygular */
+export const AI_PLAN_TASK = 'P';
+/**
+ * Görsel anlayan metin modelleri, sırayla denenir: 404 (model yok/emekli) ücretsizdir ve sıradakine geçilir.
+ * Kimlikler kapsayıcıda yoklanamadı (anahtar yok) [doğrulanmadı]; sunucu log'u hangisinin çalıştığını yazar.
+ */
+export const AI_PLAN_MODELS = ['gemini-3-flash', 'gemini-2.5-flash', 'gemini-3.1-flash-image'] as const;
+/** Gönderilen önizleme: uzun kenar ≤ 768, JPEG 0,8 (≈ 60–120 KB) */
+export const AI_PLAN_INPUT_LONG_EDGE = 768;
+export const AI_PLAN_INPUT_JPEG_QUALITY = 0.8;
+/** Yaklaşık süre ve maliyet: metin yanıtı, görsel üretimi yok. Ölçülmedi [doğrulanmadı] */
+export const AI_PLAN_EST_SECONDS = 8;
+export const AI_PLAN_COST_TRY = 0.3;
+/** Sunucu model yanıtında bundan uzun metni okumaz */
+export const AI_PLAN_MAX_TEXT = 20_000;
+
+export type AiPlanStyle = 'natural_portrait' | 'golden_hour' | 'cinematic_night' | 'clean_daylight';
+export const AI_PLAN_STYLE_IDS: AiPlanStyle[] = ['natural_portrait', 'golden_hour', 'cinematic_night', 'clean_daylight'];
+
+/** Model'e giden stil tarifleri (arayüz adları lib/i18n/tr.ts → aiPreset.styles) */
+export const AI_PLAN_STYLES: Record<AiPlanStyle, { brief: string }> = {
+  natural_portrait: {
+    brief: 'Natural portrait: the person is the clear subject; even, flattering light on the face; true skin tones; calm background.',
+  },
+  golden_hour: {
+    brief: 'Golden hour: warm, low sun feeling; gentle warmth in highlights, soft shadows, keep the sky from blowing out.',
+  },
+  cinematic_night: {
+    brief: 'Cinematic night: deep but detailed shadows, controlled bright lights, slightly cool shadows and warm practical lights.',
+  },
+  clean_daylight: {
+    brief: 'Clean daylight: neutral white balance, clear midtones, recovered sky, lively but believable colour.',
+  },
+};
+
+export function isAiPlanStyle(v: unknown): v is AiPlanStyle {
+  return typeof v === 'string' && (AI_PLAN_STYLE_IDS as string[]).includes(v);
+}
+
+export function aiPlanPrompt(style: AiPlanStyle): string {
+  return [
+    'You are a photo editor. Look at this photo and return ONLY a JSON light and colour plan; never an image.',
+    `Target look: ${AI_PLAN_STYLES[style].brief}`,
+    'Coordinates are fractions of the whole photo: x from 0 (left) to 1 (right), y from 0 (top) to 1 (bottom).',
+    '"global" adjusts the whole photo. "regions" (at most 6) adjust parts of it through soft masks:',
+    '- linear: full effect at (x0,y0), fading to none at (x1,y1) (e.g. sky: from the top edge down to the horizon);',
+    '- radial: ellipse centred at (cx,cy) with radii rx, ry and a soft edge "feather";',
+    '- polygon: up to 12 points [x,y] around an area, with a soft edge "feather".',
+    'Values are small, natural edits: exposure in stops (-0.6..0.6); contrast, saturation, vibrance -0.3..0.3;',
+    'temperature (+ warmer) and tint (+ magenta) -0.25..0.25; shadows and highlights -0.4..0.4 (+ brighter).',
+    'Keep skin natural: on skin or subject regions keep temperature and tint within ±0.08.',
+    'Do not add a vignette or darken the edges for effect. Do not crush blacks or blow highlights.',
+    'Prefer few regions placed exactly on what you see. Leave out anything that does not need a change.',
+  ].join('\n');
+}
+
+/** Vertex responseSchema (OpenAPI alt kümesi): yanıt bu biçimin dışına çıkamaz */
+const ADJUST_SCHEMA = {
+  type: 'OBJECT',
+  properties: Object.fromEntries(
+    ['exposure', 'contrast', 'saturation', 'vibrance', 'temperature', 'tint', 'shadows', 'highlights'].map((k) => [k, { type: 'NUMBER' }]),
+  ),
+};
+export const AI_PLAN_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  required: ['version', 'scene', 'global', 'regions'],
+  properties: {
+    version: { type: 'INTEGER', enum: [1] },
+    scene: {
+      type: 'OBJECT',
+      properties: {
+        type: { type: 'STRING', enum: ['portrait', 'landscape', 'street', 'night', 'interior', 'food', 'architecture', 'other'] },
+        light: { type: 'STRING', enum: ['golden', 'blue_hour', 'midday', 'overcast', 'night', 'mixed', 'indoor'] },
+        issues: { type: 'ARRAY', items: { type: 'STRING', enum: ['underexposed_subject', 'bright_sky', 'color_cast', 'haze', 'flat'] } },
+      },
+    },
+    global: ADJUST_SCHEMA,
+    regions: {
+      type: 'ARRAY',
+      maxItems: 6,
+      items: {
+        type: 'OBJECT',
+        required: ['label', 'shape', 'adjust'],
+        properties: {
+          label: { type: 'STRING', enum: ['sky', 'subject', 'skin', 'background', 'foreground', 'highlight'] },
+          shape: {
+            type: 'OBJECT',
+            required: ['type'],
+            properties: {
+              type: { type: 'STRING', enum: ['linear', 'radial', 'polygon'] },
+              x0: { type: 'NUMBER' },
+              y0: { type: 'NUMBER' },
+              x1: { type: 'NUMBER' },
+              y1: { type: 'NUMBER' },
+              cx: { type: 'NUMBER' },
+              cy: { type: 'NUMBER' },
+              rx: { type: 'NUMBER' },
+              ry: { type: 'NUMBER' },
+              points: { type: 'ARRAY', maxItems: 12, items: { type: 'ARRAY', items: { type: 'NUMBER' } } },
+              feather: { type: 'NUMBER' },
+            },
+          },
+          adjust: ADJUST_SCHEMA,
+        },
+      },
+    },
+  },
+};
+
+export function buildPlanBody(style: AiPlanStyle, jpegBase64: string) {
+  return {
+    contents: [
+      {
+        role: 'user',
+        parts: [{ inlineData: { mimeType: 'image/jpeg', data: jpegBase64 } }, { text: aiPlanPrompt(style) }],
+      },
+    ],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: AI_PLAN_RESPONSE_SCHEMA,
+      temperature: 0.2,
+    },
+  };
+}
+
 /** Sunucu ↔ istemci başlık adları */
-export const AI_HEADER_PASSWORD = 'x-curate-password';
 export const AI_HEADER_TASK = 'x-curate-task';
+export const AI_HEADER_STYLE = 'x-curate-style';
 export const AI_HEADER_REMAINING_DAY = 'x-curate-remaining-day';
 export const AI_HEADER_REMAINING_MONTH = 'x-curate-remaining-month';
 export const AI_ENDPOINT = '/api/ai';
@@ -179,8 +325,14 @@ export const AI_ENDPOINT = '/api/ai';
 export const AI_ERRORS = {
   disabled: 'AI şu an kapalı.',
   not_configured: 'AI sunucuda ayarlanmamış.',
-  wrong_password: 'Şifre yanlış.',
-  password_locked: 'Çok fazla yanlış şifre. Yarın tekrar dene.',
+  forbidden: 'İstek reddedildi.',
+  pin_required: 'Bu cihazı eşlemek için PIN’ini gir.',
+  wrong_pin: 'PIN yanlış.',
+  pin_locked_ip: 'Bu bağlantıdan çok fazla yanlış PIN. Yarın tekrar dene.',
+  pin_locked_day: 'Bugün çok fazla yanlış PIN girildi; yeni cihaz eşleme yarına kadar kapalı.',
+  pin_locked_month: 'Bu ay çok fazla yanlış PIN girildi; yeni cihaz eşleme ay sonuna kadar kapalı.',
+  service_error: 'Sunucu sayacına ulaşılamadı. Biraz sonra tekrar dene.',
+  server_error: 'Sunucu hatası. Biraz sonra tekrar dene.',
   bad_task: 'Geçersiz işlem.',
   too_large: 'Fotoğraf gönderim için çok büyük.',
   bad_image: 'Fotoğraf okunamadı.',
@@ -190,6 +342,7 @@ export const AI_ERRORS = {
   model_busy: 'Model şu an yoğun. Biraz sonra tekrar dene.',
   model_error: 'Model hata verdi.',
   no_image: 'Model görsel döndürmedi.',
+  bad_plan: 'Plan okunamadı. Tekrar dene ya da hazır bir preset seç.',
   canceled: 'İptal edildi; ücret yansımış olabilir.',
   network: 'Bağlantı kurulamadı.',
 } as const;

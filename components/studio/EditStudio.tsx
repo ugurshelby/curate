@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/lib/i18n/tr";
 import React, { useEffect, useRef, useState } from "react";
 import { Wand2, RotateCw, FlipHorizontal2, RotateCcw, ZoomIn, Undo2, Sparkles } from "lucide-react";
 import {
@@ -13,12 +14,27 @@ import {
   drawCarouselFrame,
   createExportCanvas,
   canvasToBlob,
-  DEFAULT_EDIT_PARAMS,
   DEFAULT_EDIT_CROP,
   EDIT_ASPECTS,
   EDIT_MAX_ZOOM,
   EDIT_MAX_ANGLE,
   EDIT_PREVIEW_LONG_EDGE,
+  previewRenderSize,
+  whenIdle,
+  renderCarouselBase,
+  applyCarouselLook,
+  workerBridge,
+  DEFAULT_CORRECTIONS,
+  CORRECTION_IDS,
+  correctionsActive,
+  correctionsKey,
+  measureCorrections,
+  suggestCorrections,
+  MANUAL_STRENGTH,
+  CorrectionId,
+  CorrectionRow,
+  CorrectionParams,
+  defaultEditParamsFor,
   cropGeometry,
   editOutputSize,
   editPreviewSize,
@@ -35,26 +51,31 @@ import {
   prepareAiInput,
   suspectRegionFromImages,
   acceptAiResult,
+  AI_PLAN_PRESET_ID,
+  planKey,
+  type AiPlanRender,
 } from "@/lib";
 import { StudioShell, StageNote } from "./StudioShell";
 import { AddMenu } from "./AddMenu";
 import { ReferencePicker } from "./ReferencePicker";
 import { QuickExportSheet } from "./QuickExportSheet";
 import { ResettableSlider } from "./ResettableSlider";
-import { PresetStrip, usePresetThumbs } from "./PresetStrip";
+import { Switch } from "./Switch";
+import { PresetStrip, usePresetThumbs, suggestFromImage, presetName } from "./PresetStrip";
 import { usePanPinch, PanPinchDelta } from "./usePanPinch";
 import { reportRenderTime } from "./PerfHud";
 import { DerivedBadge } from "./NoticeToast";
 import { AiRepairSheet } from "./AiRepairSheet";
+import { AiPresetSheet } from "./AiPresetSheet";
 import { AiReviewScreen } from "./AiReviewScreen";
 
 type EditTab = "preset" | "crop" | "fix";
 
 /** Sekme çubuğu üç sekmeye göre kurulu; Düzeltme D2'de görünür olacak (spec §4.5 E10) */
 const TABS: { id: EditTab; label: string; visible: boolean }[] = [
-  { id: "preset", label: "Preset", visible: true },
-  { id: "crop", label: "Kırp", visible: true },
-  { id: "fix", label: "Düzeltme", visible: false },
+  { id: "preset", label: tr.edit.tabPreset, visible: true },
+  { id: "crop", label: tr.edit.tabCrop, visible: true },
+  { id: "fix", label: tr.edit.tabFix, visible: true },
 ];
 
 const FRAME_PAD = 24;
@@ -66,7 +87,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     const img = new window.Image();
     if (!src.startsWith("data:") && !src.startsWith("blob:")) img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Görsel yüklenemedi"));
+    img.onerror = () => reject(new Error(tr.common.imageLoadFailed));
     img.src = src;
   });
 }
@@ -109,19 +130,23 @@ interface EditStudioProps {
 export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
   const { state, actions } = useStudio();
   const { hasPhoto, selectedItem: item } = getStudioSelection(state.items, state.selectedItemId);
-  const params = (item && state.edits[item.id]) || DEFAULT_EDIT_PARAMS;
+  const params = (item && state.edits[item.id]) || defaultEditParamsFor(item);
   const crop = params.crop;
 
   const [tab, setTab] = useState<EditTab>("preset");
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isReferenceOpen, setIsReferenceOpen] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
+  const [showBeforeFix, setShowBeforeFix] = useState(false);
+  const [fixBusy, setFixBusy] = useState(false);
+  const [autoSuggest, setAutoSuggest] = useState<CorrectionParams | null>(null);
   const [srcDims, setSrcDims] = useState<{ w: number; h: number } | null>(null);
   const [cropBox, setCropBox] = useState<{ w: number; h: number } | null>(null);
   const [liveCrop, setLiveCrop] = useState<LiveCrop | null>(null);
   const [liveFrame, setLiveFrame] = useState<{ w: number; h: number } | null>(null);
   const [isEnlarging, setIsEnlarging] = useState(false);
   const [isAiOpen, setIsAiOpen] = useState(false);
+  const [isAiPresetOpen, setIsAiPresetOpen] = useState(false);
   const [aiReview, setAiReview] = useState<AiReview | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -147,12 +172,25 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
    * Önizleme ve export için TEK parametre şeması: Carousel'deki taban + görünüm adımları,
    * taban adımında kırp geometrisi (lib/engine/carousel-render.ts, edit-geometry.ts).
    */
+  const corrections = params.corrections ?? DEFAULT_CORRECTIONS;
+  // AI Preset (D28): the stored plan replaces the library preset; Miktar × safety scale is its strength
+  const aiPlanFor = (geoCrop: EditCrop | null): AiPlanRender | null =>
+    params.presetId === AI_PLAN_PRESET_ID && params.aiPlan && srcDims
+      ? {
+          plan: params.aiPlan.plan,
+          strength: params.intensity * params.aiPlan.safeScale,
+          geometry: { crop: geoCrop, srcW: srcDims.w, srcH: srcDims.h },
+        }
+      : null;
   const buildOptions = (): CarouselRenderOptions => ({
     fitMode: "fill",
     crop,
-    presetId: params.presetId,
+    presetId: params.presetId === AI_PLAN_PRESET_ID ? null : params.presetId,
     presetIntensity: params.intensity,
+    aiPlan: aiPlanFor(crop),
     outputWidth: out?.width,
+    // Düzeltme sekmesinde basılı tutunca: düzeltmesiz hâl (önce/sonra)
+    corrections: showBeforeFix ? null : corrections,
   });
 
   // --- Önizleme çizimi: rAF ile birleşir, sürüklerken yarı çözünürlük ---
@@ -165,6 +203,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
   const tabRef = useRef(tab);
   tabRef.current = tab;
   const draggingRef = useRef(false);
+  const warmCancelRef = useRef<(() => void) | null>(null);
   const rafRef = useRef<number | null>(null);
 
   const flushRef = useRef<() => void>(() => {});
@@ -194,24 +233,100 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
         presetId: o.presetId,
         presetIntensity: o.presetIntensity,
         outputWidth: w,
+        aiPlan: o.aiPlan ? { ...o.aiPlan, geometry: { ...o.aiPlan.geometry, crop: null } } : null,
       });
     } else {
       const canvas = canvasRef.current;
       const p = previewRef.current;
       if (!canvas || !p) return;
       const draft = draggingRef.current;
-      const W = draft ? Math.max(1, Math.round(p.width / 2)) : p.width;
-      const H = draft ? Math.max(1, Math.round(p.height / 2)) : p.height;
+      // Ekranın gösterebildiği kadar piksel (CDS §8); export aynı fonksiyonu tam boyutta çağırır
+      const box = canvas.parentElement;
+      const { width: W, height: H } = previewRenderSize(
+        p.width,
+        p.height,
+        box?.clientWidth ?? 0,
+        box?.clientHeight ?? 0,
+        window.devicePixelRatio || 1,
+        draft,
+      );
       if (canvas.width !== W || canvas.height !== H) {
         canvas.width = W;
         canvas.height = H;
       }
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
       if (!ctx) return;
-      rendererRef.current.render(ctx, source.img, source.key, W, H, optionsRef.current);
+      const opts = optionsRef.current;
+      // Düzeltme ağır: taban worker'da hesaplanır; hazır olana dek tuvalde son kare kalır
+      if (correctionsActive(opts.corrections) && !rendererRef.current.hasBase(source.key, rendererRef.current.baseKey(W, H, opts))) {
+        requestCorrectedBase(source, W, H, opts);
+        return;
+      }
+      rendererRef.current.render(ctx, source.img, source.key, W, H, opts);
+      // Boşta taslak tabanı hazırla (kaydırıcının ilk karesi için)
+      if (!draft) {
+        warmCancelRef.current?.();
+        warmCancelRef.current = whenIdle(() => {
+          const s = sourceRef.current;
+          const pv = previewRef.current;
+          if (!s || !pv) return;
+          const d = previewRenderSize(pv.width, pv.height, box?.clientWidth ?? 0, box?.clientHeight ?? 0, window.devicePixelRatio || 1, true);
+          const c = document.createElement("canvas");
+          c.width = d.width;
+          c.height = d.height;
+          const wctx = c.getContext("2d", { willReadFrequently: true });
+          if (wctx) rendererRef.current.prepareBase(wctx, s.img, s.key, d.width, d.height, optionsRef.current);
+        });
+      }
     }
     reportRenderTime(performance.now() - t0);
   };
+  /**
+   * Düzeltme tabanı (D2) worker'da: önce kırp geometrisi ana thread'de (ucuz), sonra applyCorrections
+   * worker'da (export ile aynı fonksiyon). En yeni istek kazanır; biten sonuç önbelleğe girer ve yeniden çizilir.
+   */
+  const fixJobRef = useRef<{ running: boolean; next: (() => void) | null }>({ running: false, next: null });
+  const requestCorrectedBase = (
+    source: { key: string; img: HTMLImageElement },
+    W: number,
+    H: number,
+    opts: CarouselRenderOptions,
+  ) => {
+    const job = async () => {
+      fixJobRef.current.running = true;
+      setFixBusy(true);
+      try {
+        const renderer = rendererRef.current;
+        const key = renderer.baseKey(W, H, opts);
+        if (!renderer.hasBase(source.key, key)) {
+          const c = document.createElement("canvas");
+          c.width = W;
+          c.height = H;
+          const cctx = c.getContext("2d", { willReadFrequently: true });
+          if (cctx && opts.corrections) {
+            const base = renderCarouselBase(cctx, source.img, W, H, { ...opts, corrections: null });
+            const scale = (opts.outputWidth ?? W) / W;
+            const corrected = await workerBridge.applyCorrections(base.imageData, opts.corrections, scale);
+            renderer.setBase(source.key, key, { ...base, imageData: corrected });
+          }
+        }
+      } catch {
+        /* görsel değişti veya worker düştü: sonraki çizim yeniden ister */
+      } finally {
+        fixJobRef.current.running = false;
+        const next = fixJobRef.current.next;
+        fixJobRef.current.next = null;
+        if (next) next();
+        else {
+          setFixBusy(false);
+          scheduleRender();
+        }
+      }
+    };
+    if (fixJobRef.current.running) fixJobRef.current.next = job;
+    else void job();
+  };
+
   const scheduleRender = () => {
     if (rafRef.current === null) {
       rafRef.current = requestAnimationFrame(() => flushRef.current());
@@ -245,15 +360,33 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
   useEffect(() => {
     scheduleRender();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cropKey, params.presetId, params.intensity, tab, srcDims, hasPhoto]);
+  }, [cropKey, params.presetId, params.intensity, planKey(params.aiPlan?.plan), tab, srcDims, hasPhoto, correctionsKey(corrections), showBeforeFix]);
 
   useEffect(() => {
     return () => {
       // StrictMode iki kez çalıştırır: iptal sonrası ref sıfırlanmazsa çizimler kilitlenir (M2 bulgusu)
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
+      warmCancelRef.current?.();
     };
   }, []);
+
+  // Sahne boyutu değişince önizleme çözünürlüğü yeniden hesaplanır
+  useEffect(() => {
+    const el = canvasRef.current?.parentElement;
+    if (!el || tab === "crop") return;
+    let last = "";
+    const ro = new ResizeObserver(([entry]) => {
+      const key = `${Math.round(entry.contentRect.width)}x${Math.round(entry.contentRect.height)}`;
+      if (key !== last) {
+        last = key;
+        scheduleRender();
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, hasPhoto]);
 
   // Kırp kutusunun ekran ölçüsü
   useEffect(() => {
@@ -413,7 +546,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
     e.target.value = "";
   };
   const handleClear = () => {
-    if (window.confirm("Tüm fotoğraflar kaldırılsın mı?")) actions.clearItems();
+    if (window.confirm(tr.common.clearAllConfirm)) actions.clearItems();
   };
 
   // --- Export: kırpım kendi çözünürlüğünde, uzun kenar ≤ 4096; önizlemeyle aynı fonksiyon ---
@@ -421,7 +554,15 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
     if (!item || !out) throw new Error("No photo to export");
     const img = sourceRef.current?.img ?? (await loadImage(item.originalUrl || item.proxyUrl));
     const { canvas, ctx } = createExportCanvas(out.width, out.height);
-    drawCarouselFrame(ctx, img, out.width, out.height, { ...buildOptions(), outputWidth: out.width });
+    const opts: CarouselRenderOptions = { ...buildOptions(), corrections, outputWidth: out.width };
+    if (correctionsActive(corrections)) {
+      // Önizlemeyle aynı adımlar; ağır düzeltme worker'da (büyük kırpımda parçalı)
+      const base = renderCarouselBase(ctx, img, out.width, out.height, { ...opts, corrections: null });
+      const corrected = await workerBridge.applyCorrections(base.imageData, corrections, 1);
+      ctx.putImageData(applyCarouselLook(corrected, opts, 1), 0, 0);
+    } else {
+      drawCarouselFrame(ctx, img, out.width, out.height, opts);
+    }
     return canvas;
   };
 
@@ -451,8 +592,9 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
     const img = sourceRef.current?.img ?? (await loadImage(item.originalUrl || item.proxyUrl));
     return prepareAiInput(img);
   };
-  const handleAiResult = async (task: AiTask, blob: Blob) => {
-    if (!item) return;
+  /** Kontrol sayfasını açar; görsel açılamazsa false (sayfa hata gösterir, sonuç kaybolmaz sessizce) */
+  const handleAiResult = async (task: AiTask, blob: Blob): Promise<boolean> => {
+    if (!item) return false;
     const url = URL.createObjectURL(blob);
     try {
       const img = await loadImage(url);
@@ -474,8 +616,10 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
         originalUrl: item.proxyUrl || item.originalUrl,
         suspect,
       });
+      return true;
     } catch {
       URL.revokeObjectURL(url);
+      return false;
     }
   };
   const discardAiReview = () => {
@@ -498,16 +642,39 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
     setTab("preset");
   };
 
-  // --- Önce/sonra: Preset sekmesinde basılı tut → orijinal (kırpılmamış, preset'siz) ---
+  // --- Önce/sonra: Preset sekmesinde basılı tut → orijinal (kırpılmamış, preset'siz);
+  // Düzeltme sekmesinde → düzeltmesiz (aynı kırp ve preset) ---
   const startHold = () => {
-    if (tab !== "preset" || !hasPhoto) return;
+    if ((tab !== "preset" && tab !== "fix") || !hasPhoto) return;
     if (holdTimerRef.current) window.clearTimeout(holdTimerRef.current);
-    holdTimerRef.current = window.setTimeout(() => setShowOriginal(true), HOLD_FOR_ORIGINAL_MS);
+    const fix = tab === "fix";
+    holdTimerRef.current = window.setTimeout(() => (fix ? setShowBeforeFix(true) : setShowOriginal(true)), HOLD_FOR_ORIGINAL_MS);
   };
   const endHold = () => {
     if (holdTimerRef.current) window.clearTimeout(holdTimerRef.current);
     holdTimerRef.current = null;
     setShowOriginal(false);
+    setShowBeforeFix(false);
+  };
+
+  // --- Düzeltme (D2): satırlar ve Otomatik ---
+  const setCorrection = (id: CorrectionId, patch: Partial<CorrectionRow>) =>
+    setParams({ corrections: { ...corrections, [id]: { ...corrections[id], ...patch } } });
+  const runAuto = () => {
+    const s = sourceRef.current;
+    if (!s || !out) return;
+    // Ölçüm kırpılmış, düzeltmesiz tabanda ve küçük boyutta (hızlı)
+    const m = previewRenderSize(out.width, out.height, 480, 480, 1);
+    const c = document.createElement("canvas");
+    c.width = m.width;
+    c.height = m.height;
+    const cctx = c.getContext("2d", { willReadFrequently: true });
+    if (!cctx) return;
+    const base = renderCarouselBase(cctx, s.img, m.width, m.height, { fitMode: "fill", crop, corrections: null });
+    const suggested = suggestCorrections(measureCorrections(base.imageData));
+    setAutoSuggest(suggested);
+    setParams({ corrections: suggested });
+    if (!CORRECTION_IDS.some((id) => suggested[id].on)) actions.setNotice(tr.fix.autoNone);
   };
 
   const thumbs = usePresetThumbs(item ? item.proxyUrl || item.originalUrl : null);
@@ -519,9 +686,9 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
     stage = (
       <div data-stage className="relative w-[min(100cqw,calc(100cqh*4/5))] aspect-[4/5] rounded-xl border border-separator bg-base flex flex-col items-center justify-center gap-1 p-4 text-center text-ink-3">
         <Wand2 className="w-8 h-8 text-disabled-ink" />
-        <span className="text-sm">Düzenlemek için bir fotoğraf ekle</span>
+        <span className="text-sm">{tr.edit.empty}</span>
         <button type="button" onClick={() => fileInputRef.current?.click()} className="touch-target px-3 text-sm text-accent">
-          Fotoğraf Yükle
+          {tr.common.uploadPhoto}
         </button>
       </div>
     );
@@ -574,7 +741,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
                 <div
                   key={pos}
                   role="slider"
-                  aria-label="Kırp köşesi"
+                  aria-label={tr.edit.cropCorner}
                   aria-valuenow={Math.round(fw)}
                   tabIndex={-1}
                   onPointerDown={onHandleDown}
@@ -611,11 +778,19 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
         onContextMenu={(e) => e.preventDefault()}
       >
         <canvas ref={canvasRef} className="w-full h-full" />
+        {showBeforeFix && (
+          <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 text-xs text-ink-1">{tr.fix.before}</span>
+        )}
+        {fixBusy && !showBeforeFix && (
+          <span role="status" className="absolute top-2 right-2 px-2 py-0.5 rounded bg-black/70 text-xs text-ink-1">
+            {tr.common.preparing}
+          </span>
+        )}
         {showOriginal && (
           <div className="absolute inset-0 bg-base flex items-center justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={item.proxyUrl || item.originalUrl} alt="" draggable={false} className="max-w-full max-h-full object-contain" />
-            <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 text-xs text-ink-1">Orijinal</span>
+            <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 text-xs text-ink-1">{tr.common.original}</span>
           </div>
         )}
       </div>
@@ -642,13 +817,13 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
               className="touch-target press shrink-0 h-11 px-3 rounded-xl text-sm font-semibold bg-surface-2 text-ink-1 flex items-center gap-1.5"
             >
               <Undo2 className="w-4 h-4" />
-              <span>Kaynağa dön</span>
+              <span>{tr.edit.backToSource}</span>
             </button>
           )}
         </div>
       ) : (
         <span className="text-xs text-ink-3 text-right truncate min-w-0">
-          {tab === "crop" ? "Sürükle, iki parmakla yakınlaştır" : "Basılı tut: orijinal"}
+          {tab === "crop" ? tr.common.dragPinchHint : tab === "fix" ? tr.fix.holdHint : tr.common.holdForOriginal}
         </span>
       )}
     </>
@@ -658,7 +833,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
 
   const panel = (
     <div className="flex flex-col gap-3 p-3">
-      <div role="tablist" aria-label="Düzenle sekmeleri" className="flex p-0.5 rounded-xl bg-surface-2 border border-separator">
+      <div role="tablist" aria-label={tr.edit.tabsAria} className="flex p-0.5 rounded-xl bg-surface-2 border border-separator">
         {TABS.filter((t) => t.visible).map((t) => (
           <button
             key={t.id}
@@ -680,10 +855,22 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
 
       {tab === "preset" && (
         <div role="tabpanel" className="flex flex-col gap-2">
-          <PresetStrip thumbs={thumbs} activeId={params.presetId} onSelect={(id) => setParams({ presetId: id })} />
+          <PresetStrip
+            thumbs={thumbs}
+            activeId={params.presetId}
+            onSelect={(id) => setParams({ presetId: id })}
+            onAiPreset={() => setIsAiPresetOpen(true)}
+            onAuto={async () => {
+              if (!item) return;
+              const s = await suggestFromImage(item.proxyUrl || item.originalUrl);
+              if (!s) return;
+              setParams({ presetId: s.presetId, intensity: s.amount });
+              actions.setNotice(tr.presets.autoApplied(presetName(s.presetId), Math.round(s.amount * 100)));
+            }}
+          />
           {params.presetId && (
             <ResettableSlider
-              label="Miktar"
+              label={tr.common.amount}
               value={intensityPct}
               min={0}
               max={100}
@@ -753,7 +940,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
               }`}
             >
               <FlipHorizontal2 className="w-4 h-4" />
-              <span>Çevir</span>
+              <span>{tr.edit.flip}</span>
             </button>
             <button
               type="button"
@@ -761,11 +948,11 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
               className="press ml-auto h-11 px-3 rounded-xl text-sm border border-separator bg-surface-2 text-ink-1 flex items-center gap-2"
             >
               <RotateCcw className="w-4 h-4" />
-              <span>Sıfırla</span>
+              <span>{tr.common.reset}</span>
             </button>
           </div>
           <ResettableSlider
-            label="Düzelt (ufuk)"
+            label={tr.edit.straighten}
             value={Math.round(crop.angle * 10) / 10}
             min={-EDIT_MAX_ANGLE}
             max={EDIT_MAX_ANGLE}
@@ -774,6 +961,68 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
             unit="°"
             onChange={(v) => setCrop({ angle: v })}
           />
+        </div>
+      )}
+      {tab === "fix" && (
+        <div role="tabpanel" className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={runAuto}
+            disabled={!srcDims}
+            className="press h-11 rounded-md bg-surface-2 border border-separator text-ink-1 text-subhead font-semibold flex items-center justify-center gap-2"
+          >
+            <Wand2 className="w-4 h-4" />
+            <span>{tr.fix.auto}</span>
+          </button>
+          <p className="text-footnote text-ink-2">{tr.fix.note}</p>
+          <ul className="flex flex-col">
+            {CORRECTION_IDS.map((id) => {
+              const row = corrections[id];
+              const meta = tr.fix.rows[id];
+              return (
+                <li key={id} className="flex flex-col border-t border-separator first:border-t-0">
+                  <div className="flex items-center gap-3 min-h-[52px]">
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <span id={`fix-${id}`} className="text-subhead text-ink-1">
+                        {meta.title}
+                      </span>
+                      <span className="text-footnote text-ink-2">{meta.hint}</span>
+                    </div>
+                    <Switch
+                      checked={row.on}
+                      labelledBy={`fix-${id}`}
+                      onChange={(on) =>
+                        setCorrection(id, {
+                          on,
+                          // elle açılırsa Otomatik'in önerisi, yoksa 50
+                          strength: on ? (autoSuggest?.[id].on ? autoSuggest[id].strength : row.strength || MANUAL_STRENGTH) : row.strength,
+                        })
+                      }
+                    />
+                  </div>
+                  {row.on && (
+                    <div className="pb-1">
+                      <ResettableSlider
+                        label={tr.fix.strength}
+                        value={Math.round(row.strength)}
+                        min={0}
+                        max={100}
+                        defaultValue={autoSuggest?.[id].on ? autoSuggest[id].strength : MANUAL_STRENGTH}
+                        onInteractionStart={() => {
+                          draggingRef.current = true;
+                        }}
+                        onInteractionEnd={() => {
+                          draggingRef.current = false;
+                          scheduleRender();
+                        }}
+                        onChange={(v) => setCorrection(id, { strength: v })}
+                      />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
     </div>
@@ -796,27 +1045,27 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
         className="press ml-auto h-11 px-3 rounded-xl text-sm font-semibold bg-surface-2 text-ink-1 flex items-center gap-1.5"
       >
         <Sparkles className="w-4 h-4 text-ink-2" />
-        <span>AI ile onar</span>
+        <span>{tr.ai.title}</span>
       </button>
       {out && !canEnlarge && (
-        <span className="text-xs text-ink-2 text-right">Büyütmek için çok büyük</span>
+        <span className="text-xs text-ink-2 text-right">{tr.edit.tooLargeToEnlarge}</span>
       )}
       <button
         type="button"
         onClick={handleEnlarge}
         disabled={!hasPhoto || !out || isEnlarging || !canEnlarge}
-        title={out && !canEnlarge ? "Bu boyut için çok büyük" : undefined}
+        title={out && !canEnlarge ? tr.common.tooLarge : undefined}
         className={`press h-11 px-3 rounded-xl text-sm font-semibold bg-surface-2 text-ink-1 flex items-center gap-1.5`}
       >
         <ZoomIn className="w-4 h-4" />
-        <span>{isEnlarging ? "Hazırlanıyor" : "Büyüt"}</span>
+        <span>{isEnlarging ? tr.common.preparing : tr.edit.enlarge}</span>
       </button>
     </div>
   );
 
   return (
     <StudioShell
-      title="Düzenle"
+      title={tr.modules.edit.title}
       onBack={onBack}
       onExport={() => setIsExportOpen(true)}
       exportDisabled={!hasPhoto || !out}
@@ -840,6 +1089,22 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
         size={srcDims ? { w: srcDims.w, h: srcDims.h } : null}
         prepareInput={prepareAiPixels}
         onResult={handleAiResult}
+      />
+
+      <AiPresetSheet
+        open={isAiPresetOpen}
+        onClose={() => setIsAiPresetOpen(false)}
+        getImage={async () => sourceRef.current?.img ?? (item ? await loadImage(item.originalUrl || item.proxyUrl) : null)}
+        current={params.aiPlan ?? null}
+        onUseCurrent={() => {
+          setParams({ presetId: AI_PLAN_PRESET_ID });
+          setIsAiPresetOpen(false);
+        }}
+        onResult={(record) => {
+          setParams({ presetId: AI_PLAN_PRESET_ID, aiPlan: record, intensity: 1 });
+          setIsAiPresetOpen(false);
+          actions.setNotice(tr.aiPreset.applied(tr.aiPreset.styles[record.style] ?? record.style));
+        }}
       />
 
       {aiReview && (

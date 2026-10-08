@@ -7,7 +7,7 @@ import {
   CarouselRenderOptions,
 } from '../lib/engine/carousel-render';
 import { extractColorMetrics } from '../lib/engine/harmonize';
-import { applyPresetToImageData, CURATE_PRESETS, parseCubeLUT } from '../lib/engine/presets';
+import { applyPresetToImageData, CURATE_PRESETS } from '../lib/engine/presets';
 
 import { FakeContext, FakeImage, makeImageData, makePhoto, asCtx, asImg, countDiff } from './helpers/fake-canvas';
 
@@ -74,16 +74,6 @@ describe('Carousel preview/export parity at 1080×1350 (spec §4.4 M2-a)', () =>
       expect(countDiff(prev.buf, exp.buf)).toBe(0);
     }
   });
-
-  it('.cube LUT look is identical in preview and export', () => {
-    const lines = ['LUT_3D_SIZE 2'];
-    for (let b = 0; b < 2; b++) for (let g = 0; g < 2; g++) for (let r = 0; r < 2; r++) lines.push(`${r * 0.9} ${g} ${b * 0.8}`);
-    const lut = parseCubeLUT(lines.join('\n'), 'test');
-    const opts: CarouselRenderOptions = { fitMode: 'fill', customLut: lut, presetId: 'custom_lut', presetIntensity: 0.7, outputWidth: W };
-    const ctx = new FakeContext(W, H);
-    new CarouselPreviewRenderer().render(asCtx(ctx), asImg(portrait), 'p', W, H, opts);
-    expect(countDiff(ctx.buf, exportPixels(portrait, opts))).toBe(0);
-  });
 });
 
 describe('Grain follows the export grid (draft preview stands for export pixels)', () => {
@@ -125,5 +115,65 @@ describe('Hero harmonize metrics come from the raw frame (audit finding #5)', ()
     // Monochrome removes color: the old source would have reported R ≈ G ≈ B
     expect(Math.abs(filteredMetrics.avgR - filteredMetrics.avgB)).toBeLessThan(1);
     expect(Math.abs(metrics.avgR - metrics.avgB)).toBeGreaterThan(5);
+  });
+});
+
+describe('previewRenderSize (preview at the shown size, never above export)', () => {
+  it('caps at the stage box × device pixel ratio and keeps the export ratio', async () => {
+    const { previewRenderSize } = await import('../lib/engine/carousel-render');
+    // 390 phone: stage 351×439 CSS px, DPR 2.75 → density capped at 2 → 702 px wide
+    expect(previewRenderSize(1080, 1350, 351, 439, 2.75)).toEqual({ width: 702, height: 878 });
+    expect(previewRenderSize(1080, 1350, 232, 290, 1.5)).toEqual({ width: 348, height: 435 });
+    // big box: export size (no upscaling)
+    expect(previewRenderSize(1080, 1350, 2000, 2000, 2)).toEqual({ width: 1080, height: 1350 });
+    // draft halves
+    expect(previewRenderSize(1080, 1350, 2000, 2000, 2, true)).toEqual({ width: 540, height: 675 });
+    // unknown box → export size
+    expect(previewRenderSize(1080, 1920, 0, 0, 3)).toEqual({ width: 1080, height: 1920 });
+    // tall box limited by width
+    expect(previewRenderSize(1080, 1920, 300, 1000, 2).width).toBe(600);
+  });
+});
+
+describe('Düzenle + Düzeltme parity (Faz D2): preview equals export, also through the worker path', () => {
+  it('renderer (sync) and the worker-style setBase path both equal the export at the export size', async () => {
+    const { DEFAULT_EDIT_CROP } = await import('../lib/engine/edit-geometry');
+    const { DEFAULT_CORRECTIONS, applyCorrections } = await import('../lib/engine/corrections');
+    const img = makePhoto(900, 700);
+    const OW = 600;
+    const OH = 600;
+    const corrections = {
+      ...DEFAULT_CORRECTIONS,
+      noise: { on: true, strength: 60 },
+      edgeColor: { on: true, strength: 50 },
+      edgeSharp: { on: true, strength: 40 },
+      shadows: { on: true, strength: 30 },
+    };
+    const opts: CarouselRenderOptions = {
+      fitMode: 'fill',
+      crop: { ...DEFAULT_EDIT_CROP, aspect: '1:1' },
+      presetId: 'amber_grain',
+      presetIntensity: 0.7,
+      outputWidth: OW,
+      corrections,
+    };
+    const exp = new FakeContext(OW, OH);
+    drawCarouselFrame(asCtx(exp), asImg(img), OW, OH, opts);
+
+    const sync = new FakeContext(OW, OH);
+    new CarouselPreviewRenderer().render(asCtx(sync), asImg(img), 'photo', OW, OH, opts);
+    expect(countDiff(sync.buf, exp.buf)).toBe(0);
+
+    // worker path: geometry-only base, corrections applied separately, stored with setBase
+    const r = new CarouselPreviewRenderer();
+    const geo = new FakeContext(OW, OH);
+    const base = renderCarouselBase(asCtx(geo), asImg(img), OW, OH, { ...opts, corrections: null });
+    applyCorrections(base.imageData, corrections, 1);
+    const key = r.baseKey(OW, OH, opts);
+    r.setBase('photo', key, base);
+    expect(r.hasBase('photo', key)).toBe(true);
+    const viaWorker = new FakeContext(OW, OH);
+    r.render(asCtx(viaWorker), asImg(img), 'photo', OW, OH, opts);
+    expect(countDiff(viaWorker.buf, exp.buf)).toBe(0);
   });
 });

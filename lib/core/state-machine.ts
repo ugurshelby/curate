@@ -7,11 +7,20 @@
  * 4. Lossless Upscale (Lanczos-3)
  */
 
-import { StudioItem, StudioModule, StudioState, ActivePreset, CubeLUT, ColorMetrics, ImageDimensions, StoryCellTransform, EditParams, EditCrop, DerivedKind } from './types';
+import { StudioItem, StudioModule, StudioState, ActivePreset, ColorMetrics, ImageDimensions, StoryCellTransform, EditParams, EditCrop, DerivedKind, CarouselView } from './types';
 import { DEFAULT_EDIT_PARAMS } from '../engine/edit-geometry';
+import { DEFAULT_PRESET_ID } from '../engine/presets';
 import { revokeUrl, cleanupAllUrls, generateProxyImage, registerUrl } from '../engine/proxy';
 
 const INITIAL_ITEMS: StudioItem[] = [];
+
+/**
+ * Düzenle defaults for a photo: new photos start with the "Doğal" preset (owner brief §8.4);
+ * derived results (Büyüt, AI) start plain so a look is not applied twice (spec E11).
+ */
+export function defaultEditParamsFor(item: Pick<StudioItem, 'derivedBy'> | null | undefined): EditParams {
+  return item?.derivedBy ? DEFAULT_EDIT_PARAMS : { ...DEFAULT_EDIT_PARAMS, presetId: DEFAULT_PRESET_ID };
+}
 
 /** Bellek sınırı: kaynak başına en çok 2 türetilmiş fotoğraf; üçüncüde en eskisi silinir */
 export const MAX_DERIVED_PER_SOURCE = 2;
@@ -52,8 +61,8 @@ const INITIAL_STATE: StudioState = {
   activeModule: 'carousel',
   items: INITIAL_ITEMS,
   selectedItemId: null,
-  globalPreset: null,
-  customLut: null,
+  // Seri görünümü: varsayılan "Doğal" (sahip görev belgesi §8.4); kullanıcı Orijinal seçerse null
+  globalPreset: { id: DEFAULT_PRESET_ID, intensity: 1 },
   heroColorMetrics: null,
   globalHarmonize: {
     referenceItemId: null,
@@ -69,6 +78,13 @@ const INITIAL_STATE: StudioState = {
     borderWidth: 24,
     borderRadius: 12,
     showTimestamp: true,
+    size: '4_5',
+    resolution: 'standard',
+  },
+  carouselView: {
+    target: 'instagram',
+    fitMode: 'fill',
+    showOverlay: true,
   },
   edits: {},
   upscaleConfig: {
@@ -219,9 +235,6 @@ class StudioStateMachine {
     this.setState({ globalPreset: preset });
   }
 
-  public setCustomLut(customLut: CubeLUT | null) {
-    this.setState({ customLut });
-  }
 
   public setHeroColorMetrics(heroColorMetrics: ColorMetrics | null) {
     this.setState({ heroColorMetrics });
@@ -299,8 +312,12 @@ class StudioStateMachine {
       items[index] = { ...newItem, order: index };
       const cellTransforms = { ...prev.storyLayout.cellTransforms };
       delete cellTransforms[old.id];
+      // Eski kaydın Düzenle ayarı da gider (removeFromState ile aynı)
+      const edits = { ...prev.edits };
+      delete edits[old.id];
       return {
         items,
+        edits,
         selectedItemId: prev.selectedItemId === old.id ? newItem.id : prev.selectedItemId,
         storyLayout: { ...prev.storyLayout, cellTransforms },
       };
@@ -310,7 +327,7 @@ class StudioStateMachine {
   /** Düzenle ayarlarını birleştirir (kırp alanları ayrı birleşir) */
   public setEditParams(itemId: string, patch: Partial<Omit<EditParams, 'crop'>> & { crop?: Partial<EditCrop> }) {
     this.setState((prev) => {
-      const current = prev.edits[itemId] ?? DEFAULT_EDIT_PARAMS;
+      const current = prev.edits[itemId] ?? defaultEditParamsFor(prev.items.find((i) => i.id === itemId));
       const next: EditParams = {
         ...current,
         ...patch,
@@ -337,6 +354,10 @@ class StudioStateMachine {
       edits: {},
       storyLayout: { ...prev.storyLayout, cellTransforms: {} },
     }));
+  }
+
+  public setCarouselView(view: Partial<CarouselView>) {
+    this.setState((prev) => ({ carouselView: { ...prev.carouselView, ...view } }));
   }
 
   public setUpscaleScale(scaleFactor: 2 | 4) {
@@ -419,9 +440,14 @@ export function getStudioSelection(
 /**
  * Creates a StudioItem from File with immediate reactivity and async proxy generation
  */
-export function createStudioItem(file: File, index: number = 0): StudioItem {
+export function createStudioItem(
+  file: File,
+  index: number = 0,
+  /** Cihaz önbelleğinden geri yüklerken kimlik ve tarih korunur (lib/core/library-cache.ts) */
+  restore?: { id: string; createdAt: number },
+): StudioItem {
   const url = registerUrl(URL.createObjectURL(file));
-  const id = `photo_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 6)}`;
+  const id = restore?.id ?? `photo_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 6)}`;
   const item: StudioItem = {
     id,
     file,
@@ -433,7 +459,7 @@ export function createStudioItem(file: File, index: number = 0): StudioItem {
     preset: null,
     harmonize: { enabled: false, referenceItemId: null, strength: 0.2 },
     order: index,
-    createdAt: Date.now() + index,
+    createdAt: restore?.createdAt ?? Date.now() + index,
   };
 
   // Inspect natural dimensions and generate high-efficiency proxy asynchronously
@@ -448,6 +474,11 @@ export function createStudioItem(file: File, index: number = 0): StudioItem {
           aspectRatio: (img.naturalWidth || 1080) / (img.naturalHeight || 1350),
         };
         const proxyRes = await generateProxyImage(img, origDim);
+        if (!studioStore.getState().items.some((i) => i.id === id)) {
+          // Kayıt bu arada silindi: proxy URL'si sızmasın
+          revokeUrl(proxyRes.proxyUrl);
+          return;
+        }
         studioStore.updateItem(id, {
           dimensions: origDim,
           proxyUrl: proxyRes.proxyUrl,
@@ -457,9 +488,20 @@ export function createStudioItem(file: File, index: number = 0): StudioItem {
         // Fallback: keep original URL as proxy
       }
     };
+    img.onerror = () => handleUndecodable(id, file.name, url);
     img.src = url;
   }
 
   return item;
 }
 
+/**
+ * Tarayıcının açamadığı dosya (ör. Android Chrome'da HEIC): sahte 1080×1350 boyutla mesajsız kalmaz,
+ * kütüphaneden çıkarılır ve kullanıcıya söylenir.
+ */
+export function handleUndecodable(id: string, fileName: string, url: string): void {
+  const present = studioStore.getState().items.some((i) => i.id === id);
+  if (present) studioStore.removeItem(id);
+  else revokeUrl(url);
+  studioStore.setNotice(`"${fileName}" açılamadı; bu dosya biçimi desteklenmiyor.`);
+}

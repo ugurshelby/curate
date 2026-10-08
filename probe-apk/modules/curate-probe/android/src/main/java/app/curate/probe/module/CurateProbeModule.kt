@@ -1,7 +1,7 @@
 package app.curate.probe.module
 
-// Curate Probe: yalnız ölçüm. Ağ yok, görüntü kaydı yok (docs/probe/README.md).
-// Kişisel/tanımlayıcı alan okunmaz: Build.SERIAL, IMEI, hesap, konum YOK.
+// Curate Probe: measurement only. No network, no image saved (docs/probe/README.md).
+// No personal or identifying field is read: no Build.SERIAL, IMEI, account or location.
 
 import android.app.ActivityManager
 import android.content.Context
@@ -24,7 +24,7 @@ class CurateProbeModule : Module() {
   private val ctx: Context
     get() = appContext.reactContext ?: throw IllegalStateException("React context yok")
 
-  // https://docs.expo.dev/modules/module-api/ (AsyncFunction arka planda çalışır)
+  // https://docs.expo.dev/modules/module-api/ (AsyncFunction runs on a background queue)
   override fun definition() = ModuleDefinition {
     Name("CurateProbe")
 
@@ -84,7 +84,7 @@ private fun deviceInfo(ctx: Context): Map<String, Any?> {
   )
 }
 
-/** GPU adı: küçük bir EGL pbuffer bağlamı açıp GL_RENDERER okunur. Varsayılan ekran sonlandırılmaz (HWUI paylaşır). */
+/** GPU name: opens a tiny EGL pbuffer context and reads GL_RENDERER. The default display is not terminated (shared with HWUI). */
 private fun glInfo(): Map<String, Any?> = try {
   // https://developer.android.com/reference/android/opengl/EGL14
   val dpy = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
@@ -125,7 +125,7 @@ private fun glInfo(): Map<String, Any?> = try {
   mapOf("hata" to "${e.javaClass.simpleName}: ${e.message}")
 }
 
-/** Sensör listesi ve seçili sensörlerde ölçülen olay hızı (SENSOR_DELAY_FASTEST). */
+/** Sensor list and measured event rate for selected sensors (SENSOR_DELAY_FASTEST). */
 private fun sampleSensors(ctx: Context, durationMs: Int): Map<String, Any?> {
   // https://developer.android.com/reference/android/hardware/SensorManager
   val sm = ctx.getSystemService(Context.SENSOR_SERVICE) as SensorManager

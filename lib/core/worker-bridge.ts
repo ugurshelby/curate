@@ -5,6 +5,7 @@
  */
 
 import { upscaleLanczos3 } from '../engine/upscale-lanczos';
+import { applyCorrections as applyCorrectionsSync, CorrectionParams } from '../engine/corrections';
 import { applyPresetToImageData, CURATE_PRESETS } from '../engine/presets';
 import { extractColorMetrics, applyHarmonizeSync } from '../engine/harmonize';
 import { extractAdaptiveGradient } from '../engine/adaptive-gradient';
@@ -15,8 +16,20 @@ import {
   WorkerTaskType,
 } from '../workers/image-processor.worker';
 
-class WorkerBridge {
-  private worker: Worker | null = null;
+type WorkerLike = Pick<Worker, 'postMessage' | 'terminate'> & {
+  onmessage: ((event: MessageEvent<WorkerTaskResponse>) => void) | null;
+  onerror: ((event: ErrorEvent | Event) => void) | null;
+  onmessageerror: ((event: MessageEvent) => void) | null;
+};
+
+function defaultWorkerFactory(): WorkerLike | null {
+  if (typeof window === 'undefined' || typeof Worker === 'undefined') return null;
+  // Modern Webpack/Next.js worker instantiation
+  return new Worker(new URL('../workers/image-processor.worker.ts', import.meta.url)) as unknown as WorkerLike;
+}
+
+export class WorkerBridge {
+  private worker: WorkerLike | null = null;
   private pendingTasks = new Map<
     string,
     {
@@ -25,44 +38,61 @@ class WorkerBridge {
     }
   >();
 
-  constructor() {
+  constructor(private createWorker: () => WorkerLike | null = defaultWorkerFactory) {
     this.initWorker();
   }
 
+  /**
+   * Worker çöktü (ör. büyük Upscale'de bellek): bekleyen her görev reddedilir (sonsuza kadar
+   * "işleniyor"da kalmaz), worker kapatılır; sonraki görevler ana thread yedeğiyle çalışır.
+   */
+  private failAll(reason: string) {
+    const pending = [...this.pendingTasks.values()];
+    this.pendingTasks.clear();
+    try {
+      this.worker?.terminate();
+    } catch {
+      /* zaten kapalı */
+    }
+    this.worker = null;
+    pending.forEach((p) => p.reject(new Error(reason)));
+  }
+
   private initWorker() {
-    if (typeof window !== 'undefined' && typeof Worker !== 'undefined') {
-      try {
-        // Modern Webpack/Next.js worker instantiation
-        this.worker = new Worker(
-          new URL('../workers/image-processor.worker.ts', import.meta.url)
-        );
+    try {
+      this.worker = this.createWorker();
+      if (!this.worker) return;
 
-        this.worker.onmessage = (event: MessageEvent<WorkerTaskResponse>) => {
-          const { taskId, success, error, resultImageData, colorMetrics, adaptiveGradient } =
-            event.data;
+      this.worker.onmessage = (event: MessageEvent<WorkerTaskResponse>) => {
+        const { taskId, success, error, resultImageData, colorMetrics, adaptiveGradient } =
+          event.data;
 
-          const pending = this.pendingTasks.get(taskId);
-          if (!pending) return;
+        const pending = this.pendingTasks.get(taskId);
+        if (!pending) return;
 
-          this.pendingTasks.delete(taskId);
+        this.pendingTasks.delete(taskId);
 
-          if (!success) {
-            pending.reject(new Error(error || 'Worker task failed'));
-          } else {
-            if (resultImageData) pending.resolve(resultImageData);
-            else if (colorMetrics) pending.resolve(colorMetrics);
-            else if (adaptiveGradient) pending.resolve(adaptiveGradient);
-            else pending.resolve(null);
-          }
-        };
+        if (!success) {
+          pending.reject(new Error(error || 'Worker task failed'));
+        } else {
+          if (resultImageData) pending.resolve(resultImageData);
+          else if (colorMetrics) pending.resolve(colorMetrics);
+          else if (adaptiveGradient) pending.resolve(adaptiveGradient);
+          else pending.resolve(null);
+        }
+      };
 
-        this.worker.onerror = (err) => {
-          console.warn('[WorkerBridge] Worker error, falling back to main-thread processing', err);
-        };
-      } catch (e) {
-        console.warn('[WorkerBridge] Worker instantiation failed, using in-thread fallback', e);
-        this.worker = null;
-      }
+      this.worker.onerror = (err) => {
+        console.warn('[WorkerBridge] Worker error, falling back to main-thread processing', err);
+        this.failAll('İşlem yarıda kaldı (bellek yetmemiş olabilir).');
+      };
+
+      this.worker.onmessageerror = () => {
+        this.failAll('İşlem sonucu okunamadı.');
+      };
+    } catch (e) {
+      console.warn('[WorkerBridge] Worker instantiation failed, using in-thread fallback', e);
+      this.worker = null;
     }
   }
 
@@ -104,6 +134,15 @@ class WorkerBridge {
         resolve(fallbackFn());
       }
     });
+  }
+
+  /** Düzeltme (D2): heavy local filters off the main thread; same function as the export path */
+  public async applyCorrections(imageData: ImageData, corrections: CorrectionParams, correctionScale: number): Promise<ImageData> {
+    return this.postOrFallback<ImageData>(
+      'APPLY_CORRECTIONS',
+      { imageData, corrections, correctionScale },
+      () => applyCorrectionsSync(imageData, corrections, correctionScale)
+    );
   }
 
   public async upscaleLanczos(imageData: ImageData, scaleFactor: 2 | 4): Promise<ImageData> {

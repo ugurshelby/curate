@@ -1,6 +1,6 @@
 package app.curate.probe.module
 
-// Camera2 özellikleri: izin gerektirmeden okunabilen kısım (getCameraCharacteristics kamera izni istemez).
+// Camera2 characteristics: the part readable without permission (getCameraCharacteristics needs no camera permission).
 // https://developer.android.com/reference/android/hardware/camera2/CameraCharacteristics
 
 import android.content.Context
@@ -21,7 +21,7 @@ internal object CameraInfo {
     CameraMetadata.INFO_SUPPORTED_HARDWARE_LEVEL_EXTERNAL to "EXTERNAL",
   )
 
-  // https://developer.android.com/reference/android/hardware/camera2/CameraMetadata#REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE (sabit değerleri)
+  // https://developer.android.com/reference/android/hardware/camera2/CameraMetadata#REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE (constant values)
   private val CAPABILITIES = mapOf(
     0 to "BACKWARD_COMPATIBLE", 1 to "MANUAL_SENSOR", 2 to "MANUAL_POST_PROCESSING", 3 to "RAW",
     4 to "PRIVATE_REPROCESSING", 5 to "READ_SENSOR_SETTINGS", 6 to "BURST_CAPTURE", 7 to "YUV_REPROCESSING",
@@ -51,7 +51,7 @@ internal object CameraInfo {
         for (p in phys) if (seen.add(p)) out.add(describe(cm, p, "fiziksel:$id"))
       }
     }
-    // Üretici kısıtı sorusu: listede olmayan kimliklerin özellikleri okunabiliyor mu (0–15)
+    // Vendor restriction question: are characteristics readable for ids missing from the list (0–15)
     val hidden = mutableListOf<String>()
     for (i in 0..15) {
       val id = i.toString()

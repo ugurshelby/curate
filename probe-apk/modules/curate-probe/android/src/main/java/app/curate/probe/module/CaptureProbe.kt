@@ -1,8 +1,8 @@
 package app.curate.probe.module
 
-// Canlı yakalama testleri (arka ana kamera, Camera2). Görüntüler KAYDEDİLMEZ: her kare 160 px'e küçültülüp
-// yalnız sayıya çevrilir ve hemen kapatılır; RAW/DNG yalnız bellekte oluşturulup boyutu ölçülür.
-// Her adım kendi try/catch'inde: bir adım çökerse diğerleri sürer, durum "hata" olur.
+// Live capture tests (main back camera, Camera2). Images are NEVER saved: each frame is reduced to 160 px,
+// turned into numbers and closed at once; RAW/DNG is built in memory only to measure its size.
+// Every step has its own try/catch: if one fails the others still run and its status is "hata".
 // https://developer.android.com/reference/android/hardware/camera2/package-summary
 
 import android.Manifest
@@ -40,7 +40,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-// lib/probe/schema.ts EFFECT_MIN ile aynı eşikler (web ile eşleşmeli)
+// Same thresholds as EFFECT_MIN in lib/probe/schema.ts (must match the web)
 private const val MIN_LUMA_DELTA = 8.0
 private const val MIN_RATIO_DELTA = 0.06
 private const val MIN_SHARP_REL = 0.2
@@ -61,7 +61,7 @@ private class Shot(
   val iso: Int?, val expNs: Long?, val focus: Float?, val extra: Map<String, Any?>,
 )
 
-/** JPEG → ≈160 px bitmap → parlaklık, R/G, B/G, Laplace keskinliği, çeyrek parlaklıkları. Bitmap hemen geri verilir. */
+/** JPEG → ≈160 px bitmap → brightness, R/G, B/G, Laplacian sharpness, quarter brightness. The bitmap is recycled at once. */
 private fun jpegStats(bytes: ByteArray): Stats {
   // https://developer.android.com/reference/android/graphics/BitmapFactory.Options#inSampleSize
   val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -188,7 +188,7 @@ internal class CaptureProbe(private val ctx: Context) {
       val expR = chars.get(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE)!!
       val baseIso = autoIso ?: 200
       val baseExp = autoExpNs ?: 16_666_666L
-      // Koyu: ISO/2 + süre/2; aydınlık: ISO×2 + süre×2 (≈ 4 EV fark)
+      // Dark: ISO/2 + time/2; bright: ISO×2 + time×2 (≈ 4 EV apart)
       val plan = listOf(baseIso / 2 to baseExp / 2, baseIso * 2 to min(baseExp * 2, 100_000_000L))
         .map { (i, e) -> i.coerceIn(isoR.lower, isoR.upper) to e.coerceIn(expR.lower, expR.upper) }
       val shots = plan.map { (i, e) -> still(jpeg!!, { manual(it, i, e) }) }
@@ -403,7 +403,7 @@ internal class CaptureProbe(private val ctx: Context) {
     }
   }
 
-  // ---------- yardımcılar ----------
+  // ---------- helpers ----------
 
   private fun level(): String = when (chars.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL)) {
     CameraMetadata.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY -> "donanım seviyesi LEGACY"
@@ -544,7 +544,7 @@ internal class CaptureProbe(private val ctx: Context) {
     }, handler)
   }
 
-  /** Önizleme isteğini değiştirir, AE yakınsayana (ya da 2,5 sn) kadar bekler. Dönen: bekleme ms. */
+  /** Replaces the preview request and waits until AE converges (or 2.5 s). Returns the wait in ms. */
   private fun settle(configure: (CaptureRequest.Builder) -> Unit, check: (TotalCaptureResult) -> Boolean = { true }): Long {
     val t0 = now()
     startPreview(configure)

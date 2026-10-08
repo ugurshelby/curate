@@ -9,9 +9,9 @@
  */
 export function sanitizeJpegBuffer(buffer: ArrayBuffer): ArrayBuffer {
   const view = new DataView(buffer);
-  
+
   // Verify JPEG SOI marker (0xFFD8)
-  if (view.getUint16(0, false) !== 0xffd8) {
+  if (view.byteLength < 4 || view.getUint16(0, false) !== 0xffd8) {
     return buffer; // Not standard JPEG, return unmodified
   }
 
@@ -26,24 +26,24 @@ export function sanitizeJpegBuffer(buffer: ArrayBuffer): ArrayBuffer {
       break;
     }
 
-    // Check for APP1 (EXIF: 0xFFE1) or APP2 (0xFFE2)
+    // Standalone markers (RST0–7) have no length
+    if (marker >= 0xffd0 && marker <= 0xffd7) {
+      offset += 2;
+      continue;
+    }
+
+    // Bozuk/kesik dosya: uzunluk okunamıyor veya dosya dışına taşıyor → dokunmadan dur (RangeError yok)
+    if (offset + 4 > length) break;
+    const segLen = view.getUint16(offset + 2, false);
+    if (segLen < 2 || offset + 2 + segLen > length) break;
+
+    // Check for APP1 (EXIF: 0xFFE1) or APP2 (0xFFE2): zero out the metadata segment payload
     if (marker === 0xffe1 || marker === 0xffe2) {
-      const segmentLength = view.getUint16(offset + 2, false);
-      
-      // Zero out the metadata segment payload
-      for (let i = offset + 4; i < offset + 2 + segmentLength; i++) {
+      for (let i = offset + 4; i < offset + 2 + segLen; i++) {
         view.setUint8(i, 0);
       }
-      offset += 2 + segmentLength;
-    } else {
-      // Standard segment, skip
-      if (marker >= 0xffd0 && marker <= 0xffd7) {
-        offset += 2;
-      } else {
-        const segLen = view.getUint16(offset + 2, false);
-        offset += 2 + segLen;
-      }
     }
+    offset += 2 + segLen;
   }
 
   return buffer;

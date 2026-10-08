@@ -1,11 +1,11 @@
-// Yoklama raporu şeması probe/v1 (docs/probe/SCHEMA.md). Web ve native aynı tipi kullanır.
-// Native kopya: probe-apk/src/probe-schema.ts. "ortak gövde" işaretinden sonrası iki dosyada birebir aynı olmalı
-// (tests/probe-schema.test.ts denetler). Bu dosya hiçbir şey import etmez.
-// --- ortak gövde ---
+// Probe report schema probe/v1 (docs/probe/SCHEMA.md). Web and native use the same type.
+// Native copy: probe-apk/src/probe-schema.ts. Everything after the "shared body" marker must be identical
+// in both files (checked by tests/probe-schema.test.ts). This file imports nothing.
+// --- shared body ---
 
 export const PROBE_SCHEMA = 'probe/v1' as const;
 
-/** "kabul-edildi-etkisiz": API/kısıt kabul edildi ama görüntüde ölçülebilir fark yok. "etkili": fark ölçüldü. */
+/** "kabul-edildi-etkisiz": the API accepted the request but the image shows no measurable change. "etkili": a change was measured. */
 export type ProbeStatus = 'var' | 'yok' | 'kabul-edildi-etkisiz' | 'etkili' | 'hata' | 'atlandı';
 export const PROBE_STATUSES: readonly ProbeStatus[] = ['var', 'yok', 'kabul-edildi-etkisiz', 'etkili', 'hata', 'atlandı'];
 
@@ -21,11 +21,11 @@ export interface ProbeTest {
 }
 
 export interface ProbeCamera {
-  /** Web: sıra numarası ("0", "1"...), deviceId yazılmaz. Native: Camera2 kimliği. */
+  /** Web: index ("0", "1"…), never the deviceId. Native: Camera2 id. */
   kimlik: string;
   yön: 'arka' | 'ön' | 'harici' | 'bilinmiyor';
   etiket: string;
-  /** Native: mantıksal kameranın altındaki fiziksel kamera ya da listede olmayan kimlik */
+  /** Native: physical camera under a logical one, or an id missing from the public list */
   fiziksel: boolean;
   özellikler: { [k: string]: ProbeMeasure };
 }
@@ -56,7 +56,7 @@ export interface ProbeReport {
   summary: ProbeSummary;
 }
 
-/** "Ne mümkün" matrisi. Her anahtar bir ya da daha çok test kimliğinden türetilir. */
+/** "What is possible" matrix. Each key is derived from one or more test ids. */
 export const MATRIX_KEYS = [
   'noktaPozlama',
   'evTelafisi',
@@ -86,7 +86,7 @@ export const MATRIX_LABELS: Record<MatrixKey, string> = {
   raw: 'RAW / DNG',
 };
 
-/** Matris anahtarı → aday test kimlikleri (web ve native). İlk "en iyi" durum kazanır. */
+/** Matrix key → candidate test ids (web and native). The best status wins. */
 export const MATRIX_SOURCES: Record<MatrixKey, string[]> = {
   noktaPozlama: ['etki.pointsOfInterest', 'native.noktaPozlama'],
   evTelafisi: ['etki.exposureCompensation', 'native.braket'],
@@ -101,7 +101,7 @@ export const MATRIX_SOURCES: Record<MatrixKey, string[]> = {
   raw: ['web.raw', 'native.raw'],
 };
 
-/** Durumların iyiden kötüye sırası (matriste birden çok kaynak varsa en iyisi gösterilir) */
+/** Status rank, best first (with several sources the matrix shows the best) */
 const RANK: Record<ProbeStatus, number> = {
   etkili: 0,
   var: 1,
@@ -132,7 +132,7 @@ export function buildSummary(tests: ProbeTest[]): ProbeSummary {
   return { sayım, matris };
 }
 
-/** Etki eşikleri: 0–255 parlaklık, B/G ya da R/G oranı, göreli keskinlik, 0–255 kare farkı */
+/** Effect thresholds: brightness 0–255, B/G or R/G ratio, relative sharpness, frame difference 0–255 */
 export const EFFECT_MIN = {
   parlaklık: 8,
   renkOranı: 0.06,
@@ -141,19 +141,19 @@ export const EFFECT_MIN = {
 } as const;
 
 export interface EffectInput {
-  /** Yetenek listesinde var mı */
+  /** Present in the capability list */
   supported: boolean;
-  /** applyConstraints / capture isteği hata verdi mi (mesaj) */
+  /** Error message from applyConstraints / the capture request, if any */
   error: string | null;
-  /** Min ve max uygulama arasındaki ölçülen fark (aynı birimde) */
+  /** Measured difference between the min and max setting (same unit) */
   delta: number;
-  /** Hiçbir şey değişmeden iki ölçüm arasındaki fark (sahne gürültüsü) */
+  /** Difference between measurements with nothing changed (scene noise) */
   noise: number;
-  /** Bu metrik için en küçük anlamlı fark (EFFECT_MIN) */
+  /** Smallest meaningful difference for this metric (EFFECT_MIN) */
   minDelta: number;
 }
 
-/** "Kabul edildi" ile "etkili" ayrımı: fark hem eşiği hem 3× gürültüyü aşarsa etkili. */
+/** Accepted vs effective: effective only when the change beats both the threshold and 3× the noise. */
 export function decideEffect(i: EffectInput): ProbeStatus {
   if (!i.supported) return 'yok';
   if (i.error) return 'hata';
@@ -166,7 +166,7 @@ const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 
 const isNumOrNull = (v: unknown) => v === null || (typeof v === 'number' && Number.isFinite(v));
 const isStrOrNull = (v: unknown) => v === null || typeof v === 'string';
 
-/** Şema doğrulaması. Boş dizi = geçerli. */
+/** Schema validation. Empty array = valid. */
 export function validateProbeReport(r: unknown): string[] {
   const e: string[] = [];
   if (!isObj(r)) return ['rapor nesne değil'];
@@ -232,14 +232,14 @@ export function validateProbeReport(r: unknown): string[] {
   return e;
 }
 
-/** Dosya adı: curate-probe-<kaynak>-YYYYMMDD-HHMM.json (yerel saat) */
+/** File name: curate-probe-<source>-YYYYMMDD-HHMM.json (local time) */
 export function probeFileName(kaynak: 'web' | 'native', d: Date): string {
   const p = (n: number) => String(n).padStart(2, '0');
   const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
   return `curate-probe-${kaynak}-${stamp}.json`;
 }
 
-/** Ölçümü kısa tutmak için sayıyı yuvarlar */
+/** Rounds numbers to keep measurements short */
 export const round = (v: number, digits = 2) => {
   const f = 10 ** digits;
   return Math.round(v * f) / f;

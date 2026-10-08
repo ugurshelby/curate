@@ -1,9 +1,9 @@
-// Raporu cihazdan çıkarma: belge klasörüne yaz + Android paylaşım sayfası, SAF ile klasöre kaydet, panoya kopyala. Ağ yok.
+// Gets the report off the device: write to documents + Android share sheet, save via SAF folder picker, clipboard. No network.
 import * as Clipboard from 'expo-clipboard';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
-/** Uygulamanın belge klasörüne yazar (her seferinde üzerine) */
+/** Writes to the app's document directory (overwrites each time) */
 export function writeToDocuments(name: string, text: string): File {
   const f = new File(Paths.document, name);
   if (f.exists) f.delete();
@@ -19,7 +19,7 @@ export async function shareReport(name: string, text: string): Promise<string> {
   return f.uri;
 }
 
-/** Storage Access Framework klasör seçici: kullanıcı "Downloads" (İndirilenler) klasörünü seçer */
+/** Storage Access Framework folder picker: the user picks the Downloads folder */
 export async function saveToPickedFolder(name: string, text: string): Promise<string> {
   const dir = await Directory.pickDirectoryAsync();
   const f = dir.createFile(name, 'application/json');

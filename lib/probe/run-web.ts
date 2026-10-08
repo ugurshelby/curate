@@ -1,6 +1,6 @@
-// Web yoklaması: telefonun tarayıcıdan kameraya/donanıma ne verebildiğini ölçer (docs/probe/README.md).
-// Ağa hiçbir şey göndermez; görüntü saklamaz (kareler 160 px'e küçültülüp yalnız sayıya çevrilir).
-// Ürün özelliği değildir; yol haritası kararı verilince silinir.
+// Web probe: measures what the phone's browser can get from the camera and hardware (docs/probe/README.md).
+// Sends nothing over the network and keeps no image (frames are reduced to numbers at 160 px).
+// Not a product feature; deleted once the roadmap decision is made.
 import {
   PROBE_SCHEMA,
   EFFECT_MIN,
@@ -17,17 +17,9 @@ import { frameStats, lumaDiff, meanStats, type FrameSample, type FrameStats } fr
 
 export const PROBE_WEB_VERSION = 'curate-probe-web 1.0.0';
 
-export const WEB_STEPS = [
-  'Ortam',
-  'Sensörler',
-  'Kameralar',
-  'Çözünürlük ve fps',
-  'Etki testleri',
-  'Performans',
-  'Ekran dolgu ışığı',
-] as const;
-
-export type FillMode = 'kapalı' | 'beyaz' | 'sıcak';
+/** Seven steps reported through onStep(0…6); labels live in lib/i18n/tr.ts (tr.probe.steps) */
+export type FillMode = 'off' | 'white' | 'warm';
+const FILL_NAME: Record<FillMode, string> = { off: 'kapalı', white: 'beyaz', warm: 'sıcak' };
 
 export interface ProbeHooks {
   video: HTMLVideoElement;
@@ -35,12 +27,12 @@ export interface ProbeHooks {
   onStep(index: number): void;
 }
 
-// ---------- küçük yardımcılar ----------
+// ---------- small helpers ----------
 
 type Obj = Record<string, unknown>;
 type Range = { min: number; max: number; step: number | null };
 type RvfcVideo = HTMLVideoElement;
-/** requestVideoFrameCallback her tarayıcıda yok (TS tipi her zaman var sayar) */
+/** requestVideoFrameCallback is not in every browser (the TS type assumes it is) */
 const hasRvfc = () => typeof HTMLVideoElement !== 'undefined' && 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
 interface ImageCaptureLike {
   takePhoto(settings?: Obj): Promise<Blob>;
@@ -68,7 +60,7 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   });
 }
 
-/** Tarayıcı nesnelerini (capabilities, settings) JSON'a güvenli çevirir */
+/** Converts browser objects (capabilities, settings) to JSON-safe values */
 function jsonSafe(v: unknown, depth = 0): ProbeMeasure {
   if (v === null || v === undefined) return null;
   if (typeof v === 'number') return Number.isFinite(v) ? round(v, 4) : null;
@@ -78,7 +70,7 @@ function jsonSafe(v: unknown, depth = 0): ProbeMeasure {
   if (typeof v === 'object') {
     const out: Record<string, ProbeMeasure> = {};
     for (const k of Object.keys(v as Obj)) {
-      if (k === 'deviceId' || k === 'groupId') continue; // tanımlayıcılar rapora yazılmaz
+      if (k === 'deviceId' || k === 'groupId') continue; // identifiers never go into the report
       const x = (v as Obj)[k];
       if (typeof x === 'function') continue;
       out[k] = jsonSafe(x, depth + 1);
@@ -121,7 +113,7 @@ class TestLog {
   }
 }
 
-// ---------- kare ölçümü ----------
+// ---------- frame measurement ----------
 
 const MEASURE_W = 160;
 
@@ -139,7 +131,7 @@ class Meter {
     });
   }
 
-  /** Bir kareyi 160 px'e küçültüp ölçer (zaten çizilmiş kareden, beklemeden) */
+  /** Downscales the current frame to 160 px and measures it (no wait) */
   sampleNow(): FrameSample {
     const v = this.video;
     const w = MEASURE_W;
@@ -161,7 +153,7 @@ class Meter {
     return frameStats(this.ctx.getImageData(0, 0, w, h).data, w, h);
   }
 
-  /** Taze iki kare, ortalama istatistik + son karenin luma ızgarası */
+  /** Two fresh frames: mean statistics plus the last frame's luma grid */
   async measure(frames = 2): Promise<{ stats: FrameStats; sample: FrameSample }> {
     const list: FrameSample[] = [];
     for (let i = 0; i < frames; i++) {
@@ -172,7 +164,7 @@ class Meter {
   }
 }
 
-/** Arka planda kare sayacı (requestVideoFrameCallback, yoksa getVideoPlaybackQuality) */
+/** Background frame counter (requestVideoFrameCallback, else getVideoPlaybackQuality) */
 function frameCounter(video: RvfcVideo) {
   let n = 0;
   let on = true;
@@ -240,9 +232,9 @@ const facingOf = (settings: Obj, label: string): ProbeCamera['yön'] => {
   return 'bilinmiyor';
 };
 
-// ---------- 1. Ortam ----------
+// ---------- 1. Environment ----------
 
-// wasm-feature-detect ile aynı en küçük modüller (SIMD: v128 sabiti; threads: paylaşılan bellek + atomic)
+// Same minimal modules as wasm-feature-detect (SIMD: v128 const; threads: shared memory + atomic)
 const WASM_SIMD = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0, 10, 10, 1, 8, 0, 65, 0, 253, 15, 253, 98, 11]);
 const WASM_THREADS = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 3, 2, 1, 0, 5, 4, 1, 3, 1, 1, 10, 11, 1, 9, 0, 65, 0, 254, 16, 2, 0, 26, 11]);
 
@@ -408,7 +400,7 @@ async function probeEnv(log: TestLog, device: ProbeReport['device'], notes: stri
   });
 }
 
-// ---------- 2. Sensörler ----------
+// ---------- 2. Sensors ----------
 
 async function probeSensors(log: TestLog, sensors: ProbeReport['sensors'], permission: Promise<string | null>) {
   const perm = await permission;
@@ -504,7 +496,7 @@ async function probeSensors(log: TestLog, sensors: ProbeReport['sensors'], permi
   }
 }
 
-/** iOS tarzı izin akışı: dokunuş içinde hemen çağrılmalı (Android Chrome'da fonksiyon yoktur) */
+/** iOS-style permission flow: call inside the tap (the function does not exist on Android Chrome) */
 export function requestMotionPermission(): Promise<string | null> {
   const DM = g.DeviceMotionEvent as { requestPermission?: () => Promise<string> } | undefined;
   const DO = g.DeviceOrientationEvent as { requestPermission?: () => Promise<string> } | undefined;
@@ -514,7 +506,7 @@ export function requestMotionPermission(): Promise<string | null> {
   );
 }
 
-// ---------- 3. Kameralar ----------
+// ---------- 3. Cameras ----------
 
 interface CamCtx {
   mainIndex: number;
@@ -594,7 +586,7 @@ async function probeCameras(log: TestLog, video: HTMLVideoElement, cameras: Prob
   return { mainIndex, ids };
 }
 
-// ---------- 4. Çözünürlük, fps, ImageCapture ----------
+// ---------- 4. Resolution, fps, ImageCapture ----------
 
 const RES_TARGETS: [number, number][] = [
   [4096, 3072],
@@ -637,7 +629,7 @@ async function probeResolution(log: TestLog, video: RvfcVideo, track: MediaStrea
     log.add({ id: 'cozunurluk.still4k', ad: '4K fotoğraf (takePhoto)', durum: 'yok', ayrıntı: `ImageCapture yok; en büyük video karesi ${bestVideo.w}×${bestVideo.h}`, ölçüm: null, süreMs: 0 });
     return null;
   }
-  // Fotoğraf testleri 1920×1080 önizlemede (gerçek kullanım)
+  // Photo tests run with a 1920×1080 preview (real use)
   await withTimeout(track.applyConstraints({ width: { ideal: 1920 }, height: { ideal: 1080 } }), 6000, 'applyConstraints').catch(() => undefined);
   await sleep(400);
   const ic = new IC(track);
@@ -719,7 +711,7 @@ async function probeResolution(log: TestLog, video: RvfcVideo, track: MediaStrea
   return ic;
 }
 
-// ---------- 5. Etki testleri ----------
+// ---------- 5. Effect tests ----------
 
 type Metric = 'parlaklık' | 'renk' | 'keskinlik' | 'fark';
 interface ControlDef {
@@ -729,13 +721,13 @@ interface ControlDef {
   mode?: [string, string];
   metric: Metric;
   log?: boolean;
-  /** Uzun pozlamada kare hızını düşürmemek için üst sınır (kendi biriminde) */
+  /** Upper cap so long exposures do not stall the frame rate (in the control's unit) */
   cap?: number;
 }
 
 const CONTROLS: ControlDef[] = [
   { id: 'etki.exposureCompensation', ad: 'EV telafisi', key: 'exposureCompensation', mode: ['exposureMode', 'continuous'], metric: 'parlaklık' },
-  // exposureTime birimi 100 µs; 2000 = 200 ms
+  // exposureTime unit is 100 µs; 2000 = 200 ms
   { id: 'etki.exposureTime', ad: 'Manuel pozlama süresi', key: 'exposureTime', mode: ['exposureMode', 'manual'], metric: 'parlaklık', log: true, cap: 2000 },
   { id: 'etki.iso', ad: 'Manuel ISO', key: 'iso', mode: ['exposureMode', 'manual'], metric: 'parlaklık', log: true },
   { id: 'etki.colorTemperature', ad: 'Manuel beyaz dengesi (K)', key: 'colorTemperature', mode: ['whiteBalanceMode', 'manual'], metric: 'renk' },
@@ -768,7 +760,7 @@ async function probeEffects(log: TestLog, track: MediaStreamTrack, meter: Meter,
   const original = settingsOf(track);
   const supported = (navigator.mediaDevices.getSupportedConstraints?.() ?? {}) as Obj;
 
-  // Sahne gürültüsü: hiçbir şey değiştirmeden üç ölçüm, en büyük ikili fark
+  // Scene noise: three measurements with nothing changed, largest pairwise difference
   await sleep(800);
   const base: { stats: FrameStats; sample: FrameSample }[] = [];
   for (let i = 0; i < 3; i++) {
@@ -866,7 +858,7 @@ async function probeEffects(log: TestLog, track: MediaStreamTrack, meter: Meter,
     };
   });
 
-  // Nokta pozlama (pointsOfInterest): sol-üst ve sağ-alt ölçüm noktası
+  // Spot metering (pointsOfInterest): top-left and bottom-right metering point
   await log.run('etki.pointsOfInterest', 'Nokta pozlama (pointsOfInterest)', async () => {
     const modes = Array.isArray(caps.exposureMode) ? (caps.exposureMode as string[]) : [];
     if (!supported.pointsOfInterest) return { durum: 'yok', ayrıntı: 'pointsOfInterest desteklenen kısıtlarda yok', ölçüm: null };
@@ -895,7 +887,7 @@ async function probeEffects(log: TestLog, track: MediaStreamTrack, meter: Meter,
   });
 }
 
-// ---------- 6. Performans ----------
+// ---------- 6. Performance ----------
 
 async function probePerf(log: TestLog, video: RvfcVideo, track: MediaStreamTrack, ic: ImageCaptureLike | null, meter: Meter, perf: ProbeReport['perf']) {
   await log.run('perf.histogramDöngüsü', 'Histogram analizi döngüsü (160 px)', async () => {
@@ -907,7 +899,7 @@ async function probePerf(log: TestLog, video: RvfcVideo, track: MediaStreamTrack
     } catch {
       po = null;
     }
-    // (a) her yeni karede analiz: kare başına iş süresi ve ana iş parçacığı yükü
+    // (a) analyse every new frame: work per frame and main-thread load
     let work = 0;
     let frames = 0;
     const t0 = now();
@@ -919,7 +911,7 @@ async function probePerf(log: TestLog, video: RvfcVideo, track: MediaStreamTrack
       frames++;
     }
     const el = now() - t0;
-    // (b) bekleme olmadan tepe hız (aynı kare tekrar tekrar)
+    // (b) peak rate without waiting (same frame repeatedly)
     let iters = 0;
     const t1 = now();
     while (now() - t1 < 1000) {
@@ -972,7 +964,7 @@ async function probePerf(log: TestLog, video: RvfcVideo, track: MediaStreamTrack
   });
 }
 
-// ---------- 7. Ekran dolgu ışığı ----------
+// ---------- 7. Screen fill light ----------
 
 async function probeFill(log: TestLog, hooks: ProbeHooks, meter: Meter, sensors: ProbeReport['sensors'], hasFront: boolean) {
   let stream: MediaStream | null = null;
@@ -990,7 +982,7 @@ async function probeFill(log: TestLog, hooks: ProbeHooks, meter: Meter, sensors:
         als = null;
       }
     }
-    // Ön kamera listede yoksa (ör. sahte kamera) varsayılan kamerayla ölçülür ve bu not edilir
+    // Without a listed front camera (e.g. the fake camera) the default camera is measured and this is noted
     const opened = await openStream(hooks.video, hasFront ? { facingMode: { exact: 'user' }, width: { ideal: 640 } } : { width: { ideal: 640 } }).catch((e) => {
       throw new Error(`ön kamera açılmadı: ${errMsg(e)}`);
     });
@@ -1004,21 +996,21 @@ async function probeFill(log: TestLog, hooks: ProbeHooks, meter: Meter, sensors:
     const locked = Object.keys(lock).length ? await apply(track, lock).then(() => true, () => false) : false;
     const rows: Record<string, ProbeMeasure> = {};
     const stats: Partial<Record<FillMode, FrameStats>> = {};
-    for (const mode of ['kapalı', 'beyaz', 'sıcak'] as FillMode[]) {
+    for (const mode of ['off', 'white', 'warm'] as FillMode[]) {
       hooks.setFill(mode);
       await sleep(1200);
       const st = (await meter.measure(3)).stats;
       stats[mode] = st;
-      rows[mode] = { parlaklık: st.parlaklık, rOran: st.rOran, bOran: st.bOran, lux };
+      rows[FILL_NAME[mode]] = { parlaklık: st.parlaklık, rOran: st.rOran, bOran: st.bOran, lux };
     }
-    const d = round(stats.beyaz!.parlaklık - stats.kapalı!.parlaklık);
-    const warmShift = round(stats.beyaz!.bOran - stats.sıcak!.bOran, 3);
+    const d = round(stats.white!.parlaklık - stats.off!.parlaklık);
+    const warmShift = round(stats.white!.bOran - stats.warm!.bOran, 3);
     sensors.dolguIşığı = rows;
     log.add({
       id: 'dolgu.onKamera',
       ad: 'Ekran dolgu ışığı (ön kamera)',
       durum: decideEffect({ supported: true, error: null, delta: d, noise: 0, minDelta: EFFECT_MIN.parlaklık }),
-      ayrıntı: `${hasFront ? '' : 'ön kamera yok, varsayılan kamerayla ölçüldü; '}parlaklık kapalı ${stats.kapalı!.parlaklık} → beyaz ${stats.beyaz!.parlaklık}; sıcak beyazda B/G ${warmShift} düştü; pozlama kilidi ${locked ? 'var' : 'yok (otomatik pozlama farkı bastırabilir)'}`,
+      ayrıntı: `${hasFront ? '' : 'ön kamera yok, varsayılan kamerayla ölçüldü; '}parlaklık kapalı ${stats.off!.parlaklık} → beyaz ${stats.white!.parlaklık}; sıcak beyazda B/G ${warmShift} düştü; pozlama kilidi ${locked ? 'var' : 'yok (otomatik pozlama farkı bastırabilir)'}`,
       ölçüm: { ...rows, fark: d, sıcakBGFarkı: warmShift, pozlamaKilidi: locked, önKamera: hasFront },
       süreMs: now() - t0,
     });
@@ -1035,7 +1027,7 @@ async function probeFill(log: TestLog, hooks: ProbeHooks, meter: Meter, sensors:
     log.add({ id: 'dolgu.onKamera', ad: 'Ekran dolgu ışığı (ön kamera)', durum: 'hata', ayrıntı: errMsg(e), ölçüm: null, süreMs: now() - t0 });
     log.add({ id: 'dolgu.isikSensoru', ad: 'Dolgu ışığı: ortam ışığı sensörü', durum: 'atlandı', ayrıntı: 'ön kamera testi çalışmadı', ölçüm: null, süreMs: 0 });
   } finally {
-    hooks.setFill('kapalı');
+    hooks.setFill('off');
     try {
       als?.stop();
     } catch {
@@ -1045,9 +1037,9 @@ async function probeFill(log: TestLog, hooks: ProbeHooks, meter: Meter, sensors:
   }
 }
 
-// ---------- ana akış ----------
+// ---------- main flow ----------
 
-/** Testi çalıştırır. `motionPermission`, düğme dokunuşunun içinde requestMotionPermission() ile alınmış olmalı. */
+/** Runs the probe. `motionPermission` must come from requestMotionPermission() inside the button tap. */
 export async function runWebProbe(hooks: ProbeHooks, motionPermission: Promise<string | null>): Promise<ProbeReport> {
   const t0 = now();
   const log = new TestLog();
@@ -1112,7 +1104,7 @@ export async function runWebProbe(hooks: ProbeHooks, motionPermission: Promise<s
     log.add({ id: 'web.raw', ad: 'RAW / DNG', durum: 'yok', ayrıntı: 'tarayıcıda RAW/DNG yakalama API’si yok', ölçüm: null, süreMs: 0 });
   } finally {
     stopStream(video, stream);
-    hooks.setFill('kapalı');
+    hooks.setFill('off');
     await wake?.release().catch(() => undefined);
   }
 

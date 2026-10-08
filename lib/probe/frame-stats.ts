@@ -1,25 +1,25 @@
-// Küçültülmüş kareden (≈160 px) yalnız sayılar: parlaklık, renk oranı, histogram özeti, keskinlik.
-// Görüntü saklanmaz; luma ızgarası yalnız bellekte kare farkı için tutulur ve rapora yazılmaz.
+// Numbers only from a downscaled (≈160 px) frame: brightness, colour ratios, histogram summary, sharpness.
+// No image is kept; the luma grid stays in memory for frame differences and is never written to the report.
 import { round } from './schema';
 
 export interface FrameStats {
-  /** Ortalama luma 0–255 (Rec. 601) */
+  /** Mean luma 0–255 (Rec. 601) */
   parlaklık: number;
   r: number;
   g: number;
   b: number;
-  /** R/G ve B/G (beyaz dengesi göstergesi) */
+  /** R/G and B/G (white balance indicator) */
   rOran: number;
   bOran: number;
-  /** Ortalama mutlak Laplace (odak göstergesi) */
+  /** Mean absolute Laplacian (focus indicator) */
   keskinlik: number;
-  /** Sol-üst ve sağ-alt çeyreklerin ortalama lumasi */
+  /** Mean luma of the top-left and bottom-right quarters */
   solÜst: number;
   sağAlt: number;
   p5: number;
   p50: number;
   p95: number;
-  /** luma < 16 ve > 239 piksel yüzdesi */
+  /** Percentage of pixels with luma < 16 and > 239 */
   karanlıkYüzde: number;
   patlakYüzde: number;
 }
@@ -31,7 +31,7 @@ export interface FrameSample {
   h: number;
 }
 
-/** RGBA tampondan istatistik (saf fonksiyon, Vitest ile sınanır) */
+/** Statistics from an RGBA buffer (pure; covered by Vitest) */
 export function frameStats(data: Uint8ClampedArray | Uint8Array, w: number, h: number): FrameSample {
   const n = w * h;
   const luma = new Uint8Array(n);
@@ -119,7 +119,7 @@ export function frameStats(data: Uint8ClampedArray | Uint8Array, w: number, h: n
   };
 }
 
-/** İki luma ızgarası arasındaki ortalama mutlak fark (aynı boyut değilse NaN) */
+/** Mean absolute difference of two luma grids (NaN when sizes differ) */
 export function lumaDiff(a: FrameSample, b: FrameSample): number {
   if (a.w !== b.w || a.h !== b.h) return NaN;
   let s = 0;
@@ -127,7 +127,7 @@ export function lumaDiff(a: FrameSample, b: FrameSample): number {
   return round(s / a.luma.length);
 }
 
-/** Birden çok örneğin ortalaması (gürültüyü azaltmak için) */
+/** Mean of several samples (reduces noise) */
 export function meanStats(list: FrameStats[]): FrameStats {
   const keys = Object.keys(list[0]) as (keyof FrameStats)[];
   const out = {} as FrameStats;
@@ -135,7 +135,7 @@ export function meanStats(list: FrameStats[]): FrameStats {
   return out;
 }
 
-/** Renk sıcaklığı (K) → sRGB bayt (Tanner Helland yaklaşımı, 1000–40000 K). Dolgu ışığı için. */
+/** Colour temperature (K) → sRGB bytes (Tanner Helland approximation, 1000–40000 K). Used for the fill light. */
 export function kelvinToRgb(kelvin: number): [number, number, number] {
   const t = Math.min(40000, Math.max(1000, kelvin)) / 100;
   const clamp = (v: number) => Math.round(Math.min(255, Math.max(0, v)));

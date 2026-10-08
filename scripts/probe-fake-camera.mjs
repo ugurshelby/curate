@@ -1,27 +1,31 @@
-// /probe sayfasını Chromium sahte kamerasıyla baştan sona çalıştırır (docs/probe/README.md).
-// Kullanım: node scripts/probe-fake-camera.mjs   (dev sunucusu http://localhost:3101)
-// Doğrular: sayfa çökmeden biter, ekrandaki JSON probe/v1 şemasına uyar, test başladıktan sonra ağ isteği yok,
-// 390×844'te yatay taşma yok, dokunma hedefleri ≥ 44 px, metin ≥ 12 px.
-// Sahte kamera gerçek kontrolleri (pozlama, ISO, WB, odak, torch) taklit etmez: bu betik yalnız akışı sınar.
+// Runs /probe end to end with the Chromium fake camera (docs/probe/README.md).
+// Usage: AUDIT_PIN=<test 4 digits> node scripts/probe-fake-camera.mjs
+//   (server on http://localhost:3101 started with TEST values; see scripts/lib/unlock.mjs; never the real PIN)
+// Checks: the page finishes without crashing, the JSON on screen matches probe/v1, no network request after start,
+// no horizontal scroll at 390×844, touch targets >= 44 px, text >= 12 px.
+// The fake camera does not emulate real controls (exposure, ISO, WB, focus, torch): this only tests the flow.
 import puppeteer from 'puppeteer-core';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { unlockGate } from './lib/unlock.mjs';
 
 const base = process.env.BASE || 'http://localhost:3101';
 const chrome = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
-const shots = process.env.SHOTS; // ör. screenshots/probe (izlenmez, .gitignore)
+const shots = process.env.SHOTS; // e.g. screenshots/probe (untracked, .gitignore)
 
 const browser = await puppeteer.launch({
   executablePath: chrome,
   headless: 'new',
   args: ['--no-sandbox', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', '--autoplay-policy=no-user-gesture-required'],
 });
+await unlockGate(browser, base);
 const page = await browser.newPage();
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 await page.goto(`${base}/probe`, { waitUntil: 'networkidle0' });
+if (new URL(page.url()).pathname !== '/probe') throw new Error(`gate did not open /probe: ${page.url()}`);
 
 const layout = () =>
   page.evaluate(() => {
@@ -47,7 +51,7 @@ if (shots) {
   await page.screenshot({ path: join(shots, '1-hazir.png') });
 }
 
-// Test başladıktan sonraki istekler (HMR websocket ve aynı kökenli _next kaynakları hariç)
+// Requests after the start tap (except the HMR websocket and same-origin _next assets)
 const requests = [];
 page.on('request', (r) => {
   const u = r.url();

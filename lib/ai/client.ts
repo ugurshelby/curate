@@ -1,36 +1,33 @@
 /**
- * "AI ile onar" istemci tarafı: küçültme, şifre saklama, istek ve Türkçe hata eşlemesi.
+ * "AI ile onar" istemci tarafı: küçültme, PIN ile cihaz eşleme, istek ve Türkçe hata eşlemesi.
  * Görsel yalnız kendi proxy'mize (/api/ai) gider; üçüncü taraf SDK yok.
+ * Erişim HttpOnly cihaz çerezidir (sunucu verir); PIN tarayıcıda saklanmaz, yalnız eşlemede bir kez gider.
  */
 import {
   AI_ENDPOINT,
   AI_ERRORS,
-  AI_HEADER_PASSWORD,
   AI_HEADER_REMAINING_DAY,
   AI_HEADER_REMAINING_MONTH,
   AI_HEADER_TASK,
   AI_INPUT_JPEG_QUALITY,
+  AI_LEGACY_PASSWORD_KEY,
   AiErrorCode,
   AiTask,
   aiInputSize,
+  AI_HEADER_STYLE,
+  AI_PLAN_INPUT_JPEG_QUALITY,
+  AI_PLAN_INPUT_LONG_EDGE,
+  AI_PLAN_TASK,
+  type AiPlanStyle,
 } from './config';
+import { planSafeScale, validatePlan, type AiPlanRecord } from '../engine/ai-plan';
 
-const PASSWORD_KEY = 'curate.ai.password';
-
-export function loadAiPassword(): string | null {
+/** Eski sürümün localStorage'da düz metin tuttuğu şifreyi siler */
+export function clearLegacyAiPassword(): void {
   try {
-    return window.localStorage.getItem(PASSWORD_KEY);
+    window.localStorage.removeItem(AI_LEGACY_PASSWORD_KEY);
   } catch {
-    return null;
-  }
-}
-
-export function saveAiPassword(pw: string | null): void {
-  try {
-    if (pw) window.localStorage.setItem(PASSWORD_KEY, pw);
-    else window.localStorage.removeItem(PASSWORD_KEY);
-  } catch {
-    /* depolama kapalı: şifre her oturumda yeniden sorulur */
+    /* depolama kapalı: silinecek bir şey de yok */
   }
 }
 
@@ -44,11 +41,13 @@ function fail(code: AiErrorCode): AiFailure {
 
 const STATUS_FALLBACK: Record<number, AiErrorCode> = {
   400: 'bad_task',
-  401: 'wrong_password',
+  401: 'pin_required',
+  403: 'forbidden',
   413: 'too_large',
   415: 'bad_image',
   429: 'model_busy',
   499: 'canceled',
+  500: 'server_error',
   502: 'model_error',
   503: 'model_busy',
   504: 'timeout',
@@ -65,24 +64,52 @@ export async function failureFromResponse(res: Response): Promise<AiFailure> {
   return fail(STATUS_FALLBACK[res.status] ?? (res.status >= 500 ? 'timeout' : 'model_error'));
 }
 
-function headers(password: string, extra: Record<string, string> = {}): Record<string, string> {
-  return { [AI_HEADER_PASSWORD]: encodeURIComponent(password), ...extra };
-}
-
 function numHeader(res: Response, name: string): number | null {
   const v = res.headers.get(name);
   return v === null ? null : Number(v);
 }
 
-/** Şifreyi doğrular ve kalan hakkı okur (model çağrısı yok, para harcamaz) */
-export async function fetchAiStatus(password: string, fetchFn: typeof fetch = fetch): Promise<AiStatusResult> {
+async function statusFrom(res: Response): Promise<AiStatusResult> {
+  if (!res.ok) return failureFromResponse(res);
+  const json = (await res.json()) as { remainingDay: number; remainingMonth: number };
+  return { ok: true, remainingDay: json.remainingDay, remainingMonth: json.remainingMonth };
+}
+
+/** Cihaz eşli mi ve kalan hak (model çağrısı yok, para harcamaz) */
+export async function fetchAiStatus(fetchFn: typeof fetch = fetch): Promise<AiStatusResult> {
   try {
-    const res = await fetchFn(AI_ENDPOINT, { method: 'GET', headers: headers(password), cache: 'no-store' });
-    if (!res.ok) return failureFromResponse(res);
-    const json = (await res.json()) as { remainingDay: number; remainingMonth: number };
-    return { ok: true, remainingDay: json.remainingDay, remainingMonth: json.remainingMonth };
+    return await statusFrom(
+      await fetchFn(AI_ENDPOINT, { method: 'GET', credentials: 'same-origin', cache: 'no-store' }),
+    );
   } catch {
     return fail('network');
+  }
+}
+
+/** PIN ile bu cihazı eşler; başarıda sunucu HttpOnly çerez bırakır */
+export async function unlockAi(pin: string, fetchFn: typeof fetch = fetch): Promise<AiStatusResult> {
+  try {
+    return await statusFrom(
+      await fetchFn(AI_ENDPOINT, {
+        method: 'PUT',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      }),
+    );
+  } catch {
+    return fail('network');
+  }
+}
+
+/** "Bu cihazı unut": çerezi sunucu siler */
+export async function forgetAiDevice(fetchFn: typeof fetch = fetch): Promise<boolean> {
+  try {
+    const res = await fetchFn(AI_ENDPOINT, { method: 'DELETE', credentials: 'same-origin', cache: 'no-store' });
+    return res.ok;
+  } catch {
+    return false;
   }
 }
 
@@ -90,14 +117,14 @@ export async function fetchAiStatus(password: string, fetchFn: typeof fetch = fe
 export async function requestAiRepair(
   task: AiTask,
   jpeg: Blob,
-  password: string,
   signal?: AbortSignal,
   fetchFn: typeof fetch = fetch,
 ): Promise<AiRepairResult> {
   try {
     const res = await fetchFn(AI_ENDPOINT, {
       method: 'POST',
-      headers: headers(password, { [AI_HEADER_TASK]: task, 'Content-Type': 'image/jpeg' }),
+      credentials: 'same-origin',
+      headers: { [AI_HEADER_TASK]: task, 'Content-Type': 'image/jpeg' },
       body: jpeg,
       signal,
       cache: 'no-store',
@@ -131,4 +158,57 @@ export async function prepareAiInput(img: CanvasImageSource & { naturalWidth: nu
   return new Promise<Blob>((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('JPEG üretilemedi'))), 'image/jpeg', AI_INPUT_JPEG_QUALITY),
   );
+}
+
+// --- AI Preset: Işık ve Renk Planı (D28) ---
+
+export type AiPlanResult = { ok: true; record: AiPlanRecord; remainingDay: number | null; remainingMonth: number | null } | AiFailure;
+
+/**
+ * Sends a small preview of the original photo (long edge ≤ 768, JPEG 0.8) and gets back a JSON plan only.
+ * The plan is validated again here, and its safety scale is measured on the same preview pixels.
+ */
+export async function requestAiPlan(
+  style: AiPlanStyle,
+  img: CanvasImageSource & { naturalWidth: number; naturalHeight: number },
+  signal?: AbortSignal,
+  fetchFn: typeof fetch = fetch,
+): Promise<AiPlanResult> {
+  const s = Math.min(1, AI_PLAN_INPUT_LONG_EDGE / Math.max(img.naturalWidth, img.naturalHeight));
+  const width = Math.max(1, Math.round(img.naturalWidth * s));
+  const height = Math.max(1, Math.round(img.naturalHeight * s));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return fail('bad_image');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, width, height);
+  const jpeg = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', AI_PLAN_INPUT_JPEG_QUALITY));
+  if (!jpeg) return fail('bad_image');
+  try {
+    const res = await fetchFn(AI_ENDPOINT, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { [AI_HEADER_TASK]: AI_PLAN_TASK, [AI_HEADER_STYLE]: style, 'Content-Type': 'image/jpeg' },
+      body: jpeg,
+      signal,
+      cache: 'no-store',
+    });
+    if (!res.ok) return failureFromResponse(res);
+    const json = (await res.json()) as { plan?: unknown };
+    const v = validatePlan(json.plan);
+    if (!v.ok) return fail('bad_plan');
+    const safeScale = planSafeScale(ctx.getImageData(0, 0, width, height), v.plan);
+    return {
+      ok: true,
+      record: { style, plan: v.plan, safeScale, createdAt: Date.now() },
+      remainingDay: numHeader(res, AI_HEADER_REMAINING_DAY),
+      remainingMonth: numHeader(res, AI_HEADER_REMAINING_MONTH),
+    };
+  } catch (err) {
+    if (signal?.aborted || (err instanceof Error && err.name === 'AbortError')) return fail('canceled');
+    return fail('network');
+  }
 }

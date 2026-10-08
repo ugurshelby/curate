@@ -5,7 +5,7 @@ import { copyReport, saveToPickedFolder, shareReport } from './src/export';
 import { MATRIX_KEYS, MATRIX_LABELS, probeFileName, validateProbeReport, type ProbeReport, type ProbeStatus } from './src/probe-schema';
 import { NATIVE_STEPS, runNativeProbe } from './src/run-native';
 
-// Curate paleti (design/CURATE_DESIGN_SYSTEM.md §2); bu paket kök renk denetiminin dışında
+// Curate palette (design/CURATE_DESIGN_SYSTEM.md §2); this package is outside the root colour checks
 const C = {
   base: '#000000',
   surface: '#1C1C1E',
