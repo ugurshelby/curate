@@ -18,24 +18,17 @@ Tek durum dosyası. Her anlamlı adımdan sonra aynı commit'te güncellenir. Ye
 | 6 | İdame | sürekli | Prosedür 8 |
 
 ## Sıradaki adım
-Sahip yanıtları: erişim planı (4-A) ve AI Preset özeti (5.3). Onay gelirse önce 4-A, sonra AI Preset. Gelmezse: bir oturum sonra AI Preset kodu; rutin bakım (Prosedür 8).
+Sahip yanıtları (2026-10-08, D27–D32) uygulanıyor: LUT kaldırıldı ✓, skill atıfları silindi ✓, Çerçeve standart boyutları ✓. Sırada: tüm uygulama PIN kapısı (4-A, onaylı), sonra AI Preset (5.3, onaylı; sahibin kullanımında kota yok).
 
 ## Son commit
-`d1015db` + kapanış belgeleri (bu commit).
+Bu commit (Çerçeve boyutları).
 
 ## Sahibe sorular (açık)
-0b. **AI Preset tasarım özeti:** `docs/reports/2026-10-08-ai-preset-ozeti.md` §8 (devam mı, stiller, kota ağırlığı, ≤ 6 deneme çağrısı). İtiraz gelmezse bir oturum sonra kodlanır.
-0. **Tüm uygulama PIN kapısı (KIRMIZI):** `docs/reports/2026-10-08-erisim-plani.md` §10'daki 4 soru (planı onaylıyor musun; çerez 365 gün ve kayan; genel ay sınırı kalsın mı; referans görseller kapı arkasında mı).
-1. Çerçeve modülünün hedef boyutu: 1080×1350 dışında başka oran/boyut istiyor musun? (spec §4.4 K5 "Frame 1080×1350 kalır" diyor; bu soru yalnız yeni boyut istenirse açık.)
-2. Kayıp kaynak belgeler (`curate-preset-spec.md`, `referans-gorsel-yonergesi.md`, `fotografcilik_karakterim.md`, `curate-camera-app.md`) nerede? Repoda yok.
-3. `.cube` LUT yükleme Carousel → "Araçlar" altında kalsın mı, yoksa kaldırılsın mı? (Uzman aracı; yeni preset kütüphanesi gelince gereksiz olabilir.)
-4. `design/skills/animate/SKILL.md` repoda olmayan skill'lere (`review-animations`, `pick-ui-library` vb.) atıf yapıyor. Bu atıflar silinsin mi, yok sayılmaya devam mı? (Skill dosyası senin eklediğin dış kaynak; ajan değiştirmedi.)
+Yok. 2026-10-08'deki 6 sorunun yanıtı `docs/DECISIONS.md` D27–D32'de.
 
 ## Bloke olanlar
-- Faz 5.3 AI Preset kodu: sahip onayı (veya bir oturum itirazsız bekleme).
-- Faz 4-A tüm uygulama kapısı: sahip onayı bekliyor.
 - Service worker: güncelleme stratejisi planı ve sahip onayı olmadan eklenmez.
 
 ## Doğrulanmadı (açık kalan)
-- Telefonda hiçbir akış (AI PIN, TikTok 1080×1920, Story güvenli alan bandı, kaydırma/jestler).
+- Telefonda hiçbir akış (AI PIN, TikTok 1080×1920, Story güvenli alan bandı, kaydırma/jestler, Çerçeve 4K export süresi ve belleği).
 - Vercel'de gerçek AI süresi, gerçek maliyet, dağıtık sayaç.

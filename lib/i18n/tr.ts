@@ -4,6 +4,8 @@
  * (tests/ui-rules.test.ts enforces the jargon list).
  */
 
+import type { FrameSizeId } from '../core/types';
+
 export type ModuleId = 'carousel' | 'story' | 'frame' | 'upscale' | 'edit';
 
 export const tr = {
@@ -210,6 +212,21 @@ export const tr = {
     type: 'Çerçeve tipi',
     stamp: 'Tarih damgası',
     types: { polaroid: 'Polaroid', matte: 'Mat', gradient: 'Gradyan' },
+    size: 'Boyut',
+    resolution: 'Çözünürlük',
+    resolutions: { standard: 'Standart', high: '4K' },
+    sizeNames: {
+      '4_5': 'Dikey gönderi',
+      '1_1': 'Kare',
+      '9_16': 'Story ve video',
+      '3_4': 'Dikey 3:4',
+      '2_3': 'Dikey baskı',
+      '5_4': 'Yatay 5:4',
+      '4_3': 'Yatay 4:3',
+      '3_2': 'Yatay baskı',
+      '16_9': 'Yatay video',
+      '191_1': 'Geniş yatay',
+    } as Record<FrameSizeId, string>,
   },
 
   story: {

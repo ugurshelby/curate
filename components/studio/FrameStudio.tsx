@@ -8,8 +8,32 @@ import { QuickExportSheet } from "./QuickExportSheet";
 import { StudioShell, StageNote } from "./StudioShell";
 import { AddMenu } from "./AddMenu";
 import { ReferencePicker } from "./ReferencePicker";
-import { extractAdaptiveGradient, AdaptiveGradientResult, useStudio, getStudioSelection, createStudioItem, createExportCanvas, PLATFORM_SPECS } from "@/lib";
-import { EXPORT_COLORS, STAMP_FONT_FAMILY } from "@/lib/ui/colors";
+import {
+  extractAdaptiveGradient,
+  AdaptiveGradientResult,
+  useStudio,
+  getStudioSelection,
+  createStudioItem,
+  createExportCanvas,
+  FRAME_SIZES,
+  frameOutputSize,
+  drawFrame,
+  frameStampText,
+  previewRenderSize,
+} from "@/lib";
+
+/** Önizleme kaynağının uzun kenarı (export her zaman tam çözünürlükten çizer) */
+const PREVIEW_SOURCE_MAX = 1600;
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    if (!src.startsWith("data:") && !src.startsWith("blob:")) img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(img);
+    img.src = src;
+  });
+}
 
 interface FrameStudioProps {
   onBack: () => void;
@@ -19,21 +43,12 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
   const { state, actions } = useStudio();
   const { hasPhoto, selectedItem: activeItem, photoUrl: photoPath } = getStudioSelection(state.items, state.selectedItemId);
 
-  const { frameType, borderWidth, borderRadius, showTimestamp } = state.frameConfig;
+  const { frameType, borderWidth, borderRadius, showTimestamp, size, resolution } = state.frameConfig;
   const [adaptiveGradient, setAdaptiveGradient] = useState<AdaptiveGradientResult | null>(null);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [isReferenceOpen, setIsReferenceOpen] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  // Günün analog tarih formatı: '26 10 01
-  const getTodayStamp = () => {
-    const d = new Date();
-    const yy = String(d.getFullYear()).slice(-2);
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `'${yy} ${mm} ${dd}`;
-  };
 
   // Fotoğraf Yükleme — Otomatik Proxy Pipeline ile
   // Çerçeve tek görsel çalışır: eklenen görsel kütüphaneye girer ve seçilir
@@ -56,198 +71,138 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
     if (window.confirm(tr.common.clearAllConfirm)) actions.clearItems();
   };
 
-  // Görsel yüklendiğinde gradyan çıkar
+  // Kaynak: önizleme için küçültülmüş kopya (uzun kenar ≤ 1600) ve gradyan; export tam çözünürlükten çizer
+  const previewSrcRef = useRef<HTMLCanvasElement | null>(null);
+  const [srcVersion, setSrcVersion] = useState(0);
   useEffect(() => {
+    previewSrcRef.current = null;
+    setSrcVersion((v) => v + 1);
     if (!photoPath) {
       setAdaptiveGradient(null);
       return;
     }
-    const img = new window.Image();
-    if (!photoPath.startsWith("data:") && !photoPath.startsWith("blob:")) {
-      img.crossOrigin = "anonymous";
-    }
-    img.src = photoPath;
-    img.onload = () => {
+    let cancelled = false;
+    loadImage(photoPath).then((img) => {
+      if (cancelled || !img.naturalWidth || !img.naturalHeight) return;
+      const k = Math.min(1, PREVIEW_SOURCE_MAX / Math.max(img.naturalWidth, img.naturalHeight));
       const c = document.createElement("canvas");
-      c.width = img.naturalWidth;
-      c.height = img.naturalHeight;
-      const ctx = c.getContext("2d");
-      if (ctx) {
-        ctx.drawImage(img, 0, 0);
-        const data = ctx.getImageData(0, 0, c.width, c.height);
-        setAdaptiveGradient(extractAdaptiveGradient(data));
-      }
+      c.width = Math.max(1, Math.round(img.naturalWidth * k));
+      c.height = Math.max(1, Math.round(img.naturalHeight * k));
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      previewSrcRef.current = c;
+      setAdaptiveGradient(extractAdaptiveGradient(ctx.getImageData(0, 0, c.width, c.height)));
+      setSrcVersion((v) => v + 1);
+    });
+    return () => {
+      cancelled = true;
     };
   }, [photoPath]);
 
-  // Helper: Yuvarlatılmış dikdörtgen çizici
-  const drawRoundedRect = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    r: number
-  ) => {
-    ctx.beginPath();
-    if (typeof ctx.roundRect === "function") {
-      ctx.roundRect(x, y, w, h, r);
-    } else {
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + w - r, y);
-      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-      ctx.lineTo(x + w, y + h - r);
-      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-      ctx.lineTo(x + r, y + h);
-      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-      ctx.lineTo(x, y + r);
-      ctx.quadraticCurveTo(x, y, x + r, y);
-    }
-    ctx.closePath();
-  };
+  const out = frameOutputSize(size, resolution);
+  const ratio = out.width / out.height;
 
-  // Export tuvali — 1080×1350 (sahip kararı: Çerçeve 4:5 kalır), sRGB; kodlama export sayfasında
-  const renderExportCanvas = async (): Promise<HTMLCanvasElement> => {
-    const W = PLATFORM_SPECS.ig_post_4_5.width;
-    const H = PLATFORM_SPECS.ig_post_4_5.height;
-    const { canvas, ctx } = createExportCanvas(W, H);
-    if (!photoPath) throw new Error("No photo to export");
+  // Önizleme: export'la aynı drawFrame, ekranın gösterebildiği piksel kadar (previewRenderSize)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const measure = (w: number, h: number) =>
+      setBox((p) => (Math.abs(p.w - w) < 1 && Math.abs(p.h - h) < 1 ? p : { w, h }));
+    measure(el.clientWidth, el.clientHeight);
+    const ro = new ResizeObserver(([entry]) => measure(entry.contentRect.width, entry.contentRect.height));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [hasPhoto]);
 
-    // 1. Çerçeve Zemini Çiz
-    if (frameType === "gradient" && adaptiveGradient) {
-      const grad = ctx.createLinearGradient(0, 0, 0, H);
-      grad.addColorStop(0, adaptiveGradient.colorTop);
-      grad.addColorStop(1, adaptiveGradient.colorBottom);
-      ctx.fillStyle = grad;
-    } else {
-      ctx.fillStyle = frameType === "polaroid" ? EXPORT_COLORS.framePolaroid : EXPORT_COLORS.frameMatte;
-    }
-    ctx.fillRect(0, 0, W, H);
-
-    // 2. Çerçeve Payları & Fotoğraf Alanı Hesabı
-    const scale = 2.2;
-    const padX = Math.round(borderWidth * scale);
-    const padTop = Math.round(borderWidth * scale);
-    const padBottom = frameType === "polaroid" ? Math.round(borderWidth * 2.2 * scale) : Math.round(borderWidth * scale);
-    const photoX = padX;
-    const photoY = padTop;
-    const photoW = W - padX * 2;
-    const photoH = H - padTop - padBottom;
-    const innerRadius = Math.max(4, Math.round(borderRadius * scale));
-
-    // 3. İç Fotoğrafı Yükle ve Cover Modunda Çiz
-    const img = new window.Image();
-    if (!photoPath.startsWith("data:") && !photoPath.startsWith("blob:")) {
-      img.crossOrigin = "anonymous";
-    }
-    img.src = photoPath;
-    await new Promise((res, rej) => {
-      img.onload = () => res(null);
-      img.onerror = () => res(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const src = previewSrcRef.current;
+    if (!canvas || !hasPhoto) return;
+    const raf = requestAnimationFrame(() => {
+      const { width: W, height: H } = previewRenderSize(out.width, out.height, box.w, box.h, window.devicePixelRatio || 1);
+      if (canvas.width !== W || canvas.height !== H) {
+        canvas.width = W;
+        canvas.height = H;
+      }
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.clearRect(0, 0, W, H);
+      drawFrame(ctx, src, W, H, state.frameConfig, adaptiveGradient, frameStampText());
     });
+    return () => cancelAnimationFrame(raf);
+  }, [hasPhoto, srcVersion, box, out.width, out.height, state.frameConfig, adaptiveGradient]);
 
-    if (img.naturalWidth && img.naturalHeight) {
-      ctx.save();
-      drawRoundedRect(ctx, photoX, photoY, photoW, photoH, innerRadius);
-      ctx.clip();
-
-      const imgRatio = img.naturalWidth / img.naturalHeight;
-      const targetRatio = photoW / photoH;
-      let sw = img.naturalWidth;
-      let sh = img.naturalHeight;
-      let sx = 0;
-      let sy = 0;
-
-      if (imgRatio > targetRatio) {
-        sw = img.naturalHeight * targetRatio;
-        sx = (img.naturalWidth - sw) / 2;
-      } else {
-        sh = img.naturalWidth / targetRatio;
-        sy = (img.naturalHeight - sh) / 2;
-      }
-
-      ctx.drawImage(img, sx, sy, sw, sh, photoX, photoY, photoW, photoH);
-      ctx.restore();
-
-      // Matte modunda ince sınır
-      if (frameType === "matte") {
-        ctx.save();
-        drawRoundedRect(ctx, photoX, photoY, photoW, photoH, innerRadius);
-        ctx.strokeStyle = EXPORT_COLORS.frameMatteBorder;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.restore();
-      }
-    }
-
-    // 4. Analog Turuncu Tarih Damgası Çiz
-    if (showTimestamp) {
-      const stampText = getTodayStamp();
-      ctx.save();
-      ctx.font = `bold 26px ${STAMP_FONT_FAMILY}`;
-      ctx.fillStyle = frameType === "polaroid" ? EXPORT_COLORS.stampOnLight : EXPORT_COLORS.stampOnDark;
-      ctx.shadowColor = EXPORT_COLORS.stampShadow;
-      ctx.shadowBlur = 8;
-      ctx.textAlign = "right";
-      ctx.textBaseline = "middle";
-
-      const stampX = W - padX - 16;
-      const stampY = frameType === "polaroid" ? H - Math.round(padBottom / 2) : H - 24;
-
-      ctx.fillText(stampText, stampX, stampY);
-      ctx.restore();
-    }
-
+  // Export: seçilen standart boyutta, aynı drawFrame; sRGB, kodlama export sayfasında
+  const renderExportCanvas = async (): Promise<HTMLCanvasElement> => {
+    if (!photoPath) throw new Error("No photo to export");
+    const { canvas, ctx } = createExportCanvas(out.width, out.height);
+    const img = await loadImage(photoPath);
+    drawFrame(ctx, img, out.width, out.height, state.frameConfig, adaptiveGradient, frameStampText());
     return canvas;
   };
 
   const stage = (
     <div
+      ref={stageRef}
       data-stage
-      className="relative aspect-[4/5] w-[min(100cqw,calc(100cqh*4/5))] flex flex-col items-center justify-center"
-      style={{
-        padding: `${borderWidth}px`,
-        paddingBottom: frameType === "polaroid" ? `${borderWidth * 2.2}px` : `${borderWidth}px`,
-        borderRadius: `${borderRadius}px`,
-        background: frameType === "gradient" && adaptiveGradient
-          ? adaptiveGradient.cssLinear
-          : frameType === "polaroid" ? EXPORT_COLORS.framePolaroid : EXPORT_COLORS.frameMatte,
-        border: frameType === "matte" ? `1px solid ${EXPORT_COLORS.frameMatteBorder}` : "none",
-      }}
+      className="relative flex items-center justify-center overflow-hidden"
+      style={{ aspectRatio: `${ratio}`, width: `min(100cqw, calc(100cqh * ${ratio}))` }}
     >
-      <div className="relative w-full h-full rounded-sm overflow-hidden flex items-center justify-center bg-base">
-        {hasPhoto && photoPath ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={photoPath} alt="" draggable={false} className="w-full h-full object-cover" />
-        ) : (
-          <div className="flex flex-col items-center justify-center p-4 text-center text-ink-3 gap-1">
-            <Crop className="w-8 h-8 text-disabled-ink" />
-            <span className="text-sm">{tr.frame.empty}</span>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="touch-target px-3 text-sm text-accent"
-            >
-              {tr.common.uploadPhoto}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Analog tarih damgası: görüntünün parçası (export'taki çizimle aynı yazı tipi), arayüz metni değil */}
-      {hasPhoto && showTimestamp && (
-        <div
-          className="absolute bottom-3 right-4 font-bold tracking-widest text-xs select-none"
-          style={{ fontFamily: STAMP_FONT_FAMILY, color: frameType === "polaroid" ? EXPORT_COLORS.stampOnLight : EXPORT_COLORS.stampOnDark, textShadow: `0 0 6px ${EXPORT_COLORS.stampShadow}` }}
-        >
-          {getTodayStamp()}
+      {hasPhoto && photoPath ? (
+        <canvas ref={canvasRef} className="w-full h-full" />
+      ) : (
+        <div className="w-full h-full rounded-xl border border-separator bg-base flex flex-col items-center justify-center p-4 text-center text-ink-3 gap-1">
+          <Crop className="w-8 h-8 text-disabled-ink" />
+          <span className="text-sm">{tr.frame.empty}</span>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="touch-target px-3 text-sm text-accent"
+          >
+            {tr.common.uploadPhoto}
+          </button>
         </div>
       )}
     </div>
   );
 
   const panel = (
-    <div className="grid grid-cols-2 gap-4 p-3">
+    <div className="flex flex-col gap-3 p-3">
+      <div className="flex items-center gap-2">
+        <div role="radiogroup" aria-label={tr.frame.size} className="flex-1 min-w-0 flex gap-1.5 overflow-x-auto hide-scrollbar">
+          {FRAME_SIZES.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              role="radio"
+              aria-checked={size === s.id}
+              aria-label={`${tr.frame.sizeNames[s.id]} ${s.ratio}`}
+              onClick={() => actions.setFrameConfig({ size: s.id })}
+              className={`press shrink-0 h-11 min-w-[56px] px-3 rounded-xl text-sm font-semibold border num-metric ${
+                size === s.id ? "bg-accent-fill text-on-accent border-accent-fill" : "bg-surface-2 text-ink-2 border-separator"
+              }`}
+            >
+              {s.ratio}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          aria-pressed={resolution === "high"}
+          aria-label={`${tr.frame.resolution}: ${tr.frame.resolutions.high}`}
+          onClick={() => actions.setFrameConfig({ resolution: resolution === "high" ? "standard" : "high" })}
+          className={`press shrink-0 h-11 min-w-[56px] px-3 rounded-xl text-sm font-semibold border ${
+            resolution === "high" ? "border-accent bg-accent/15 text-accent" : "border-separator text-ink-3"
+          }`}
+        >
+          {tr.frame.resolutions.high}
+        </button>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
       <ResettableSlider
         label={tr.frame.width}
         value={borderWidth}
@@ -266,6 +221,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
         unit="px"
         onChange={(val) => actions.setFrameConfig({ borderRadius: val })}
       />
+      </div>
     </div>
   );
 
@@ -313,7 +269,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
       onExport={() => setIsExportOpen(true)}
       exportDisabled={!hasPhoto}
       stage={stage}
-      stageToolbar={<StageNote>1080 × 1350 · 4:5</StageNote>}
+      stageToolbar={<StageNote>{`${tr.frame.sizeNames[size]} · ${out.width} × ${out.height}`}</StageNote>}
       panel={panel}
       bar={bar}
     >
@@ -338,6 +294,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
         onClose={() => setIsExportOpen(false)}
         platform="ig_post_4_5"
         filePrefix="frame"
+        sizeLabel={`${out.width} × ${out.height} (${FRAME_SIZES.find((s) => s.id === size)?.ratio ?? ""})`}
         itemsToExport={hasPhoto ? [{ id: "frame_1", order: 0, renderCanvas: renderExportCanvas }] : []}
       />
     </StudioShell>

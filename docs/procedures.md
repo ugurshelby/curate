@@ -21,7 +21,7 @@ Son doğrulama: 2026-10-08
 - **Adımlar:**
   1. Önizleme ve export'un aynı çizim fonksiyonunu aynı parametre şemasıyla çağırdığını doğrula (`docs/ARCHITECTURE.md` §2).
   2. `npm test` (parite testleri: `tests/carousel-parity.test.ts`, `tests/export-plan.test.ts`, `tests/story-layout.test.ts`, `tests/edit-geometry.test.ts`).
-  3. Boyutlar: Instagram 1080×1350, TikTok 1080×1920, Story 1080×1920, Çerçeve 1080×1350, Düzenle kırpımın kendi boyutu (≤ 4096), Büyüt 2×/4× (≤ 8192, ≤ 16 MP).
+  3. Boyutlar: Instagram 1080×1350, TikTok 1080×1920, Story 1080×1920, Çerçeve seçilen oran (varsayılan 1080×1350; 4K'da kısa kenar 2160, 16:9 → 3840×2160), Düzenle kırpımın kendi boyutu (≤ 4096), Büyüt 2×/4× (≤ 8192, ≤ 16 MP).
   4. Sığdır zemini `EXPORT_COLORS.fitBackground` (`lib/ui/colors.ts`).
   5. Uzantı ve MIME eşleşir (`.jpg` ↔ `image/jpeg`, `.png` ↔ `image/png`); 8 MB üstünde kalite basamağı yalnız platform hedeflerinde.
 - **Değiştirebilir:** pariteyi sağlamak için var olan önizleme/export fonksiyonlarında hata düzeltme.

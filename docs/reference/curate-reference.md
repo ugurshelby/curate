@@ -23,7 +23,7 @@ Son doğrulama: 2026-10-08
 | `npm run build` | çıkış 0; `/` ≈ 33 kB, `/api/ai` dinamik | [ÖLÇÜLDÜ] 2026-10-08 |
 | `npm run check:secrets` | 84 dosya (26 istemci), 0 gerçek değer arandı (`.env` yok), 0 bulgu | [ÖLÇÜLDÜ] 2026-10-08 |
 | Prosedür 2 (`scripts/audit-ui.mjs`, production build, Chromium 1194 emülasyon) | 52 ekran (360/390/430 + masaüstü ana sayfa; Düzeltme dahil) geçti, en düşük metin kontrastı 4,70 | [ÖLÇÜLDÜ] 2026-10-08 |
-| Export (Chromium, indirilen dosya ölçüldü) | Instagram tek 1080×1350, 3 kare zip, TikTok zip 1080×1920, Story 1080×1920, Çerçeve 1080×1350, Düzenle+Düzeltme 4000×3000; hepsinde EXIF yok | [ÖLÇÜLDÜ] 2026-10-08 |
+| Export (Chromium, indirilen dosya ölçüldü) | Instagram tek 1080×1350, 3 kare zip, TikTok zip 1080×1920, Story 1080×1920, Çerçeve 1080×1350 / 1080×1920 / 1080×566 / 2160×2160 (4K) / 3840×2160 (4K 16:9), önizleme–export ortalama fark ≤ 2,9/255, Düzenle+Düzeltme 4000×3000; hepsinde EXIF yok | [ÖLÇÜLDÜ] 2026-10-08 |
 | Canlı (`curate-teal-omega.vercel.app`, yalnız okuma) | 10 dağıtım READY; güvenlik başlıkları 4/4; manifest ve simge 200; `lang="tr"`; `/api/ai` çerezsiz `pin_required` | [ÖLÇÜLDÜ] 2026-10-08 |
 | Telefon, yatay yön, gerçek dokunma, gerçek parlaklık | Denenmedi | [DOĞRULANMADI] cihaz yok |
 

@@ -136,7 +136,7 @@ describe('prefs (localStorage)', () => {
     expect(p.carouselView).toEqual({ target: 'tiktok', fitMode: 'fill', showOverlay: true });
     expect(p.globalPreset).toEqual({ id: 'moody_teal', intensity: 1 });
     expect(p.story).toEqual({ spacing: 32, backgroundMode: 'adaptive-gradient' });
-    expect(p.frame).toEqual({ frameType: 'matte', borderWidth: 0, borderRadius: 11, showTimestamp: false });
+    expect(p.frame).toEqual({ frameType: 'matte', borderWidth: 0, borderRadius: 11, showTimestamp: false, size: '4_5', resolution: 'standard' });
     expect(p.upscale.scaleFactor).toBe(2);
     expect(p.rememberLibrary).toBe(false);
     expect(p.favorites).toEqual(['amber_grain']);

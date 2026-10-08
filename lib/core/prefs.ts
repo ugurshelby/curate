@@ -5,6 +5,7 @@
  */
 
 import type { ActivePreset, CarouselView, FrameConfig, StudioState } from './types';
+import { FRAME_SIZE_IDS } from '../export/platform-specs';
 
 export const PREFS_KEY = 'curate.prefs.v1';
 
@@ -27,7 +28,7 @@ export const DEFAULT_PREFS: Prefs = {
   carouselView: { target: 'instagram', fitMode: 'fill', showOverlay: true },
   globalPreset: { id: 'dogal', intensity: 1 },
   story: { spacing: 10, backgroundMode: 'adaptive-gradient' },
-  frame: { frameType: 'polaroid', borderWidth: 24, borderRadius: 12, showTimestamp: true },
+  frame: { frameType: 'polaroid', borderWidth: 24, borderRadius: 12, showTimestamp: true, size: '4_5', resolution: 'standard' },
   upscale: { scaleFactor: 2 },
   rememberLibrary: true,
   favorites: [],
@@ -72,6 +73,8 @@ export function sanitizePrefs(raw: unknown, knownPresetIds: readonly string[] = 
       borderWidth: Math.round(num(fr.borderWidth, 0, 120, d.frame.borderWidth)),
       borderRadius: Math.round(num(fr.borderRadius, 0, 64, d.frame.borderRadius)),
       showTimestamp: bool(fr.showTimestamp, d.frame.showTimestamp),
+      size: oneOf(fr.size, FRAME_SIZE_IDS, d.frame.size),
+      resolution: oneOf(fr.resolution, ['standard', 'high'] as const, d.frame.resolution),
     },
     upscale: { scaleFactor: oneOf(up.scaleFactor, [2, 4] as const, d.upscale.scaleFactor) },
     rememberLibrary: bool(raw.rememberLibrary, d.rememberLibrary),

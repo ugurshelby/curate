@@ -31,6 +31,7 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 - Tekil görsel için `Polaroid`, `Matte` ve `Akıllı Gradyan` çerçeveleri.
 - Genişlik ve köşe yuvarlaklığı slider'ları.
 - Günün tarihini taşıyan analog turuncu dijital tarih damgası toggle'ı.
+- 10 standart oran (4:5, 1:1, 9:16, 3:4, 2:3, 5:4, 4:3, 3:2, 16:9, 1.91:1); "4K" ile kısa kenar 2160 (16:9 → 3840×2160). Önizleme ve export aynı çizim fonksiyonu (`lib/engine/frame-render.ts`).
 
 ### 4. Büyüt (yerel Lanczos-3)
 - Güvenli sınır: çıktının uzun kenarı en çok 8192 px ve alanı en çok 16 MP (varsayım); aşan çarpan kapanır ve "Bu boyut için çok büyük" yazar.

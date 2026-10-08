@@ -78,6 +78,8 @@ const INITIAL_STATE: StudioState = {
     borderWidth: 24,
     borderRadius: 12,
     showTimestamp: true,
+    size: '4_5',
+    resolution: 'standard',
   },
   carouselView: {
     target: 'instagram',

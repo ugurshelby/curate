@@ -89,11 +89,18 @@ export interface AdaptiveGradientResult {
 }
 
 
+/** Çerçeve çıktı oranı (veri: FRAME_SIZES, lib/export/platform-specs.ts) */
+export type FrameSizeId = '4_5' | '1_1' | '9_16' | '3_4' | '2_3' | '5_4' | '4_3' | '3_2' | '16_9' | '191_1';
+/** Çerçeve çözünürlüğü: kısa kenar 1080 (standart) ya da 2160 (4K) */
+export type FrameResolution = 'standard' | 'high';
+
 export interface FrameConfig {
   frameType: 'polaroid' | 'matte' | 'gradient';
   borderWidth: number;
   borderRadius: number;
   showTimestamp: boolean;
+  size: FrameSizeId;
+  resolution: FrameResolution;
 }
 
 export interface CarouselView {

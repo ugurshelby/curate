@@ -34,7 +34,7 @@ Son doğrulama: 2026-10-08
 | `components/studio/StudioShell.tsx` | Ortak modül iskeleti: header / sahne / alt yığın |
 | `components/studio/CarouselStudio.tsx` | Carousel modülü |
 | `components/studio/StoryStudio.tsx` | Story modülü |
-| `components/studio/FrameStudio.tsx` | Çerçeve modülü |
+| `components/studio/FrameStudio.tsx` | Çerçeve modülü (boyut çipleri, 4K) |
 | `components/studio/UpscaleStudio.tsx` | Büyüt modülü |
 | `components/studio/EditStudio.tsx` | Düzenle modülü (Preset, Kırp, Düzeltme; AI ile onar) |
 | `components/studio/AiRepairSheet.tsx`, `AiReviewScreen.tsx` | AI görev sayfası (PIN adımı dahil) ve önce/sonra kontrol sayfası |
@@ -48,8 +48,8 @@ Son doğrulama: 2026-10-08
 | `components/studio/NoticeToast.tsx`, `PerfHud.tsx`, `ResettableSlider.tsx`, `InstagramOverlay.tsx`, `TikTokOverlay.tsx` | Bildirim, `?perf=1` ölçüm, kaydırıcı, platform katmanları |
 | `lib/index.ts` | Ortak dışa aktarım |
 | `lib/core/` | `types`, `state-machine` (store), `use-studio`, `worker-bridge`, `reference-images`, `prefs` (localStorage tercihler), `library-cache` (IndexedDB fotoğraf hafızası), `device-sync` (store ↔ cihaz eşitleyici) |
-| `lib/engine/` | `carousel-render` (önizleme=export), `corrections` (Düzeltme: 6 satır + Otomatik, parçalı), `presets` (kütüphane v2, 16 preset), `scene` (Akıllı Otomatik), `harmonize`, `edit-geometry`, `story-layout`, `upscale-lanczos`, `upscale-slider`, `adaptive-gradient`, `proxy` |
-| `lib/export/` | `platform-specs` (hedefler veri olarak), `export-plan` (kalite basamağı, dosya adı), `exif-sanitizer`, `zip-packager` |
+| `lib/engine/` | `carousel-render` (önizleme=export), `corrections` (Düzeltme: 6 satır + Otomatik, parçalı), `presets` (kütüphane v2, 16 preset), `scene` (Akıllı Otomatik), `frame-render` (Çerçeve, önizleme=export), `harmonize`, `edit-geometry`, `story-layout`, `upscale-lanczos`, `upscale-slider`, `adaptive-gradient`, `proxy` |
+| `lib/export/` | `platform-specs` (hedefler ve Çerçeve boyutları `FRAME_SIZES` veri olarak), `export-plan` (kalite basamağı, dosya adı), `exif-sanitizer`, `zip-packager` |
 | `lib/ai/` | `config` (model/istem/₺ tek yer), `server`, `quota`, `client`, `diff-check` |
 | `lib/ui/colors.ts` | Export/canvas içerik renkleri ve tarih damgası yazı tipi (arayüz paleti değil) |
 | `lib/i18n/tr.ts` | Tüm arayüz metni (Türkçe); jargon yalnız `gelismis` altında |

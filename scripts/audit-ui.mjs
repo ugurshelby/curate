@@ -154,6 +154,12 @@ for (const [w, h] of VIEWPORTS) {
     await loadRefs(page, ['İç mekan bar', 'Köprü']);
     await openModule(page, mod);
     await record(page, w, label);
+    if (mod === 'frame') {
+      for (const r of ['9:16', '16:9', '1.91:1']) {
+        await clickText(page, r, '[role=radio]');
+        await record(page, w, `Çerçeve ${r}`);
+      }
+    }
     await page.close();
   }
 

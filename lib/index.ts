@@ -19,6 +19,7 @@ export * from './engine/carousel-render';
 export * from './engine/story-layout';
 export * from './engine/edit-geometry';
 export * from './engine/corrections';
+export * from './engine/frame-render';
 export * from './engine/scene';
 
 export * from './export/platform-specs';
