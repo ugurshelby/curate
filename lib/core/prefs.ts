@@ -51,7 +51,7 @@ export function sanitizePrefs(raw: unknown, knownPresetIds: readonly string[] = 
   const known = (id: unknown) => typeof id === 'string' && (knownPresetIds.length === 0 || knownPresetIds.includes(id));
 
   let globalPreset: ActivePreset | null = null;
-  if (isObj(raw.globalPreset) && known(raw.globalPreset.id) && raw.globalPreset.id !== 'custom_lut') {
+  if (isObj(raw.globalPreset) && known(raw.globalPreset.id)) {
     globalPreset = { id: raw.globalPreset.id as string, intensity: num(raw.globalPreset.intensity, 0, 1, 1) };
   }
 
@@ -81,7 +81,7 @@ export function sanitizePrefs(raw: unknown, knownPresetIds: readonly string[] = 
 
 /** Prefs view of the store state (what gets written) */
 export function prefsFromState(state: StudioState, base: Prefs): Prefs {
-  const gp = state.globalPreset && state.globalPreset.id !== 'custom_lut' ? state.globalPreset : null;
+  const gp = state.globalPreset;
   return {
     ...base,
     carouselView: state.carouselView,

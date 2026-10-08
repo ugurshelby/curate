@@ -88,11 +88,6 @@ export interface AdaptiveGradientResult {
   cssRadial: string;
 }
 
-export interface CubeLUT {
-  title: string;
-  size: number;
-  data: Float32Array; // Flattened size^3 * 3 RGB values in [0, 1]
-}
 
 export interface FrameConfig {
   frameType: 'polaroid' | 'matte' | 'gradient';
@@ -166,7 +161,6 @@ export interface StudioState {
   items: StudioItem[];
   selectedItemId: string | null;
   globalPreset: ActivePreset | null;
-  customLut: CubeLUT | null;
   heroColorMetrics: ColorMetrics | null;
   globalHarmonize: {
     referenceItemId: string | null;

@@ -4,16 +4,16 @@
  *
  * Two steps, same functions for preview and export:
  *   1. base  = background + crop/fit draw + hero harmonize   (renderCarouselBase)
- *   2. look  = .cube LUT or editorial preset on a copy of base (applyCarouselLook)
+ *   2. look  = editorial preset on a copy of base (applyCarouselLook)
  * Export calls drawCarouselFrame (1 + 2 in one go). The preview calls the same two steps through
  * CarouselPreviewRenderer, which caches step 1 so a slider only recomputes step 2.
  */
 
-import { ColorMetrics, CubeLUT, EditCrop } from '../core/types';
+import { ColorMetrics, EditCrop } from '../core/types';
 import { drawEditGeometry, editCropKey } from './edit-geometry';
 import { calculateAspectCrop } from '../export/platform-specs';
 import { applyHarmonizeSync, extractColorMetrics } from './harmonize';
-import { applyCubeLutToImageData, applyPresetToImageData, CURATE_PRESETS } from './presets';
+import { applyPresetToImageData, CURATE_PRESETS } from './presets';
 import { EXPORT_COLORS } from '../ui/colors';
 import { applyCorrections, CorrectionParams, correctionsKey } from './corrections';
 
@@ -25,7 +25,6 @@ export const FIT_BACKGROUND = EXPORT_COLORS.fitBackground;
 export interface CarouselRenderOptions {
   fitMode: 'fit' | 'fill';
   heroColorMetrics?: ColorMetrics | null;
-  customLut?: CubeLUT | null;
   presetId?: string | null;
   presetIntensity?: number;
   /** Export width this render stands for. Defaults to the render width (export). */
@@ -37,7 +36,7 @@ export interface CarouselRenderOptions {
 }
 
 export interface CarouselBase {
-  /** Harmonized pixels of the image rectangle (before LUT/preset) */
+  /** Harmonized pixels of the image rectangle (before the preset) */
   imageData: ImageData;
   x: number;
   y: number;
@@ -125,19 +124,16 @@ export function renderCarouselBase(
   return { imageData, ...rect };
 }
 
-/** Step 2: LUT or preset on a copy of the base. The base is never mutated (it is cached by the preview). */
+/** Step 2: preset on a copy of the base. The base is never mutated (it is cached by the preview). */
 export function applyCarouselLook(
   base: ImageData,
-  options: Pick<CarouselRenderOptions, 'customLut' | 'presetId' | 'presetIntensity'>,
+  options: Pick<CarouselRenderOptions, 'presetId' | 'presetIntensity'>,
   resolutionScale: number = 1
 ): ImageData {
-  const { customLut, presetId, presetIntensity = 1.0 } = options;
+  const { presetId, presetIntensity = 1.0 } = options;
   const out = cloneImageData(base);
 
-  if (customLut && presetId === 'custom_lut') {
-    return applyCubeLutToImageData(out, customLut, presetIntensity);
-  }
-  if (presetId && presetId !== 'custom_lut') {
+  if (presetId) {
     const preset = CURATE_PRESETS.find((p) => p.id === presetId);
     if (preset) return applyPresetToImageData(out, preset, presetIntensity, { resolutionScale });
   }
@@ -193,7 +189,7 @@ export function drawCarouselFrame(
 }
 
 /**
- * Hero harmonize reference metrics come from the raw frame (crop/fit only, no harmonize, no LUT/preset).
+ * Hero harmonize reference metrics come from the raw frame (crop/fit only, no harmonize, no preset).
  * Regression guard for audit finding #5.
  */
 export function extractHeroMetrics(

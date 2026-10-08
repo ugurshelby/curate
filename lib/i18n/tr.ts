@@ -242,10 +242,6 @@ export const tr = {
   /** Advanced / info texts: may name the technique (CDS §7) */
   gelismis: {
     upscaleEngine: 'Büyütme yöntemi: Lanczos-3 (yerel, cihazda). Önizleme yalnız benzetimdir; asıl büyütme dışa aktarırken yapılır.',
-    lutUpload: '3D LUT (.cube) yükle',
-    lutLoaded: (title: string) => `LUT: ${title}`,
-    lutRemove: "Yüklü LUT'u kaldır",
-    lutInvalid: 'Geçersiz .cube dosyası: standart bir 3D LUT dosyası seç.',
     metadata: 'Dosyadaki EXIF ve GPS bilgileri silinir.',
   },
 } as const;

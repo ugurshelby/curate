@@ -138,7 +138,7 @@ Her bileşenin durumları: **normal / basılı / odak / devre dışı / yükleni
 Kontrast tablosu §1; hedef 44 px; görünür odak halkası; `prefers-reduced-motion`, `prefers-reduced-transparency`, `prefers-contrast` desteklenir; simge düğmelerde `aria-label`; tüm metin Türkçe ve `lang="tr"`.
 
 ## 11. Skill istisnaları
-`redesign-existing-projects` "saf siyah kullanma" ve "Inter kullanma" der: Curate'te saf siyah bilinçli kimliktir (S1); Inter yalnız SF'nin bulunmadığı cihazlarda yedek olarak (S4). `animate` skill'inin atıf yaptığı repoda olmayan skill'ler yok sayılır.
+`redesign-existing-projects` "saf siyah kullanma" ve "Inter kullanma" der: Curate'te saf siyah bilinçli kimliktir (S1); Inter yalnız SF'nin bulunmadığı cihazlarda yedek olarak (S4). `animate` ve `improve-animations` skill'lerindeki repoda olmayan skill atıfları sahip onayıyla silindi (2026-10-08).
 
 ## 12. Kalibrasyon seti
 `public/reference-images/` (13 görsel). Parlak sahne (`gun-batimi-gunese-dokunan-eleman`, `gol-evi`) üstünde cam okunurluğu; koyu sahne (`ic-mekan-bar`, `sehir-isiklari-otoyol`) üstünde beyaz katmanlar; mimari/portre (`tabela`, `kovboy`) üstünde kırp çerçevesi.

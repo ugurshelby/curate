@@ -7,7 +7,7 @@
  * 4. Lossless Upscale (Lanczos-3)
  */
 
-import { StudioItem, StudioModule, StudioState, ActivePreset, CubeLUT, ColorMetrics, ImageDimensions, StoryCellTransform, EditParams, EditCrop, DerivedKind, CarouselView } from './types';
+import { StudioItem, StudioModule, StudioState, ActivePreset, ColorMetrics, ImageDimensions, StoryCellTransform, EditParams, EditCrop, DerivedKind, CarouselView } from './types';
 import { DEFAULT_EDIT_PARAMS } from '../engine/edit-geometry';
 import { DEFAULT_PRESET_ID } from '../engine/presets';
 import { revokeUrl, cleanupAllUrls, generateProxyImage, registerUrl } from '../engine/proxy';
@@ -63,7 +63,6 @@ const INITIAL_STATE: StudioState = {
   selectedItemId: null,
   // Seri görünümü: varsayılan "Doğal" (sahip görev belgesi §8.4); kullanıcı Orijinal seçerse null
   globalPreset: { id: DEFAULT_PRESET_ID, intensity: 1 },
-  customLut: null,
   heroColorMetrics: null,
   globalHarmonize: {
     referenceItemId: null,
@@ -234,9 +233,6 @@ class StudioStateMachine {
     this.setState({ globalPreset: preset });
   }
 
-  public setCustomLut(customLut: CubeLUT | null) {
-    this.setState({ customLut });
-  }
 
   public setHeroColorMetrics(heroColorMetrics: ColorMetrics | null) {
     this.setState({ heroColorMetrics });

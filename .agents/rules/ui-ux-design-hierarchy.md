@@ -19,7 +19,7 @@ Curate tek kişilik, mobil öncelikli (390×844) kişisel bir araçtır. Kimlik:
 - `apple-design/DESIGN.md`, `theme.css`, `variables.css`, `tokens.json`: açık tema ve başka palet. Palet/bileşen ölçüsü olarak kullanılmaz; yalnız fikir: boyuta bağlı harf aralığı, gölge yerine ince çizgi, tek kromatik vurgu.
 
 ## 3. Repoda olmayan, anılmayacak yollar
-`skills/minimalist-ui`, `skills/animation-vocabulary`, `skills/review-animations`, `skills/pick-ui-library`, `skills/find-animation-opportunities`, `design-references/`, `.agents/skills/apple-design` yoktur. Başka bir dosya bunlara atıf yapıyorsa yok sayılır. `motion`, `sonner`, `cmdk`, `base-ui` kurulu değildir; yeni bağımlılık yalnız sahip onayıyla.
+`skills/minimalist-ui`, `skills/animation-vocabulary`, `skills/review-animations`, `skills/pick-ui-library`, `skills/find-animation-opportunities`, `design-references/`, `.agents/skills/apple-design` yoktur. Skill dosyalarındaki bu atıflar sahip onayıyla silindi (2026-10-08); yenisi görülürse yok sayılır. `motion`, `sonner`, `cmdk`, `base-ui` kurulu değildir; yeni bağımlılık yalnız sahip onayıyla.
 
 ## 4. Kod yazmadan önce
 1. Yerleşime dokunuyorsan CDS §6: görsel header'ın, panelin veya filmstrip'in altında kalmaz (`stage.top ≥ header.bottom`, `stage.bottom ≤ bottomStack.top`); panel ≤ 40dvh, sahne ≥ 34dvh.

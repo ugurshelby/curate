@@ -55,7 +55,7 @@ class MemPhotos implements PhotoStore {
 function makeStore(): SyncStore & { state: StudioState } {
   const listeners = new Set<(s: StudioState) => void>();
   const s = {
-    state: structuredClone({ ...studioStore.getState(), customLut: null }) as StudioState,
+    state: structuredClone(studioStore.getState()) as StudioState,
     getState: () => s.state,
     setState(p: Partial<StudioState>) {
       s.state = { ...s.state, ...p };
@@ -119,7 +119,7 @@ describe('prefs (localStorage)', () => {
     expect(loadPrefs(PRESETS, null)).toEqual(DEFAULT_PREFS);
   });
 
-  it('clamps values and drops unknown presets and the session-only LUT', () => {
+  it('clamps values and drops unknown presets', () => {
     const p = sanitizePrefs(
       {
         v: 1,
@@ -140,7 +140,6 @@ describe('prefs (localStorage)', () => {
     expect(p.upscale.scaleFactor).toBe(2);
     expect(p.rememberLibrary).toBe(false);
     expect(p.favorites).toEqual(['amber_grain']);
-    expect(sanitizePrefs({ v: 1, globalPreset: { id: 'custom_lut', intensity: 1 } }, PRESETS).globalPreset).toBeNull();
     expect(sanitizePrefs({ v: 1, globalPreset: { id: 'gone', intensity: 1 } }, PRESETS).globalPreset).toBeNull();
   });
 

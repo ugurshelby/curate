@@ -14,7 +14,7 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 - **Sahne Mimarisi:** Varsayılan 4:5 Fill modu, tek tıkla Fit/Fill geçişi, izole wheel zoom.
 - **Platform Safe-Zone:** Yarı saydam göz ikonuyla Instagram Post arayüz (profil başlığı, kaydetme/beğeni butonları) katmanı.
 - **Filmstrip & İşlem Menüsü:** Kart üzerinde masaüstünde sağ tık, mobilde çift dokunma (~320ms) ile `Kapak yap`, `Seriyi bu renge eşitle (Hero Harmonize)` ve `Seriden çıkar`. Sıralama: dokunmatikte basılı tut (350ms) ve sürükle, farede sürükle.
-- **Düzenleme Paneli:** Preset'ler yatay kaydırmalı tek satır, kartlarda seçili fotoğrafın küçük önizlemesi; `.cube` LUT ve Hero Harmonize kapalı "Araçlar" bölümünde. Instagram/TikTok hedef geçişi sahnenin altında (varsayılan Instagram); göz düğmesi platform arayüz katmanını gizler/gösterir (katman export'a hiçbir zaman yazılmaz).
+- **Düzenleme Paneli:** Preset'ler yatay kaydırmalı tek satır, kartlarda seçili fotoğrafın küçük önizlemesi; seri renk uyumu ("Seriyi bu kareye uydur") kapalı "Araçlar" bölümünde. `.cube` LUT yükleme sahip kararıyla kaldırıldı (2026-10-08). Instagram/TikTok hedef geçişi sahnenin altında (varsayılan Instagram); göz düğmesi platform arayüz katmanını gizler/gösterir (katman export'a hiçbir zaman yazılmaz).
 - **Hero Renk Eşitleme:** Seçili karenin renk ve pozlama dengesini tüm seriye nazikçe (%20) işler; asla aşırı deformasyon yapmaz.
 - **Kutsal Viewport Kuralı:** Görsel, düzenleme panelinin/header'ın/filmstrip'in altında kalmaz (`design/CURATE_DESIGN_SYSTEM.md` §6). Faz M1'de 360×740, 390×844 ve 430×932'de dört modülde ölçüldü, örtüşme 0 (`docs/reports/2026-10-03-phases.md`). Telefonda doğrulanmadı.
 

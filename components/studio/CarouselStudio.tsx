@@ -2,11 +2,10 @@
 
 import { tr } from "@/lib/i18n/tr";
 import React, { useState, useRef, useEffect } from "react";
-import { Sliders, Star, Palette, X, FileCode, ChevronDown, Layers, Eye, EyeOff } from "lucide-react";
+import { Sliders, Star, Palette, X, ChevronDown, Layers, Eye, EyeOff } from "lucide-react";
 import {
   useStudio,
   getStudioSelection,
-  parseCubeLUT,
   PLATFORM_SPECS,
   StudioItem,
   drawCarouselFrame,
@@ -77,7 +76,6 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const lutInputRef = useRef<HTMLInputElement | null>(null);
 
   const spec = PLATFORM_SPECS[TARGET_PLATFORM[target]];
   const FULL_W = spec.width;
@@ -96,7 +94,6 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   const buildRenderOptions = (item: StudioItem | null): CarouselRenderOptions => ({
     fitMode,
     heroColorMetrics: state.heroColorMetrics,
-    customLut: state.customLut,
     presetId: item?.preset?.id ?? state.globalPreset?.id ?? null,
     presetIntensity: item?.preset?.intensity ?? state.globalPreset?.intensity ?? 1.0,
     outputWidth: CAROUSEL_OUTPUT_WIDTH,
@@ -178,7 +175,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   useEffect(() => {
     scheduleRender();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fitMode, state.heroColorMetrics, state.customLut, selectedPresetId, itemIntensity, hasPhoto, target]);
+  }, [fitMode, state.heroColorMetrics, selectedPresetId, itemIntensity, hasPhoto, target]);
 
   useEffect(() => {
     return () => {
@@ -239,27 +236,6 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
 
   const handleClear = () => {
     if (window.confirm(tr.carousel.clearConfirm)) actions.clearItems();
-  };
-
-  // .CUBE LUT Yükleme
-  const handleLutUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        const parsedLut = parseCubeLUT(text, file.name.replace(/\.[^/.]+$/, ""));
-        actions.setCustomLut(parsedLut);
-        actions.setGlobalPreset({ id: "custom_lut", intensity: itemIntensity / 100 });
-      } catch (err) {
-        console.error("LUT parse hatası:", err);
-        alert(tr.gelismis.lutInvalid);
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = "";
   };
 
   // Dokunma: seç; 320ms içinde ikinci dokunma menüyü açar
@@ -403,11 +379,10 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
       {/* Preset'ler: yatay kaydırmalı tek satır (CDS §6.3) */}
       <PresetStrip
         thumbs={presetThumbs}
-        activeId={state.customLut && selectedPresetId === "custom_lut" ? "__lut" : selectedPresetId}
+        activeId={selectedPresetId}
         onSelect={(id) => {
           if (id === null) {
             actions.setGlobalPreset(null);
-            actions.setCustomLut(null);
           } else {
             actions.setGlobalPreset({ id, intensity: itemIntensity / 100 });
           }
@@ -419,13 +394,12 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
           ).filter((s): s is NonNullable<typeof s> => !!s);
           const best = suggestSeries(list);
           if (!best) return;
-          actions.setCustomLut(null);
           actions.setGlobalPreset({ id: best.presetId, intensity: best.amount });
           actions.setNotice(tr.presets.autoApplied(presetName(best.presetId), Math.round(best.amount * 100)));
         }}
       />
 
-      {/* Katmanlı ifşa: preset veya LUT seçiliyse yoğunluk */}
+      {/* Katmanlı ifşa: preset seçiliyse miktar */}
       {selectedPresetId && (
         <ResettableSlider
           onInteractionStart={() => {
@@ -449,7 +423,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         />
       )}
 
-      {/* Araçlar: .cube LUT ve Hero Harmonize, varsayılan kapalı */}
+      {/* Araçlar: seri renk uyumu, varsayılan kapalı */}
       <div className="flex flex-col border-t border-separator pt-1">
         <button
           type="button"
@@ -463,32 +437,6 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
 
         {isToolsOpen && (
           <div className="flex flex-wrap items-center gap-2 pb-1 animate-panel-in">
-            <button
-              type="button"
-              onClick={() => lutInputRef.current?.click()}
-              className={`press h-11 px-3 rounded-xl text-sm border flex items-center gap-2 ${
-                state.customLut
-                  ? "border-accent bg-accent/15 text-accent"
-                  : "border-separator bg-surface-2 text-ink-1"
-              }`}
-            >
-              <FileCode className="w-4 h-4" />
-              <span className="max-w-[160px] truncate">
-                {state.customLut ? tr.gelismis.lutLoaded(state.customLut.title) : tr.gelismis.lutUpload}
-              </span>
-            </button>
-
-            {state.customLut && (
-              <button
-                type="button"
-                onClick={() => actions.setCustomLut(null)}
-                aria-label={tr.gelismis.lutRemove}
-                className="touch-target press rounded-xl text-ink-2"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-
             {activePhoto && (
               <button
                 type="button"
@@ -552,7 +500,6 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
     >
       {/* Gizli Dosya Inputları */}
       <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-      <input ref={lutInputRef} type="file" accept=".cube" className="hidden" onChange={handleLutUpload} />
 
       {/* Context Menu (Masaüstü Sağ Tık / Mobil Çift Dokunma) — cam değil, düz yüzey */}
       {contextMenu && (

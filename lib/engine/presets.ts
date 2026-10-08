@@ -1,5 +1,5 @@
 /**
- * Curate Engine — preset library v2 (Faz 5) and 3D LUT (.cube) engine.
+ * Curate Engine — preset library v2 (Faz 5).
  *
  * Principles (docs/PHOTO-KNOWLEDGE.md): natural and clean, one "Miktar" slider per preset, skin tones
  * protected, no crushed blacks and no clipped whites (tone curve ends are fixed; brightening uses a soft
@@ -8,7 +8,7 @@
  * live preview, see docs/ARCHITECTURE.md §2).
  */
 
-import { PresetProfile, PresetAdjustments, CubeLUT } from '../core/types';
+import { PresetProfile, PresetAdjustments } from '../core/types';
 
 export const CURATE_PRESETS: PresetProfile[] = [
   // --- Temel: everyday, scene-agnostic ---
@@ -41,155 +41,6 @@ export const DEFAULT_PRESET_ID = 'dogal';
 
 export function getPreset(id: string | null | undefined): PresetProfile | null {
   return (id && CURATE_PRESETS.find((p) => p.id === id)) || null;
-}
-
-export type { CubeLUT };
-
-/**
- * Parses a standard .cube (Adobe 3D LUT) text content into an in-memory 3D LUT
- */
-export function parseCubeLUT(content: string, fallbackTitle: string = 'Custom LUT'): CubeLUT {
-  const lines = content.split(/\r?\n/);
-  let title = fallbackTitle;
-  let size = 0;
-  const rgbValues: number[] = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    const rawLine = lines[i].trim();
-    if (!rawLine || rawLine.startsWith('#')) continue;
-
-    if (rawLine.startsWith('TITLE')) {
-      const match = rawLine.match(/TITLE\s+"?([^"]+)"?/i);
-      if (match) title = match[1];
-      continue;
-    }
-
-    if (rawLine.startsWith('LUT_3D_SIZE')) {
-      const parts = rawLine.split(/\s+/);
-      size = parseInt(parts[1], 10);
-      continue;
-    }
-
-    // Skip 1D size or domain bounds if present
-    if (rawLine.startsWith('LUT_1D_SIZE') || rawLine.startsWith('DOMAIN_')) {
-      continue;
-    }
-
-    // Data line: 3 floating numbers
-    const parts = rawLine.split(/\s+/);
-    if (parts.length >= 3) {
-      const r = parseFloat(parts[0]);
-      const g = parseFloat(parts[1]);
-      const b = parseFloat(parts[2]);
-      if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
-        rgbValues.push(r, g, b);
-      }
-    }
-  }
-
-  if (size === 0) {
-    // If size not declared explicitly, infer from cube root
-    const entryCount = rgbValues.length / 3;
-    const inferredSize = Math.round(Math.cbrt(entryCount));
-    if (inferredSize * inferredSize * inferredSize === entryCount) {
-      size = inferredSize;
-    } else {
-      throw new Error('Geçersiz .cube dosyası: 3D LUT boyutu saptanamadı.');
-    }
-  }
-
-  const expectedEntries = size * size * size * 3;
-  if (rgbValues.length < expectedEntries) {
-    throw new Error(`Eksik LUT verisi. Beklenen: ${expectedEntries / 3} nokta, Okunan: ${rgbValues.length / 3} nokta.`);
-  }
-
-  return {
-    title,
-    size,
-    data: new Float32Array(rgbValues.slice(0, expectedEntries)),
-  };
-}
-
-/**
- * Applies a 3D LUT to ImageData with trilinear interpolation and intensity blending
- */
-export function applyCubeLutToImageData(
-  imageData: ImageData,
-  lut: CubeLUT,
-  intensity: number = 1.0
-): ImageData {
-  const t = Math.max(0, Math.min(1, intensity));
-  if (t === 0) return imageData;
-
-  const { size, data: lutData } = lut;
-  const sizeMinusOne = size - 1;
-  const pixels = imageData.data;
-  const len = pixels.length;
-
-  for (let i = 0; i < len; i += 4) {
-    const origR = pixels[i];
-    const origG = pixels[i + 1];
-    const origB = pixels[i + 2];
-
-    // Normalized coordinates [0, size - 1]
-    const x = (origR / 255) * sizeMinusOne;
-    const y = (origG / 255) * sizeMinusOne;
-    const z = (origB / 255) * sizeMinusOne;
-
-    const x0 = Math.floor(x);
-    const x1 = Math.min(sizeMinusOne, x0 + 1);
-    const y0 = Math.floor(y);
-    const y1 = Math.min(sizeMinusOne, y0 + 1);
-    const z0 = Math.floor(z);
-    const z1 = Math.min(sizeMinusOne, z0 + 1);
-
-    const fx = x - x0;
-    const fy = y - y0;
-    const fz = z - z0;
-
-    // Helper to fetch RGB from LUT
-    // Standard .cube indexing: r is fastest, then g, then b
-    const getLutRGB = (ix: number, iy: number, iz: number): [number, number, number] => {
-      const idx = (ix + iy * size + iz * size * size) * 3;
-      return [lutData[idx] * 255, lutData[idx + 1] * 255, lutData[idx + 2] * 255];
-    };
-
-    const c000 = getLutRGB(x0, y0, z0);
-    const c100 = getLutRGB(x1, y0, z0);
-    const c010 = getLutRGB(x0, y1, z0);
-    const c110 = getLutRGB(x1, y1, z0);
-    const c001 = getLutRGB(x0, y0, z1);
-    const c101 = getLutRGB(x1, y0, z1);
-    const c011 = getLutRGB(x0, y1, z1);
-    const c111 = getLutRGB(x1, y1, z1);
-
-    // Trilinear interpolation for R, G, B
-    let newR = 0;
-    let newG = 0;
-    let newB = 0;
-
-    for (let c = 0; c < 3; c++) {
-      const v00 = c000[c] * (1 - fx) + c100[c] * fx;
-      const v01 = c001[c] * (1 - fx) + c101[c] * fx;
-      const v10 = c010[c] * (1 - fx) + c110[c] * fx;
-      const v11 = c011[c] * (1 - fx) + c111[c] * fx;
-
-      const v0 = v00 * (1 - fy) + v10 * fy;
-      const v1 = v01 * (1 - fy) + v11 * fy;
-
-      const val = v0 * (1 - fz) + v1 * fz;
-      if (c === 0) newR = val;
-      else if (c === 1) newG = val;
-      else newB = val;
-    }
-
-    // Blend with original using intensity
-    pixels[i] = Math.min(255, Math.max(0, Math.round(origR + (newR - origR) * t)));
-    pixels[i + 1] = Math.min(255, Math.max(0, Math.round(origG + (newG - origG) * t)));
-    pixels[i + 2] = Math.min(255, Math.max(0, Math.round(origB + (newB - origB) * t)));
-  }
-
-  return imageData;
 }
 
 const clamp = (x: number, lo: number, hi: number) => (x < lo ? lo : x > hi ? hi : x);

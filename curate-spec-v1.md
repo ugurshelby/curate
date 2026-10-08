@@ -66,7 +66,7 @@ Aşağıdaki çelişkiler açıkta olup agent'lar tarafından karara bağlanamaz
 1. ~~Panorama Çelişkisi~~ **KAPANDI (2026-10-02, sahip kararı):** Panorama kalıcı olarak kapsam dışı (`AGENTS.md` §3). Spec'teki tüm panorama ifadeleri çıkarıldı; kodda kalıntı yok (`grep -i panora` app/components/lib/tests: 0 eşleşme).
 2. ~~Night Cinematic / Halation Çelişkisi~~ **KAPANDI:** Sahip kararıyla optik halation (Night Cinematic) ve 35mm gren (Amber Grain) serbest; ışık sızıntısı ve vinyet yasak kalır (`AGENTS.md` §3).
 3. ~~Hedef Kitle Çelişkisi~~ **KAPANDI (2026-10-02, sahip kararı):** Tek kişilik, kişisel araç; birincil kullanım mobil.
-4. **Eksik Kaynak Dokümanlar (açık, sahibe soru — `docs/STATE.md`):** Bu spec'in referans verdiği `curate-preset-spec.md`, `referans-gorsel-yonergesi.md`, `fotografcilik_karakterim.md` ve `curate-camera-app.md` dosyaları git reposunda mevcut değildir.
+4. ~~Eksik Kaynak Dokümanlar~~ **KAPANDI (sahip kararı 2026-10-08, D30):** `curate-preset-spec.md`, `referans-gorsel-yonergesi.md`, `fotografcilik_karakterim.md` ve `curate-camera-app.md` repoda yok ve eskimiş kabul edildi; kullanılmıyor. Yerlerini ölçülmüş kalibrasyon ve kaynaklı bilgi tabanı alır: `docs/PHOTO-KNOWLEDGE.md`.
 
 
 ### 4.2 — Bilinen Mimari Eksikler (P1 — işlevsel ama performans/ölçeklenebilirlik riski)
@@ -98,7 +98,7 @@ Faz sırası: **K** (bu kararların dokümana işlenmesi, ölü kod temizliği) 
 | K4 | **Panorama kalıcı olarak kapatıldı.** | K | Uygulandı (bu commit) |
 | K5 | Durum renkleri amber/nötr (yeşil "Hero aktif" ve TikTok kırmızısı kalkar). Frame export 1080×1350 kalır. | M1 (renk), — (Frame: değişiklik yok) | **Uygulandı (M1)**; amber Faz C ile iOS mavisine geçti (K6) |
 | K6 | **Renk sistemi (sahip kararı 2026-10-03, Faz C):** amber (`#f5a623`) kalkar; zemin `#000000`, yüzeyler `#1C1C1E`/`#2C2C2E`, ayırıcı `#38383A`, yazı `#FFFFFF`/`#AEAEB2`/`#8E8E93`, vurgu `#0A84FF`, hata `#FF453A`, başarı `#30D158`. Vurgu yalnız seçili öğe, kaydırıcı dolgusu, ana eylem, odak halkası. Fotoğraf üstü her katman renksiz. Yeşil yalnız başarı, kırmızı yalnız hata/silme. Tek kaynak `app/globals.css`. Dolgu zemini `#0071E3` (beyaz yazı 4,7:1; `#0A84FF` ile 3,65:1), sahip onayı 2026-10-03. | C | **Uygulandı (C)** |
-| M1-a | Mobil panel yeniden tasarımı onaylandı: preset'ler yatay kaydırmalı tek satır; `.cube` LUT ve Hero Harmonize "Araçlar" altında kapalı bölümde. | M1 | **Uygulandı (M1)** |
+| M1-a | Mobil panel yeniden tasarımı onaylandı: preset'ler yatay kaydırmalı tek satır; `.cube` LUT ve Hero Harmonize "Araçlar" altında kapalı bölümde. | M1 | **Uygulandı (M1)**; `.cube` LUT 2026-10-08'de sahip kararıyla kaldırıldı (D31); "Araçlar"da yalnız seri renk uyumu kaldı |
 | M2-a | Önizleme render hattı: denetim raporu §2 seçenek **A** (CPU, doğru çözünürlük, export ile aynı fonksiyon ve parametre şeması). WebGL ve worker bu fazda yok. | M2 | **Uygulandı (M2)**; telefon ölçümü sonrası C değerlendirilecek (`docs/reports/2026-10-03-phases.md`) |
 | S-a | Story'de Instagram/TikTok geçişi kalkar; fotoğraflar story güvenli alanına (üst ilerleme çubuğu/hesap satırı, alt mesaj çubuğu) yerleşir ve export aynı geometriyi kullanır; hücre başına yer değiştirme, görsel değiştirme, sürükleyerek konumlandırma ve iki parmakla yakınlaştırma; konum/zoom export'a birebir yansır. | S | **Uygulandı (S)**: güvenli alan 250/250 px (sahip onayı 2026-10-03; telefonda karşılaştırılmadı), `computeCellDraw` önizleme ve export'ta ortak |
 | S-b | Export: tek görsel her zaman doğrudan dosya iner, zip yalnız çoklu Carousel serisinde. Varsayılan en yüksek kalite: tam hedef boyut, sRGB, JPEG 0.97; dosya 8 MB'ı aşarsa kalite kademeli düşer ve kullanıcıya gösterilir. PNG ve format seçimi "Gelişmiş" altında. Export sayfasında jargon yok; hedef olarak gerçek boyut (örn. 1080×1350) yazılır. | S | **Uygulandı (S)**: `lib/export/export-plan.ts`, testli. 8 MB sınırı platform hedeflerine (post, story, TikTok, Çerçeve) uygulanır; Upscale'e uygulanmaz (sahip onayı, §10 soru 8) |
@@ -218,7 +218,7 @@ Buna göre her faz için prompt şöyle yazılır:
 
 1. **Karar verildi (2026-10-08, `docs/DECISIONS.md` D24):** preset kütüphanesinin kapsamı ajana bırakıldı; mevcut 6 aile korunarak genişletilir. Eski metin: **(Uğur)** Hedef 6 preset ailesi kodda uygulandı, eski 6 profil kaldırıldı. Bu değişimin kalıcı karar olarak onaylanıp onaylanmadığı ve değerlerin referans görsellerden kalibrasyonu (Faz 3) sahibin teyidini bekliyor.
 2. ~~Mobil kullanım önceliği~~ **KAPANDI (2026-10-02):** Birincil kullanım mobil. Worker/proxy/render hattı kapsamı `docs/reports/2026-10-02-audit.md` §2'deki seçeneklerden sahip tarafından seçilir.
-3. ~~`.CUBE` LUT yeri~~ **KAPANDI (2026-10-02):** "Araçlar" altında kapalı bölüm (M1-a).
+3. ~~`.CUBE` LUT yeri~~ **KAPANDI (2026-10-02):** "Araçlar" altında kapalı bölüm (M1-a). **2026-10-08 (D31):** sahip "işine yaramıyorsa sil" dedi; uzman aracı olduğu ve preset kütüphanesi aynı işi gördüğü için kaldırıldı.
 4. ~~Düzenle modülü~~ **TANIMLANDI (2026-10-03):** §4.5, Faz D1 ve D2.
 5. ~~Carousel hedef geçişi~~ **KAPANDI (2026-10-03):** Her zaman bir hedef seçili, varsayılan Instagram. Arayüz katmanı sahne altındaki göz düğmesiyle gizlenebilir (varsayılan görünür; export'a hiçbir durumda yazılmaz).
 6. **(Uğur)** K1: TikTok 1080×1920 boyutu telefonda doğrulanacak.

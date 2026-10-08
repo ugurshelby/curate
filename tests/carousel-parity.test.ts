@@ -7,7 +7,7 @@ import {
   CarouselRenderOptions,
 } from '../lib/engine/carousel-render';
 import { extractColorMetrics } from '../lib/engine/harmonize';
-import { applyPresetToImageData, CURATE_PRESETS, parseCubeLUT } from '../lib/engine/presets';
+import { applyPresetToImageData, CURATE_PRESETS } from '../lib/engine/presets';
 
 import { FakeContext, FakeImage, makeImageData, makePhoto, asCtx, asImg, countDiff } from './helpers/fake-canvas';
 
@@ -73,16 +73,6 @@ describe('Carousel preview/export parity at 1080×1350 (spec §4.4 M2-a)', () =>
       renderer.render(asCtx(prev), asImg(landscape), 'photo', TW, TH, opts);
       expect(countDiff(prev.buf, exp.buf)).toBe(0);
     }
-  });
-
-  it('.cube LUT look is identical in preview and export', () => {
-    const lines = ['LUT_3D_SIZE 2'];
-    for (let b = 0; b < 2; b++) for (let g = 0; g < 2; g++) for (let r = 0; r < 2; r++) lines.push(`${r * 0.9} ${g} ${b * 0.8}`);
-    const lut = parseCubeLUT(lines.join('\n'), 'test');
-    const opts: CarouselRenderOptions = { fitMode: 'fill', customLut: lut, presetId: 'custom_lut', presetIntensity: 0.7, outputWidth: W };
-    const ctx = new FakeContext(W, H);
-    new CarouselPreviewRenderer().render(asCtx(ctx), asImg(portrait), 'p', W, H, opts);
-    expect(countDiff(ctx.buf, exportPixels(portrait, opts))).toBe(0);
   });
 });
 
