@@ -20,9 +20,22 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: tr.app.name,
   description: tr.app.description,
+  applicationName: tr.app.name,
+  // PWA (Faz 4-C): manifest bağlı; Android ana ekran simgeleri PNG, iOS için apple-touch-icon
+  manifest: "/manifest.json",
   icons: {
-    icon: "/icon.svg",
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
+  appleWebApp: {
+    capable: true,
+    title: tr.app.name,
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {

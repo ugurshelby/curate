@@ -50,10 +50,10 @@ Object URL'ler `registerUrl`/`revokeUrl` (`lib/engine/proxy.ts`) ile izlenir; si
 ## 5. PWA
 Son doğrulama: 2026-10-08
 
-- `public/manifest.json` var (`display: standalone`, tema/zemin `#000000`, yalnız SVG simge). `app/layout.tsx` manifest'i bağlamıyor (Next metadata'da `manifest` yok). PNG simge (192/512) ve maskable simge yok.
-- Service worker yok; çevrimdışı çalışma ve güncelleme akışı yok.
-- `<html lang="tr">`, `viewport-fit=cover`, güvenli alan değişkenleri (`--safe-area-top/bottom`).
-- Eksikler Faz 4-C'de.
+- `public/manifest.json`: `id`/`start_url`/`scope` `/`, `display: standalone`, `lang: tr`, tema/zemin `#000000`, simgeler PNG 192, 512, maskeli 512 (güvenli alan dolgulu) ve SVG. `app/layout.tsx` metadata ile bağlı (`manifest`, `apple-touch-icon` 180, `appleWebApp`). Simgeler `node scripts/make-icons.mjs` ile `public/icon.svg`'den üretilir.
+- Chromium 1194 `Page.getInstallabilityErrors`: 0 hata (2026-10-08, yerel production). Telefonda kurulum doğrulanmadı.
+- Service worker yok: çevrimdışı açılış ve "yeni sürüm hazır" akışı yok; her açılış ağdan en güncel sürümü alır (eski sürüme takılma riski yok). Eklenmesi KIRMIZI: önce güncelleme stratejisi planı.
+- `<html lang="tr">`, `viewport-fit=cover`, güvenli alan değişkenleri (`--safe-area-top/bottom`), `theme-color` `#000000`.
 
 ## 6. AI proxy ve kota
 Son doğrulama: 2026-10-08

@@ -52,9 +52,9 @@ Son doğrulama: 2026-10-08
 | `lib/ui/colors.ts` | Export/canvas içerik renkleri ve tarih damgası yazı tipi (arayüz paleti değil) |
 | `lib/i18n/tr.ts` | Tüm arayüz metni (Türkçe); jargon yalnız `gelismis` altında |
 | `lib/workers/image-processor.worker.ts` | Worker (Büyüt export'u) |
-| `public/` | `manifest.json`, `icon.svg`, `reference-images/` (13 görsel) |
+| `public/` | `manifest.json`, `icon.svg`, PNG simgeler (`icon-192`, `icon-512`, `icon-maskable-512`, `apple-touch-icon`), `reference-images/` (13 görsel) |
 | `tests/` | Vitest testleri (parite, export planı, geometri, AI sunucu/istemci, renk belirteçleri, `ui-rules` tasarım kuralları, sağlamlık…) |
-| `scripts/` | `audit-ui.mjs` (Prosedür 2), `capture-screens.mjs` (390 ekran görüntüsü), `check-bundle-secrets.mjs` |
+| `scripts/` | `audit-ui.mjs` (Prosedür 2), `capture-screens.mjs` (390 ekran görüntüsü), `check-bundle-secrets.mjs`, `make-icons.mjs` (PWA simgeleri) |
 
 ## Komutlar
 | Komut | Ne |

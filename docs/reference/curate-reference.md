@@ -49,7 +49,7 @@ Son doğrulama: 2026-10-08
 | Dal | Yalnız `main` (uzakta tek dal) | [ÖLÇÜLDÜ] `git ls-remote` 2026-10-08 |
 | CI | `.github/workflows/ci.yml`: `main` push/PR, Node 22, tsc/lint/test/build | [ÖLÇÜLDÜ] dosya; koşu sonuçları [DOĞRULANMADI] |
 | Vercel | Proje `curate`, Node 24.x, son üretim dağıtımı READY; alan adları `curate-teal-omega.vercel.app`, `curate-git-main-…`; SSO koruması `all_except_custom_domains`, şifre koruması kapalı | [ÖLÇÜLDÜ] Vercel API (yalnız okuma) 2026-10-08 |
-| PWA | `public/manifest.json` var ama `layout.tsx`'te bağlı değil; yalnız SVG simge; service worker yok | [ÖLÇÜLDÜ] |
+| PWA | Manifest bağlı (`lang: tr`, standalone), PNG 192/512/maskeli + apple-touch-icon; Chromium kurulabilirlik hatası 0; service worker yok | [ÖLÇÜLDÜ] `tests/pwa.test.ts`, CDP 2026-10-08; telefonda kurulum [DOĞRULANMADI] |
 
 ## 5. Güvenlik, sırlar, maliyet
 Son doğrulama: 2026-10-08
@@ -113,8 +113,7 @@ Son doğrulama: 2026-10-08
 Son doğrulama: 2026-10-08
 
 1. Telefonda hiçbir ölçüm yok (performans, jestler, PWA kurulumu).
-2. PWA eksik: manifest bağlı değil, PNG simge yok, service worker yok.
-3. Tercihler kalıcı değil (her açılışta varsayılan).
+2. Service worker yok (çevrimdışı açılış yok); eklemek KIRMIZI.
 4. Düzeltme sekmesi (D2) yok.
 5. Preset değerleri referans görsellerden kalibre edilmedi (kaynak belgeler repoda yok).
 6. Arayüz metinlerinde motor jargonu (Lanczos-3, konvolüsyon, EXIF) ve İngilizce kalıntılar.
