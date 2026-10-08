@@ -21,7 +21,7 @@ Tek durum dosyası. Her anlamlı adımdan sonra aynı commit'te güncellenir. Ye
 Sahip yanıtları (2026-10-08, D27–D32) uygulanıyor: LUT kaldırıldı ✓, skill atıfları silindi ✓, Çerçeve standart boyutları ✓, tüm uygulama PIN kapısı ✓, AI Preset ✓ (kota varsayılanı 500/gün, 5000/ay). Sırada: sahibin telefonda ilk deneme ve gerçek AI Preset çağrısı (model adı log'dan okunur); rutin bakım (Prosedür 8). İsteğe bağlı sonraki iş: "Bölgeleri göster" katmanı (özet §2.5, yapılmadı).
 
 ## Son commit
-Bu commit (AI Preset).
+`200a0ed` (AI Preset) + kapanış raporu `docs/reports/2026-10-08-sahip-yanitlari.md`.
 
 ## Sahibe sorular (açık)
 Yok. 2026-10-08'deki 6 sorunun yanıtı `docs/DECISIONS.md` D27–D32'de.
