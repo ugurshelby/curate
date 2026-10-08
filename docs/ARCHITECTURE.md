@@ -20,6 +20,8 @@ Son doğrulama: 2026-10-08
 | Çerçeve | DOM | Canvas 1080×1350 | Renkler `lib/ui/colors.ts`; çizim kodu modül içinde |
 | Büyüt | CSS (yalnız önizleme, "Lanczos" diye etiketlenmez) | Lanczos-3 (2 geçiş), worker'da | `lib/engine/upscale-lanczos.ts` |
 
+**Preset motoru (v2, 2026-10-08):** `lib/engine/presets.ts` — beyaz dengesi kazancı + pozlama + ton eğrisi (uçları sabit, yumuşak omuz) kanal başına 256 girişli tabloda; ardından cilt korumalı canlılık/doygunluk, sınırlı iç ton kaydırma, (yalnız izinli preset'lerde) hale ve gren. Tek "Miktar" tüm değerleri 0'dan ölçekler.
+
 Kural: önizleme ve export aynı çizim fonksiyonunu aynı parametre şemasıyla çağırır (AGENTS.md §4). Story/Çerçeve/Büyüt'te bu kural geometri düzeyinde sağlanıyor; piksel düzeyinde değil (bilinen sınır).
 
 Önizleme bir kez çözülmüş orijinalden çizilir; taban adımı (boyut, sığdırma, uyum, kırp anahtarıyla) önbelleklenir, kaydırıcı yalnız görünüm adımını yeniden hesaplar. Kare başına en çok bir çizim (`requestAnimationFrame`).

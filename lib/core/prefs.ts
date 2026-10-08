@@ -25,7 +25,7 @@ export interface Prefs {
 export const DEFAULT_PREFS: Prefs = {
   v: 1,
   carouselView: { target: 'instagram', fitMode: 'fill', showOverlay: true },
-  globalPreset: null,
+  globalPreset: { id: 'dogal', intensity: 1 },
   story: { spacing: 10, backgroundMode: 'adaptive-gradient' },
   frame: { frameType: 'polaroid', borderWidth: 24, borderRadius: 12, showTimestamp: true },
   upscale: { scaleFactor: 2 },

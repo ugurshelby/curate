@@ -57,6 +57,10 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 - **Format Desteği:** JPEG, PNG, WEBP; HEIC desteği cihazın yerel tarayıcı desteğine bağlıdır (harici JS decoder paketi bulunmamaktadır).
 - **İndirme:** Tek görsel her zaman doğrudan dosya olarak iner (`dump_01.jpg`, `tiktok_01.jpg`, `story_01.jpg`, `frame_01.jpg`, `duzenle_01.jpg`). Zip yalnız çoklu Carousel serisinde: `dump_N.zip` / `tiktok_N.zip`, içinde `dump_01.jpg`, `dump_02.jpg`…
 
+## 🎨 Preset'ler
+
+16 preset, 4 aile: **Temel** (Doğal, Canlı, Yumuşak, Siyah Beyaz), **Portre** (Portre, Ön Kamera), **Işık** (Altın Saat, Mavi Saat, Sert Güneş, Gece), **İmza** (Moody Teal, Warm Silhouette, Night Cinematic, Muted Coastal, Amber Grain, Monochrome Noir). Varsayılan Doğal. Her preset tek "Miktar" kaydırıcısıyla; siyahı ezmez, beyazı kırpmaz, cildi korur (ölçümler `docs/PHOTO-KNOWLEDGE.md`). Satırın başındaki **Otomatik** sahneye bakıp preset ve miktarı seçer (Carousel'de seri için oylama).
+
 ## 💾 Cihazda hatırlama
 
 Fotoğraflar ve tercihler yalnız bu cihazda kalır: tercihler localStorage'da, fotoğraflar (isteğe bağlı, varsayılan açık) IndexedDB'de. Ana sayfadaki "Fotoğrafları bu cihazda hatırla" anahtarı kapatılınca cihazdaki kopyalar silinir. Sınır: 40 fotoğraf / 400 MB.

@@ -18,6 +18,7 @@ import {
   createExportCanvas,
   previewRenderSize,
   whenIdle,
+  suggestSeries,
 } from "@/lib";
 import { InstagramOverlay } from "./InstagramOverlay";
 import { TikTokOverlay } from "./TikTokOverlay";
@@ -27,7 +28,7 @@ import { StudioShell, StageNote } from "./StudioShell";
 import { AddMenu } from "./AddMenu";
 import { ReferencePicker } from "./ReferencePicker";
 import { Filmstrip } from "./Filmstrip";
-import { PresetStrip, usePresetThumbs } from "./PresetStrip";
+import { PresetStrip, usePresetThumbs, suggestFromImage, presetName } from "./PresetStrip";
 import { reportRenderTime } from "./PerfHud";
 
 /** Hedef → export platformu (spec §4.4 K1). Önizleme tam = export boyutu, taslak = yarısı (slider sürüklenirken). */
@@ -410,6 +411,17 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
           } else {
             actions.setGlobalPreset({ id, intensity: itemIntensity / 100 });
           }
+        }}
+        onAuto={async () => {
+          // Seri için: her karenin önerisi, en çok çıkan preset kazanır (en çok 12 kare, küçük kopyalarla)
+          const list = (
+            await Promise.all(photos.slice(0, 12).map((p) => suggestFromImage(p.proxyUrl || p.originalUrl)))
+          ).filter((s): s is NonNullable<typeof s> => !!s);
+          const best = suggestSeries(list);
+          if (!best) return;
+          actions.setCustomLut(null);
+          actions.setGlobalPreset({ id: best.presetId, intensity: best.amount });
+          actions.setNotice(tr.presets.autoApplied(presetName(best.presetId), Math.round(best.amount * 100)));
         }}
       />
 

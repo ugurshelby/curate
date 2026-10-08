@@ -160,6 +160,32 @@ export const tr = {
     tooLargeToEnlarge: 'Büyütmek için çok büyük',
   },
 
+  presets: {
+    auto: 'Otomatik',
+    autoHint: 'Sahneye bakar, en uygun preset ve miktarı seçer',
+    original: 'Orijinal',
+    autoApplied: (name: string, pct: number) => `Otomatik: ${name} %${pct}`,
+    families: { temel: 'Temel', portre: 'Portre', isik: 'Işık', imza: 'İmza' },
+    items: {
+      dogal: { name: 'Doğal', hint: 'Hafif kontrast ve canlılık; her kareye uyar' },
+      canli: { name: 'Canlı', hint: 'Soluk kareleri renklendirir' },
+      yumusak: { name: 'Yumuşak', hint: 'Düşük kontrast, açık gölgeler' },
+      siyah_beyaz: { name: 'Siyah Beyaz', hint: 'Temiz, dengeli siyah-beyaz' },
+      portre: { name: 'Portre', hint: 'Cildi doğal ve sıcak tutar' },
+      on_kamera: { name: 'Ön Kamera', hint: 'Ön kameranın sert görünümünü yumuşatır' },
+      altin_saat: { name: 'Altın Saat', hint: 'Gün batımının sıcak ışığını öne çıkarır' },
+      mavi_saat: { name: 'Mavi Saat', hint: 'Alacakaranlığın serin mavisi' },
+      sert_gunes: { name: 'Sert Güneş', hint: 'Öğle güneşinde gölgeyi açar, parlağı toplar' },
+      gece: { name: 'Gece', hint: 'Derin siyah, kontrollü ışıklar' },
+      moody_teal: { name: 'Moody Teal', hint: 'Mimari ve gökyüzü; serin gölge, sıcak ışık' },
+      warm_silhouette: { name: 'Warm Silhouette', hint: 'Ters ışıkta sıcak, keskin siluet' },
+      night_cinematic: { name: 'Night Cinematic', hint: 'Gece ve neon; ışıklarda hafif hale' },
+      muted_coastal: { name: 'Muted Coastal', hint: 'Pastel, sakin, ferah' },
+      amber_grain: { name: 'Amber Grain', hint: 'Sıcak amber ve film greni' },
+      monochrome_noir: { name: 'Monochrome Noir', hint: 'Yüksek kontrastlı siyah-beyaz' },
+    } as Record<string, { name: string; hint: string }>,
+  },
+
   fix: {
     auto: 'Otomatik',
     autoNone: 'Belirgin bir sorun bulunmadı; düzeltme gerekmiyor.',

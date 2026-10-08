@@ -189,7 +189,6 @@ describe('UI rules: copy', () => {
     const EXEMPT = new Set([
       'components/studio/InstagramOverlay.tsx',
       'components/studio/TikTokOverlay.tsx',
-      'components/studio/PresetStrip.tsx',
     ]);
     const bad: string[] = [];
     for (const f of TSX.filter((x) => !EXEMPT.has(x))) {

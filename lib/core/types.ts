@@ -27,23 +27,50 @@ export interface HarmonizeSettings {
   appliedMetrics?: ColorMetrics;
 }
 
+export type PresetFamily = 'temel' | 'portre' | 'isik' | 'imza';
+
+/**
+ * Preset parameters (Faz 5, preset library v2). All optional; 0/absent = no change. The single
+ * "Miktar" slider scales every value from 0 (original) to the listed value (100%).
+ * Tone values work on gamma-encoded 0–1 values with fixed curve ends (no crushed blacks, no clipped whites).
+ */
+export interface PresetAdjustments {
+  /** EV-like brightness, −1…+1 (soft shoulder instead of clipping) */
+  exposure?: number;
+  /** S-curve strength, −0.5…+0.6; ends stay fixed */
+  contrast?: number;
+  /** +: open shadows, −: deepen (≥ −0.4 keeps the curve monotone) */
+  shadows?: number;
+  /** −: recover highlights, +: brighten (≤ 0.4) */
+  highlights?: number;
+  /** Matte floor 0…0.12 (lifts black, never crushes) */
+  blacks?: number;
+  /** −1 cool … +1 warm (luminance-neutral gains) */
+  temperature?: number;
+  /** −1 green … +1 magenta */
+  tint?: number;
+  /** Saturation that spares skin tones and already-saturated colours, −1…+1 */
+  vibrance?: number;
+  /** Global saturation, −1…+1 */
+  saturation?: number;
+  /** Colour in the shadows: [hue°, amount 0–1] (internal grading, no manual UI) */
+  splitShadows?: [number, number];
+  /** Colour in the highlights: [hue°, amount 0–1] */
+  splitHighlights?: [number, number];
+  /** Black & white with this channel mix (weights, normalized) */
+  mono?: [number, number, number];
+  /** 35mm grain 0–1 (owner-approved only for Amber Grain) */
+  grain?: number;
+  /** Warm highlight bloom 0–1 (owner-approved only for Night Cinematic) */
+  halation?: number;
+}
+
 export interface PresetProfile {
   id: string;
+  family: PresetFamily;
+  /** Engine-side name (UI names and hints live in lib/i18n/tr.ts) */
   name: string;
-  category: 'editorial' | 'silhouette' | 'cinematic' | 'coastal' | 'film' | 'monochrome' | 'social';
-  description: string;
-  adjustments: {
-    exposure: number;     // -100 to 100
-    contrast: number;     // -100 to 100
-    temperature: number;  // -100 to 100
-    tint: number;         // -100 to 100
-    highlights: number;   // -100 to 100
-    shadows: number;      // -100 to 100
-    saturation: number;   // -100 to 100
-    fade?: number;        // 0 to 100 (matte black lift)
-    grain?: number;       // 0 to 100 (analog film grain)
-    halation?: number;    // 0 to 100 (optical highlight bloom/halation)
-  };
+  adjustments: PresetAdjustments;
 }
 
 export interface ActivePreset {

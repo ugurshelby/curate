@@ -14,7 +14,6 @@ import {
   drawCarouselFrame,
   createExportCanvas,
   canvasToBlob,
-  DEFAULT_EDIT_PARAMS,
   DEFAULT_EDIT_CROP,
   EDIT_ASPECTS,
   EDIT_MAX_ZOOM,
@@ -35,6 +34,7 @@ import {
   CorrectionId,
   CorrectionRow,
   CorrectionParams,
+  defaultEditParamsFor,
   cropGeometry,
   editOutputSize,
   editPreviewSize,
@@ -58,7 +58,7 @@ import { ReferencePicker } from "./ReferencePicker";
 import { QuickExportSheet } from "./QuickExportSheet";
 import { ResettableSlider } from "./ResettableSlider";
 import { Switch } from "./Switch";
-import { PresetStrip, usePresetThumbs } from "./PresetStrip";
+import { PresetStrip, usePresetThumbs, suggestFromImage, presetName } from "./PresetStrip";
 import { usePanPinch, PanPinchDelta } from "./usePanPinch";
 import { reportRenderTime } from "./PerfHud";
 import { DerivedBadge } from "./NoticeToast";
@@ -126,7 +126,7 @@ interface EditStudioProps {
 export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
   const { state, actions } = useStudio();
   const { hasPhoto, selectedItem: item } = getStudioSelection(state.items, state.selectedItemId);
-  const params = (item && state.edits[item.id]) || DEFAULT_EDIT_PARAMS;
+  const params = (item && state.edits[item.id]) || defaultEditParamsFor(item);
   const crop = params.crop;
 
   const [tab, setTab] = useState<EditTab>("preset");
@@ -839,7 +839,18 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
 
       {tab === "preset" && (
         <div role="tabpanel" className="flex flex-col gap-2">
-          <PresetStrip thumbs={thumbs} activeId={params.presetId} onSelect={(id) => setParams({ presetId: id })} />
+          <PresetStrip
+            thumbs={thumbs}
+            activeId={params.presetId}
+            onSelect={(id) => setParams({ presetId: id })}
+            onAuto={async () => {
+              if (!item) return;
+              const s = await suggestFromImage(item.proxyUrl || item.originalUrl);
+              if (!s) return;
+              setParams({ presetId: s.presetId, intensity: s.amount });
+              actions.setNotice(tr.presets.autoApplied(presetName(s.presetId), Math.round(s.amount * 100)));
+            }}
+          />
           {params.presetId && (
             <ResettableSlider
               label={tr.common.amount}

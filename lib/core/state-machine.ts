@@ -9,9 +9,18 @@
 
 import { StudioItem, StudioModule, StudioState, ActivePreset, CubeLUT, ColorMetrics, ImageDimensions, StoryCellTransform, EditParams, EditCrop, DerivedKind, CarouselView } from './types';
 import { DEFAULT_EDIT_PARAMS } from '../engine/edit-geometry';
+import { DEFAULT_PRESET_ID } from '../engine/presets';
 import { revokeUrl, cleanupAllUrls, generateProxyImage, registerUrl } from '../engine/proxy';
 
 const INITIAL_ITEMS: StudioItem[] = [];
+
+/**
+ * Düzenle defaults for a photo: new photos start with the "Doğal" preset (owner brief §8.4);
+ * derived results (Büyüt, AI) start plain so a look is not applied twice (spec E11).
+ */
+export function defaultEditParamsFor(item: Pick<StudioItem, 'derivedBy'> | null | undefined): EditParams {
+  return item?.derivedBy ? DEFAULT_EDIT_PARAMS : { ...DEFAULT_EDIT_PARAMS, presetId: DEFAULT_PRESET_ID };
+}
 
 /** Bellek sınırı: kaynak başına en çok 2 türetilmiş fotoğraf; üçüncüde en eskisi silinir */
 export const MAX_DERIVED_PER_SOURCE = 2;
@@ -52,7 +61,8 @@ const INITIAL_STATE: StudioState = {
   activeModule: 'carousel',
   items: INITIAL_ITEMS,
   selectedItemId: null,
-  globalPreset: null,
+  // Seri görünümü: varsayılan "Doğal" (sahip görev belgesi §8.4); kullanıcı Orijinal seçerse null
+  globalPreset: { id: DEFAULT_PRESET_ID, intensity: 1 },
   customLut: null,
   heroColorMetrics: null,
   globalHarmonize: {
@@ -319,7 +329,7 @@ class StudioStateMachine {
   /** Düzenle ayarlarını birleştirir (kırp alanları ayrı birleşir) */
   public setEditParams(itemId: string, patch: Partial<Omit<EditParams, 'crop'>> & { crop?: Partial<EditCrop> }) {
     this.setState((prev) => {
-      const current = prev.edits[itemId] ?? DEFAULT_EDIT_PARAMS;
+      const current = prev.edits[itemId] ?? defaultEditParamsFor(prev.items.find((i) => i.id === itemId));
       const next: EditParams = {
         ...current,
         ...patch,

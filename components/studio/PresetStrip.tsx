@@ -1,23 +1,43 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { CURATE_PRESETS, calculateAspectCrop, applyPresetToImageData } from "@/lib";
-
-const PRESET_TAGS: Record<string, string> = {
-  moody_teal: "Mimari & Teal",
-  warm_silhouette: "Siluet & Ters Işık",
-  night_cinematic: "Neon & Halation",
-  muted_coastal: "Pastel & Ferah",
-  amber_grain: "35mm Analog Gren",
-  monochrome_noir: "Grafik B&W",
-};
+import { Wand2 } from "lucide-react";
+import { CURATE_PRESETS, calculateAspectCrop, applyPresetToImageData, measureScene, suggestScene, SceneSuggestion } from "@/lib";
+import { tr } from "@/lib/i18n/tr";
 
 export const PRESET_THUMB_W = 100;
 export const PRESET_THUMB_H = 76;
 
+/** UI name of a preset id (Turkish copy in lib/i18n/tr.ts) */
+export function presetName(id: string | null): string {
+  if (!id) return tr.presets.original;
+  return tr.presets.items[id]?.name ?? id;
+}
+
+/** Akıllı Otomatik for one photo: statistics of a ≤ 256 px copy (no AI, nothing leaves the device) */
+export function suggestFromImage(src: string): Promise<SceneSuggestion | null> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.onload = () => {
+      const s = Math.min(1, 256 / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.max(1, Math.round(img.naturalWidth * s));
+      const h = Math.max(1, Math.round(img.naturalHeight * s));
+      const c = document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return resolve(null);
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(suggestScene(measureScene(ctx.getImageData(0, 0, w, h))));
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
 /**
- * Preset kartı önizlemeleri: fotoğrafın küçük kopyası (proxy), preset fonksiyonunun kendisiyle.
- * Anahtar: preset kimliği, "raw" = preset'siz.
+ * Preset card previews: a small copy of the photo (proxy) through the preset function itself.
+ * Key: preset id, "raw" = no preset.
  */
 export function usePresetThumbs(src: string | null): Record<string, string> {
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
@@ -58,20 +78,34 @@ export function usePresetThumbs(src: string | null): Record<string, string> {
 
 interface PresetStripProps {
   thumbs: Record<string, string>;
-  /** Seçili kart: preset kimliği, null = Doğal */
+  /** Selected card: preset id, null = original */
   activeId: string | null;
   onSelect: (presetId: string | null) => void;
+  /** Akıllı Otomatik: picks preset + amount from the scene (first card) */
+  onAuto?: () => void;
 }
 
-/** Yatay kaydırmalı tek satır preset kartları (CDS §6.3); Carousel ve Düzenle ortak */
-export function PresetStrip({ thumbs, activeId, onSelect }: PresetStripProps) {
+/** One horizontally scrolling row (CDS §6.3); Carousel and Düzenle share it */
+export function PresetStrip({ thumbs, activeId, onSelect, onAuto }: PresetStripProps) {
   const cards = [
-    { id: null as string | null, name: "Doğal", tag: "Orijinal renk" },
-    ...CURATE_PRESETS.map((p) => ({ id: p.id as string | null, name: p.name, tag: PRESET_TAGS[p.id] ?? p.category })),
+    { id: null as string | null, name: tr.presets.original, hint: "" },
+    ...CURATE_PRESETS.map((p) => ({ id: p.id as string | null, name: presetName(p.id), hint: tr.presets.items[p.id]?.hint ?? "" })),
   ];
 
   return (
     <div className="flex gap-2 overflow-x-auto hide-scrollbar snap-x snap-mandatory -mx-3 px-3">
+      {onAuto && (
+        <button
+          type="button"
+          onClick={onAuto}
+          title={tr.presets.autoHint}
+          className="press shrink-0 snap-start rounded-xl border-2 border-separator bg-surface-2 flex flex-col items-center justify-center gap-1.5 text-ink-1"
+          style={{ width: PRESET_THUMB_W - 24, height: PRESET_THUMB_H }}
+        >
+          <Wand2 className="w-5 h-5" />
+          <span className="text-xs font-semibold">{tr.presets.auto}</span>
+        </button>
+      )}
       {cards.map((p) => {
         const isActive = activeId === p.id;
         const thumb = thumbs[p.id ?? "raw"];
@@ -79,8 +113,9 @@ export function PresetStrip({ thumbs, activeId, onSelect }: PresetStripProps) {
           <button
             key={p.id ?? "raw"}
             type="button"
-            title={p.tag}
+            title={p.hint || undefined}
             aria-pressed={isActive}
+            data-preset={p.id ?? "raw"}
             onClick={() => onSelect(p.id)}
             className={`press relative shrink-0 snap-start rounded-xl overflow-hidden border-2 bg-surface-2 ${isActive ? "border-accent" : "border-separator"}`}
             style={{ width: PRESET_THUMB_W, height: PRESET_THUMB_H }}
@@ -89,7 +124,7 @@ export function PresetStrip({ thumbs, activeId, onSelect }: PresetStripProps) {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={thumb} alt="" draggable={false} className="absolute inset-0 w-full h-full object-cover" />
             )}
-            <span className="absolute inset-x-0 bottom-0 px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/85 to-transparent text-left text-xs font-semibold leading-tight text-ink-1">
+            <span className="absolute inset-x-0 bottom-0 px-2 pb-1.5 pt-4 bg-gradient-to-t from-black/85 to-transparent text-left text-xs font-semibold leading-tight text-white">
               {p.name}
             </span>
           </button>

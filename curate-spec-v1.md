@@ -144,13 +144,13 @@ Geçersiz kılınan taslak satırlar: önceki Faz S taslağındaki "1 fotoğraf 
 
 **Kalibrasyon yöntemi:** Her preset, kullanıcının gerçek referans görsellerinden (Pinterest değil, kendi seçtiği/çektiği kareler) Reinhard CIELAB renk eşleştirme motoruyla türetilir — sabit/tahmini sayılar değil, gerçek görsellerden çıkarılmış Lab istatistikleri kullanılır. Detaylı metodoloji: `referans-gorsel-yonergesi.md`.
 
-**Durum (2026-10-02):** `lib/engine/presets.ts` artık bu 6 ailenin kodunu içeriyor (`moody_teal`, `warm_silhouette`, `night_cinematic`, `muted_coastal`, `amber_grain`, `monochrome_noir`); eski 6 genel profil kodda yok. Değerlerin gerçek referans görsellerden Reinhard ile türetilip türetilmediği doğrulanmadı (kaynak dokümanlar repoda yok, bkz. çelişki 4).
+**Durum (2026-10-08, preset kütüphanesi v2, `docs/DECISIONS.md` D24/D26):** bu 6 aile "İmza" ailesi olarak korunup yeni motorla (uçları sabit ton eğrisi, cilt korumalı canlılık) yeniden ifade edildi; yanına Temel, Portre ve Işık aileleri eklendi (toplam 16). Kalibrasyon ölçümleri `docs/PHOTO-KNOWLEDGE.md` §7. **Önceki durum (2026-10-02):** `lib/engine/presets.ts` artık bu 6 ailenin kodunu içeriyor (`moody_teal`, `warm_silhouette`, `night_cinematic`, `muted_coastal`, `amber_grain`, `monochrome_noir`); eski 6 genel profil kodda yok. Değerlerin gerçek referans görsellerden Reinhard ile türetilip türetilmediği doğrulanmadı (kaynak dokümanlar repoda yok, bkz. çelişki 4).
 
 ### 5.2 — Arayüz Gereksinimi
 - Preset kartları büyük, görsel önizlemeli, "Preset/Renk" hapının en üstünde.
 - Slider'lar varsayılan görünümde kapalı; sadece kullanıcı "ince ayar" isterse açılır.
 - My Aesthetic çoklu, adlandırılmış profil olarak çalışır (tek profil değil).
-- Otomatik öneri (histogram tabanlı preset önerisi) — P1/nice-to-have, zorunlu değil.
+- Otomatik öneri (histogram tabanlı preset önerisi) — P1/nice-to-have, zorunlu değil. **Uygulandı (2026-10-08):** preset satırının başındaki "Otomatik" kartı (Düzenle: tek kare; Carousel: seri oylaması), `lib/engine/scene.ts`.
 
 ---
 

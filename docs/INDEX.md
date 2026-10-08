@@ -14,6 +14,7 @@ Son doğrulama: 2026-10-08
 | `docs/PRODUCT.md` | Vizyon, hedef kullanıcı, modüller, kapsam |
 | `docs/ARCHITECTURE.md` | Render hattı, worker, depolama, PWA, AI proxy, yayın |
 | `docs/DECISIONS.md` | Karar kayıtları |
+| `docs/PHOTO-KNOWLEDGE.md` | Fotoğrafçılık bilgi tabanı (kaynaklı), preset kalibrasyonu, Otomatik kuralları |
 | `docs/procedures.md` | Prosedürler 1–8 ve ortak protokol |
 | `docs/reference/curate-reference.md` | Kanonik canlı referans: ölçülmüş durum, güvenlik, kapılar |
 | `docs/reports/` | Faz raporları (30 günden eskisi özetlenip silinir) |
@@ -47,7 +48,7 @@ Son doğrulama: 2026-10-08
 | `components/studio/NoticeToast.tsx`, `PerfHud.tsx`, `ResettableSlider.tsx`, `InstagramOverlay.tsx`, `TikTokOverlay.tsx` | Bildirim, `?perf=1` ölçüm, kaydırıcı, platform katmanları |
 | `lib/index.ts` | Ortak dışa aktarım |
 | `lib/core/` | `types`, `state-machine` (store), `use-studio`, `worker-bridge`, `reference-images`, `prefs` (localStorage tercihler), `library-cache` (IndexedDB fotoğraf hafızası), `device-sync` (store ↔ cihaz eşitleyici) |
-| `lib/engine/` | `carousel-render` (önizleme=export), `corrections` (Düzeltme: 6 satır + Otomatik, parçalı), `presets`, `harmonize`, `edit-geometry`, `story-layout`, `upscale-lanczos`, `upscale-slider`, `adaptive-gradient`, `proxy` |
+| `lib/engine/` | `carousel-render` (önizleme=export), `corrections` (Düzeltme: 6 satır + Otomatik, parçalı), `presets` (kütüphane v2, 16 preset), `scene` (Akıllı Otomatik), `harmonize`, `edit-geometry`, `story-layout`, `upscale-lanczos`, `upscale-slider`, `adaptive-gradient`, `proxy` |
 | `lib/export/` | `platform-specs` (hedefler veri olarak), `export-plan` (kalite basamağı, dosya adı), `exif-sanitizer`, `zip-packager` |
 | `lib/ai/` | `config` (model/istem/₺ tek yer), `server`, `quota`, `client`, `diff-check` |
 | `lib/ui/colors.ts` | Export/canvas içerik renkleri ve tarih damgası yazı tipi (arayüz paleti değil) |
