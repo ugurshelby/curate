@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/lib/i18n/tr";
 import React, { useState, useRef, useEffect } from "react";
 import { Sliders, Star, Palette, X, FileCode, ChevronDown, Layers, Eye, EyeOff } from "lucide-react";
 import {
@@ -301,7 +302,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
             onClick={() => fileInputRef.current?.click()}
             className="touch-target px-3 text-sm text-accent"
           >
-            Fotoğraf Yükle
+            {tr.common.uploadPhoto}
           </button>
         </div>
       )}
@@ -424,7 +425,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
             >
               <FileCode className="w-4 h-4" />
               <span className="max-w-[160px] truncate">
-                {state.customLut ? `LUT: ${state.customLut.title}` : "3D LUT (.cube) yükle"}
+                {state.customLut ? tr.gelismis.lutLoaded(state.customLut.title) : tr.gelismis.lutUpload}
               </span>
             </button>
 
@@ -450,7 +451,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
                 }`}
               >
                 <Palette className="w-4 h-4" />
-                <span>{state.heroColorMetrics ? "Hero uyumu açık (%20)" : "Kareden hero renk al"}</span>
+                <span>{state.heroColorMetrics ? tr.carousel.syncOn : tr.carousel.syncToFrame}</span>
               </button>
             )}
           </div>
@@ -491,7 +492,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
 
   return (
     <StudioShell
-      title="Carousel Dump"
+      title={tr.modules.carousel.title}
       onBack={onBack}
       onExport={() => setIsExportOpen(true)}
       exportDisabled={!hasPhoto}

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { ArrowLeft, Download } from "lucide-react";
+import { tr } from "@/lib/i18n/tr";
 
 /**
  * Ortak mobil iskelet (CDS §6): header / sahne / alt yığın.
@@ -30,7 +31,7 @@ interface StudioShellProps {
 export function StudioShell({
   title,
   onBack,
-  exportLabel = "Export",
+  exportLabel = tr.common.export,
   onExport,
   exportDisabled,
   stage,
@@ -49,14 +50,17 @@ export function StudioShell({
         <button
           type="button"
           onClick={onBack}
-          aria-label="Stüdyoya dön"
+          aria-label={tr.common.back}
           className="touch-target press rounded-xl text-ink-2 hover:text-ink-1"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
 
-        <h1 className="flex-1 min-w-0 truncate text-center text-[15px] font-semibold tracking-[-0.01em] text-ink-1">
-          {title}
+        <h1 className="flex-1 min-w-0 flex justify-center">
+          {/* Paylaşılan öğe: ana sayfa kartının başlığı buraya dönüşür (CDS §5) */}
+          <span className="truncate text-headline text-ink-1" style={{ viewTransitionName: "module-title" }}>
+            {title}
+          </span>
         </h1>
 
         {onExport ? (
@@ -64,7 +68,7 @@ export function StudioShell({
             type="button"
             onClick={onExport}
             disabled={exportDisabled}
-            className="touch-target press shrink-0 h-11 px-4 rounded-xl bg-accent-fill text-on-accent text-sm font-semibold flex items-center gap-1.5"
+            className="touch-target press shrink-0 h-11 px-3.5 rounded-md bg-accent-fill text-on-accent text-subhead font-semibold flex items-center gap-1.5"
           >
             <Download className="w-4 h-4" />
             <span>{exportLabel}</span>

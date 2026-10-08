@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/lib/i18n/tr";
 import React, { useEffect, useRef, useState } from "react";
 import { Wand2, RotateCw, FlipHorizontal2, RotateCcw, ZoomIn, Undo2, Sparkles } from "lucide-react";
 import {
@@ -524,7 +525,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
         <Wand2 className="w-8 h-8 text-disabled-ink" />
         <span className="text-sm">Düzenlemek için bir fotoğraf ekle</span>
         <button type="button" onClick={() => fileInputRef.current?.click()} className="touch-target px-3 text-sm text-accent">
-          Fotoğraf Yükle
+          {tr.common.uploadPhoto}
         </button>
       </div>
     );
@@ -819,7 +820,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
 
   return (
     <StudioShell
-      title="Düzenle"
+      title={tr.modules.edit.title}
       onBack={onBack}
       onExport={() => setIsExportOpen(true)}
       exportDisabled={!hasPhoto || !out}

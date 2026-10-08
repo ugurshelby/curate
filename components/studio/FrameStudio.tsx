@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/lib/i18n/tr";
 import React, { useState, useEffect, useRef } from "react";
 import { Calendar, Crop } from "lucide-react";
 import { ResettableSlider } from "./ResettableSlider";
@@ -227,7 +228,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
               onClick={() => fileInputRef.current?.click()}
               className="touch-target px-3 text-sm text-accent"
             >
-              Fotoğraf Yükle
+              {tr.common.uploadPhoto}
             </button>
           </div>
         )}
@@ -307,7 +308,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
 
   return (
     <StudioShell
-      title="Minimal Çerçeve"
+      title={tr.modules.frame.title}
       onBack={onBack}
       onExport={() => setIsExportOpen(true)}
       exportDisabled={!hasPhoto}

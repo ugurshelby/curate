@@ -26,7 +26,7 @@ Son doğrulama: 2026-10-08
 ## Kod
 | Yol | Ne yapar |
 |---|---|
-| `app/page.tsx` | Ana sayfa (hub) ve modül geçişi |
+| `app/page.tsx` | Ana sayfa (hub): tek "Fotoğraf ekle" yüzeyi, modül kartları, güven rozeti; modül geçişi (View Transitions) |
 | `app/layout.tsx` | Kök düzen, metadata, viewport, `lang="tr"` |
 | `app/globals.css` | Renk ve yarıçap belirteçleri (tek kaynak), yardımcı sınıflar |
 | `app/api/ai/route.ts` | Tek sunucu rotası: AI proxy (GET/PUT/POST/DELETE) |
@@ -48,10 +48,11 @@ Son doğrulama: 2026-10-08
 | `lib/engine/` | `carousel-render` (önizleme=export), `presets`, `harmonize`, `edit-geometry`, `story-layout`, `upscale-lanczos`, `upscale-slider`, `adaptive-gradient`, `proxy` |
 | `lib/export/` | `platform-specs` (hedefler veri olarak), `export-plan` (kalite basamağı, dosya adı), `exif-sanitizer`, `zip-packager` |
 | `lib/ai/` | `config` (model/istem/₺ tek yer), `server`, `quota`, `client`, `diff-check` |
-| `lib/ui/colors.ts` | Export/canvas içerik renkleri (arayüz paleti değil) |
+| `lib/ui/colors.ts` | Export/canvas içerik renkleri ve tarih damgası yazı tipi (arayüz paleti değil) |
+| `lib/i18n/tr.ts` | Tüm arayüz metni (Türkçe); jargon yalnız `gelismis` altında |
 | `lib/workers/image-processor.worker.ts` | Worker (Büyüt export'u) |
 | `public/` | `manifest.json`, `icon.svg`, `reference-images/` (13 görsel) |
-| `tests/` | Vitest testleri (parite, export planı, geometri, AI sunucu/istemci, renk belirteçleri, sağlamlık…) |
+| `tests/` | Vitest testleri (parite, export planı, geometri, AI sunucu/istemci, renk belirteçleri, `ui-rules` tasarım kuralları, sağlamlık…) |
 | `scripts/` | `audit-ui.mjs` (Prosedür 2), `capture-screens.mjs` (390 ekran görüntüsü), `check-bundle-secrets.mjs` |
 
 ## Komutlar

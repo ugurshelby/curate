@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/lib/i18n/tr";
 import React, { useEffect, useState } from "react";
 import { X, Download, RefreshCw, ChevronDown, Check } from "lucide-react";
 import {
@@ -206,7 +207,7 @@ export function QuickExportSheet({
           )}
         </div>
 
-        <p className="text-xs text-ink-3">Konum ve cihaz bilgisi (EXIF) dosyadan çıkarılır.</p>
+        <p className="text-xs text-ink-3">{tr.export.privacy}</p>
 
         {result && (
           <div role="status" className="rounded-xl bg-surface-2 border border-separator px-3 py-2 text-sm text-ink-1 flex flex-col gap-0.5">

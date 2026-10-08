@@ -44,7 +44,7 @@ const clickText = (page, text, sel = 'button,[role=button]') =>
   );
 
 async function loadRefs(page, names) {
-  await clickText(page, 'Referans Görsel Yükle');
+  await clickText(page, 'Referans');
   await wait(600);
   for (const n of names) {
     await page.evaluate((name) => {
@@ -60,12 +60,8 @@ async function loadRefs(page, names) {
   await wait(2500);
 }
 
-async function openModule(page, title) {
-  await page.evaluate((t) => {
-    const h = [...document.querySelectorAll('h2')].find((x) => x.textContent.trim() === t);
-    const card = h && h.closest('[class*="cursor-pointer"]');
-    card && card.click();
-  }, title);
+async function openModule(page, id) {
+  await page.evaluate((m) => document.querySelector(`[data-module="${m}"]`)?.click(), id);
   await wait(1200);
 }
 
@@ -85,7 +81,7 @@ await page.close();
 // 2) Carousel
 page = await fresh();
 await loadRefs(page, refs);
-await openModule(page, 'Carousel Dump');
+await openModule(page, 'carousel');
 await shot(page, '02_carousel');
 await clickText(page, 'Düzenle', 'button');
 await wait(500);
@@ -95,28 +91,28 @@ await page.close();
 // 3) Story
 page = await fresh();
 await loadRefs(page, refs);
-await openModule(page, 'Story Dump');
+await openModule(page, 'story');
 await shot(page, '03_story');
 await page.close();
 
 // 4) Çerçeve
 page = await fresh();
 await loadRefs(page, refs);
-await openModule(page, 'Minimal Çerçeve');
+await openModule(page, 'frame');
 await shot(page, '04_cerceve');
 await page.close();
 
 // 5) Upscale
 page = await fresh();
 await loadRefs(page, refs);
-await openModule(page, 'Kayıpsız Upscale');
+await openModule(page, 'upscale');
 await shot(page, '05_upscale');
 await page.close();
 
 // 6) Düzenle: Preset, Kırp, export, AI sayfası, kontrol sayfası
 page = await fresh();
 await loadRefs(page, ['İç mekan bar']);
-await openModule(page, 'Düzenle');
+await openModule(page, 'edit');
 await clickText(page, 'Moody Teal');
 await wait(800);
 await shot(page, '06_duzenle_preset');
@@ -125,7 +121,7 @@ await wait(800);
 await shot(page, '07_duzenle_kirp');
 await clickText(page, 'Preset', '[role=tab]');
 await wait(500);
-await clickText(page, 'Export');
+await clickText(page, 'Dışa aktar');
 await wait(600);
 await shot(page, '08_export_sayfasi');
 await clickText(page, 'Kapat');

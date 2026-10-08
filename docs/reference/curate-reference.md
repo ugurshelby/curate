@@ -74,6 +74,7 @@ Son doğrulama: 2026-10-08
 | Build | `npm run build` | geçiyor |
 | Sır taraması | `npm run check:secrets` | 0 bulgu |
 | Renk belirteçleri | `tests/color-tokens.test.ts` | geçiyor |
+| Tasarım kuralları | `tests/ui-rules.test.ts` (12 px, monospace, 44 px, jargon, malzeme, self-host yazı tipi) | geçiyor (2026-10-08) |
 | Mobil denetim | `scripts/audit-ui.mjs` (Prosedür 2) | 45 ekran geçiyor (emülasyon) |
 
 ## 7. Konvansiyonlar

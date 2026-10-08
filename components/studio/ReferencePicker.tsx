@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/lib/i18n/tr";
 import React, { useEffect, useState } from "react";
 import { Check, X, RefreshCw } from "lucide-react";
 import { REFERENCE_IMAGES, referenceImageUrl, fetchReferenceFiles } from "@/lib";
@@ -77,7 +78,7 @@ export function ReferencePicker({ open, onClose, onConfirm, maxSelect }: Referen
       >
         <div className="shrink-0 flex items-center justify-between gap-2 pl-5 pr-2 pt-2">
           <div className="flex flex-col py-2">
-            <span className="text-[15px] font-semibold text-ink-1">Referans Görsel Yükle</span>
+            <span className="text-[15px] font-semibold text-ink-1">{tr.common.loadReference}</span>
             <span className="text-xs text-ink-3">
               {maxSelect <= 0
                 ? "Bu modülde yer kalmadı."

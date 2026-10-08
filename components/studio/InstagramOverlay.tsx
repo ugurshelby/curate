@@ -46,7 +46,7 @@ export function InstagramOverlay({ type, isDarkBg = true }: InstagramOverlayProp
           </div>
           <div className="text-xs drop-shadow-md truncate">
             <span className="font-semibold mr-1.5">curatestudio</span>
-            <span className="text-white/80">35mm contact sheet curation · dump_01</span>
+            <span className="text-white/80">yeni seri · 1/10</span>
           </div>
         </div>
       </div>

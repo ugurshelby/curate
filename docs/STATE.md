@@ -11,14 +11,14 @@ Tek durum dosyası. Her anlamlı adımdan sonra aynı commit'te güncellenir. Ye
 |---|---|---|---|
 | 0 | Tanışma (yalnız okuma) | bitti | Bulgular: `docs/reports/2026-10-08-faz0-1.md` |
 | 1 | Anayasa ve belge sistemi | bitti | `docs/reports/2026-10-08-faz0-1.md` |
-| 2 | Tasarım dili v3 + kural-kontrol testi | sürüyor | |
-| 3 | Arayüz denetimi ve yeniden tasarım | yapılmadı | |
+| 2 | Tasarım dili v3 + kural-kontrol testi | bitti | CDS v3, `tests/ui-rules.test.ts` |
+| 3 | Arayüz denetimi ve yeniden tasarım | sürüyor | Ana sayfa bitti; modül ekranları sırada |
 | 4 | Erişim (KIRMIZI, plan), kalıcılık, PWA | yapılmadı | Erişim kapısı sahip onayı olmadan kodlanmaz |
 | 5 | Performans, D2 Düzeltme, preset kütüphanesi, Otomatik, AI Preset (önce özet) | yapılmadı | |
 | 6 | İdame | sürekli | Prosedür 8 |
 
 ## Sıradaki adım
-Faz 2: CDS v3, self-host yazı tipi, `lib/i18n/tr.ts`, `tests/ui-rules.test.ts`.
+Faz 3: modül ekranlarını (alt çubuk, sahne araç satırı, export ve AI sayfaları) yeni dile uydur; metinleri `lib/i18n/tr.ts`e taşı.
 
 ## Son commit
 `e59036f` (oturum başı, `main`).

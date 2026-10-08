@@ -158,6 +158,13 @@ body {
 
 /* Hover vs Touch Interaction Ergonomics */
 @media (hover: hover) and (pointer: fine) {
+  /* Kart üzerine gelme: yalnız fare (CDS §6). Dokunmatikte yapışan hover yok. */
+  .hover-fine {
+    transition: transform 160ms var(--ease-spring), border-color 150ms ease;
+  }
+  .hover-fine:hover {
+    border-color: rgb(var(--ink-3));
+  }
   .interactive-hover:hover {
     background-color: rgb(var(--surface-2));
     border-color: rgb(var(--separator));

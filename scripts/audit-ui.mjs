@@ -48,7 +48,7 @@ const clickText = (page, text, sel = 'button,[role=button]') =>
     return true;
   }, text, sel);
 async function loadRefs(page, names) {
-  await clickText(page, 'Referans Görsel Yükle');
+  await clickText(page, 'Referans');
   await wait(600);
   for (const n of names) {
     await page.evaluate((name) => { [...document.querySelectorAll('[role=dialog] button')].find((b) => (b.getAttribute('aria-label') || '').includes(name))?.click(); }, n);
@@ -57,8 +57,8 @@ async function loadRefs(page, names) {
   await page.evaluate(() => { [...document.querySelectorAll('[role=dialog] button')].find((b) => /Ekle|Yükle|Tamam/.test(b.textContent) && !b.disabled)?.click(); });
   await wait(2500);
 }
-async function openModule(page, title) {
-  await page.evaluate((t) => { const h = [...document.querySelectorAll('h2')].find((x) => x.textContent.trim() === t); h?.closest('[class*="cursor-pointer"]')?.click(); }, title);
+async function openModule(page, id) {
+  await page.evaluate((m) => document.querySelector(`[data-module="${m}"]`)?.click(), id);
   await wait(1200);
 }
 
@@ -131,7 +131,7 @@ for (const [w, h] of VIEWPORTS) {
   let page = await fresh(w, h);
   await record(page, w, 'Ana sayfa', false);
   await loadRefs(page, ['İç mekan bar', 'Köprü', 'Şehir gökdelen']);
-  await openModule(page, 'Carousel Dump');
+  await openModule(page, 'carousel');
   await record(page, w, 'Carousel');
   await clickText(page, 'Düzenle');
   await record(page, w, 'Carousel panel');
@@ -139,17 +139,17 @@ for (const [w, h] of VIEWPORTS) {
   await record(page, w, 'Carousel Araçlar');
   await clickText(page, 'TikTok');
   await record(page, w, 'Carousel TikTok');
-  await clickText(page, 'Export');
+  await clickText(page, 'Dışa aktar');
   await record(page, w, 'Export sayfası', false);
   await page.close();
 
   page = await fresh(w, h);
   await loadRefs(page, ['İç mekan bar', 'Köprü', 'Şehir gökdelen']);
-  await openModule(page, 'Story Dump');
+  await openModule(page, 'story');
   await record(page, w, 'Story');
   await page.close();
 
-  for (const [mod, label] of [['Minimal Çerçeve', 'Çerçeve'], ['Kayıpsız Upscale', 'Upscale']]) {
+  for (const [mod, label] of [['frame', 'Çerçeve'], ['upscale', 'Upscale']]) {
     page = await fresh(w, h);
     await loadRefs(page, ['İç mekan bar', 'Köprü']);
     await openModule(page, mod);
@@ -159,7 +159,7 @@ for (const [w, h] of VIEWPORTS) {
 
   page = await fresh(w, h);
   await loadRefs(page, ['İç mekan bar']);
-  await openModule(page, 'Düzenle');
+  await openModule(page, 'edit');
   await record(page, w, 'Düzenle Preset');
   await clickText(page, 'Kırp', '[role=tab]');
   await record(page, w, 'Düzenle Kırp');
@@ -178,11 +178,25 @@ for (const [w, h] of VIEWPORTS) {
   await record(page, w, 'Düzenle (AI sonucu)');
   await page.close();
 }
+// Masaüstü: ana sayfa içeriği ortalı ve sınırlı genişlikte (CDS §6)
+{
+  const page = await fresh(1280, 800);
+  await record(page, 1280, 'Ana sayfa (masaüstü)', false);
+  const c = await page.evaluate(() => {
+    const el = document.querySelector('[data-drop-zone]')?.parentElement?.parentElement;
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { left: Math.round(r.left), right: Math.round(innerWidth - r.right), width: Math.round(r.width) };
+  });
+  results[results.length - 1].centered = c && Math.abs(c.left - c.right) <= 2 && c.width <= 1040;
+  console.log('masaüstü kap:', JSON.stringify(c));
+  await page.close();
+}
 await browser.close();
 
 let bad = 0;
 for (const r of results) {
-  const fail = r.overlap || r.hScroll || r.offscreen.length || r.smallTargets.length || r.tinyText.length || r.glass > 3 || r.contrastFail.length;
+  const fail = r.centered === false || r.overlap || r.hScroll || r.offscreen.length || r.smallTargets.length || r.tinyText.length || r.glass > 3 || r.contrastFail.length;
   if (fail) bad++;
   console.log(
     `${r.w} ${r.name.padEnd(20)} ${fail ? 'FAIL' : 'ok  '} sahne=${r.stage ? r.stage.join('–') : '—'} overlap=${r.overlap ?? '—'} hScroll=${r.hScroll} küçük=${r.smallTargets.length} 12px altı=${r.tinyText.length} cam=${r.glass} minKontrast=${r.contrastMin}` +

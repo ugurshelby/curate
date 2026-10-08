@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/lib/i18n/tr";
 import React, { useState, useEffect, useRef } from "react";
 import { EXPORT_COLORS } from "@/lib/ui/colors";
 import { Sparkles, Smartphone, ImagePlus, RotateCcw } from "lucide-react";
@@ -327,7 +328,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
           <Smartphone className="w-8 h-8 text-disabled-ink" />
           <span className="text-sm">Story için en az 2 fotoğraf ekle</span>
           <button type="button" onClick={() => fileInputRef.current?.click()} className="touch-target px-3 text-sm text-accent">
-            Fotoğraf Yükle
+            {tr.common.uploadPhoto}
           </button>
         </div>
       ) : count < STORY_MIN_PHOTOS ? (
@@ -515,7 +516,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
 
   return (
     <StudioShell
-      title="Story Dump"
+      title={tr.modules.story.title}
       onBack={onBack}
       onExport={() => setIsExportOpen(true)}
       exportDisabled={count < STORY_MIN_PHOTOS}

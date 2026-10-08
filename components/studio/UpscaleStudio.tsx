@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/lib/i18n/tr";
 import React, { useState, useRef, useEffect } from "react";
 import { ZoomIn } from "lucide-react";
 import { 
@@ -162,7 +163,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photoPath} alt="" draggable={false} className="w-full h-full object-cover" />
             <span className="absolute bottom-2 left-2 text-xs bg-black/75 px-2 py-0.5 rounded text-ink-2 pointer-events-none">
-              1x orijinal
+              {tr.upscale.originalNote}
             </span>
           </div>
 
@@ -180,7 +181,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
               style={{ filter: "contrast(1.04) brightness(1.02)" }}
             />
             <span className="absolute bottom-2 right-2 text-xs bg-black/75 px-2 py-0.5 rounded text-white pointer-events-none">
-              Önizleme kontrast ({scaleFactor}x)
+              {tr.upscale.previewNote(scaleFactor)}
             </span>
           </div>
 
@@ -216,7 +217,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
             onClick={() => fileInputRef.current?.click()}
             className="touch-target px-3 text-sm text-accent"
           >
-            Fotoğraf Yükle
+            {tr.common.uploadPhoto}
           </button>
         </div>
       )}
@@ -254,9 +255,8 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
 
   return (
     <StudioShell
-      title="Kayıpsız Upscale"
+      title={tr.modules.upscale.title}
       onBack={onBack}
-      exportLabel={`Export ${scaleFactor}x`}
       onExport={() => setIsExportOpen(true)}
       exportDisabled={!hasPhoto || !factorAllowed(scaleFactor)}
       stage={stage}

@@ -10,7 +10,7 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 
 ## 🌟 Beş Modül
 
-### 1. Carousel Dump (4:5)
+### 1. Carousel (4:5 · 9:16)
 - **Sahne Mimarisi:** Varsayılan 4:5 Fill modu, tek tıkla Fit/Fill geçişi, izole wheel zoom.
 - **Platform Safe-Zone:** Yarı saydam göz ikonuyla Instagram Post arayüz (profil başlığı, kaydetme/beğeni butonları) katmanı.
 - **Filmstrip & İşlem Menüsü:** Kart üzerinde masaüstünde sağ tık, mobilde çift dokunma (~320ms) ile `Kapak yap`, `Seriyi bu renge eşitle (Hero Harmonize)` ve `Seriden çıkar`. Sıralama: dokunmatikte basılı tut (350ms) ve sürükle, farede sürükle.
@@ -18,7 +18,7 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 - **Hero Renk Eşitleme:** Seçili karenin renk ve pozlama dengesini tüm seriye nazikçe (%20) işler; asla aşırı deformasyon yapmaz.
 - **Kutsal Viewport Kuralı:** Görsel, düzenleme panelinin/header'ın/filmstrip'in altında kalmaz (`design/CURATE_DESIGN_SYSTEM.md` §6). Faz M1'de 360×740, 390×844 ve 430×932'de dört modülde ölçüldü, örtüşme 0 (`docs/reports/2026-10-03-phases.md`). Telefonda doğrulanmadı.
 
-### 2. Story Dump (9:16)
+### 2. Story (9:16)
 - **iPhone Mockup Sahnesi:** Dynamic Island ve yuvarlatılmış kasa sınırlarıyla dikey telefon ekranı; sahneye sığacak şekilde ölçeklenir. Instagram story güvenli alanı gösterilir (platform geçişi yok).
 - **Otomatik Grid:** Story en az 2, en fazla 6 fotoğraf alır; grid sayısı fotoğraf sayısına eşittir (kullanıcı seçmez). 2'den azsa Export kapalıdır ("En az 2 fotoğraf ekle"); 6 doluyken ekleme kapanır, fazlası alınmaz.
 - **Güvenli Alan:** Hücreler Story'nin üst (ilerleme çubuğu, hesap satırı) ve alt (mesaj çubuğu) bantlarının dışında kalır; export aynı geometriyi kullanır (bant yüksekliği 250 px, sahip onaylı; telefonda karşılaştırılmadı).
@@ -27,12 +27,12 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 - **Akıllı Gradyan:** Fotoğrafların kenar piksellerinden otomatik türetilen organik arka plan gradyanı; siyah, beyaz ve antrasit zemin seçenekleri.
 - **İki Dokunuşla Takas:** Bir hücreyi seçip başka bir hücreye dokunmak yerlerini değiştirir.
 
-### 3. Minimal Çerçeve
+### 3. Çerçeve
 - Tekil görsel için `Polaroid`, `Matte` ve `Akıllı Gradyan` çerçeveleri.
 - Genişlik ve köşe yuvarlaklığı slider'ları.
 - Günün tarihini taşıyan analog turuncu dijital tarih damgası toggle'ı.
 
-### 4. Kayıpsız Upscale (Lanczos-3)
+### 4. Büyüt (yerel Lanczos-3)
 - Güvenli sınır: çıktının uzun kenarı en çok 8192 px ve alanı en çok 16 MP (varsayım); aşan çarpan kapanır ve "Bu boyut için çok büyük" yazar.
 - Matematiksel $L(x) = \text{sinc}(x) \cdot \text{sinc}(x/3)$ 2-pass Lanczos konvolüsyon motoru (dışa aktarmada gerçek kayıpsız 2x ve 4x büyütme).
 - Kaydırılabilir Before/After Split View çizgisiyle keskinlik önizlemesi (önizleme hızlı kontrast simülasyonu, export anında tam Lanczos-3 render).
@@ -59,7 +59,7 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 
 ## 🧪 Referans Görseller
 
-`public/reference-images/` altındaki 13 görsel sahip kararıyla repoda kalır. Kütüphane boş başlar. Ana sayfada ve modül içi "+" menüsünde ikincil "Referans Görsel Yükle" eylemi vardır (çoklu seçim, "Hepsi"; Story en çok 6, Çerçeve/Upscale tek görsel). Görseller aynı kökten yüklenir, hiçbir yere gönderilmez.
+`public/reference-images/` altındaki 13 görsel sahip kararıyla repoda kalır. Kütüphane boş başlar. Ana sayfada (ikincil bağlantı) ve modül içi "+" menüsünde "Referans görsel yükle" eylemi vardır (çoklu seçim, "Hepsi"; Story en çok 6, Çerçeve/Upscale tek görsel). Görseller aynı kökten yüklenir, hiçbir yere gönderilmez.
 
 `?perf=1` ile açılan küçük geliştirme göstergesi kare süresini, son önizleme çizim süresini ve uzun görev sayısını gösterir.
 
@@ -69,7 +69,8 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 
 - **Renk (Faz C):** OLED siyah zemin (`#000000`), nötr yüzeyler (`#1C1C1E`, `#2C2C2E`), tek ince ayırıcı (`#38383A`), yazı `#FFFFFF` / `#AEAEB2` / `#8E8E93` ve tek vurgu iOS mavisi (`#0A84FF`; dolgu zemini `#0071E3`). Vurgu yalnız seçili öğede, kaydırıcı dolgusunda, ana eylemde ve odak halkasında; fotoğraf üstündeki her katman renksiz.
 - **Liquid Glass:** `backdrop-blur-xl`, ayırıcı kenar, rim light yansıması (ekranda en çok 3 cam yüzey).
-- **Tipografi:** Yalnızca Apple HIG standart sans-serif (`-apple-system, BlinkMacSystemFont, SF Pro, Inter`). Asla rastgele monospace font kullanılmaz.
+- **Tipografi:** Apple cihazlarında SF, diğerlerinde `next/font` ile kendi alan adımızdan sunulan Inter; 12 px alt sınır; arayüzde monospace yok. Ayrıntı: `design/CURATE_DESIGN_SYSTEM.md` (v3).
+- **Ana sayfa:** tek "Fotoğraf ekle" yüzeyi (dokun ya da sürükle bırak), beş modül kartı, tek güven rozeti ("Yerel ve gizli işleme"). Arayüz metinleri `lib/i18n/tr.ts`'te.
 - **Ergonomi:** Minimum 44×44px dokunma hedefleri (`touch-target`).
 - **Renk Kaynağı:** Renk paletinin koddaki mutlak tek kaynağı `app/globals.css` `:root` değişkenleridir (`tailwind.config.ts` yalnız bunlara bağlanır); export içeriği renkleri `lib/ui/colors.ts`'tedir. `design/tokens.curate.json` referans amaçlıdır.
 
