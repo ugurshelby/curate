@@ -20,6 +20,8 @@ import {
   EDIT_MAX_ZOOM,
   EDIT_MAX_ANGLE,
   EDIT_PREVIEW_LONG_EDGE,
+  previewRenderSize,
+  whenIdle,
   cropGeometry,
   editOutputSize,
   editPreviewSize,
@@ -166,6 +168,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
   const tabRef = useRef(tab);
   tabRef.current = tab;
   const draggingRef = useRef(false);
+  const warmCancelRef = useRef<(() => void) | null>(null);
   const rafRef = useRef<number | null>(null);
 
   const flushRef = useRef<() => void>(() => {});
@@ -201,8 +204,16 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
       const p = previewRef.current;
       if (!canvas || !p) return;
       const draft = draggingRef.current;
-      const W = draft ? Math.max(1, Math.round(p.width / 2)) : p.width;
-      const H = draft ? Math.max(1, Math.round(p.height / 2)) : p.height;
+      // Ekranın gösterebildiği kadar piksel (CDS §8); export aynı fonksiyonu tam boyutta çağırır
+      const box = canvas.parentElement;
+      const { width: W, height: H } = previewRenderSize(
+        p.width,
+        p.height,
+        box?.clientWidth ?? 0,
+        box?.clientHeight ?? 0,
+        window.devicePixelRatio || 1,
+        draft,
+      );
       if (canvas.width !== W || canvas.height !== H) {
         canvas.width = W;
         canvas.height = H;
@@ -210,6 +221,21 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
       if (!ctx) return;
       rendererRef.current.render(ctx, source.img, source.key, W, H, optionsRef.current);
+      // Boşta taslak tabanı hazırla (kaydırıcının ilk karesi için)
+      if (!draft) {
+        warmCancelRef.current?.();
+        warmCancelRef.current = whenIdle(() => {
+          const s = sourceRef.current;
+          const pv = previewRef.current;
+          if (!s || !pv) return;
+          const d = previewRenderSize(pv.width, pv.height, box?.clientWidth ?? 0, box?.clientHeight ?? 0, window.devicePixelRatio || 1, true);
+          const c = document.createElement("canvas");
+          c.width = d.width;
+          c.height = d.height;
+          const wctx = c.getContext("2d", { willReadFrequently: true });
+          if (wctx) rendererRef.current.prepareBase(wctx, s.img, s.key, d.width, d.height, optionsRef.current);
+        });
+      }
     }
     reportRenderTime(performance.now() - t0);
   };
@@ -253,8 +279,26 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
       // StrictMode iki kez çalıştırır: iptal sonrası ref sıfırlanmazsa çizimler kilitlenir (M2 bulgusu)
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
+      warmCancelRef.current?.();
     };
   }, []);
+
+  // Sahne boyutu değişince önizleme çözünürlüğü yeniden hesaplanır
+  useEffect(() => {
+    const el = canvasRef.current?.parentElement;
+    if (!el || tab === "crop") return;
+    let last = "";
+    const ro = new ResizeObserver(([entry]) => {
+      const key = `${Math.round(entry.contentRect.width)}x${Math.round(entry.contentRect.height)}`;
+      if (key !== last) {
+        last = key;
+        scheduleRender();
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, hasPhoto]);
 
   // Kırp kutusunun ekran ölçüsü
   useEffect(() => {

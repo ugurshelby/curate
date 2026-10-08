@@ -295,101 +295,97 @@ export function applyPresetToImageData(
   const effGrain = adj.grain ? lerp(0, adj.grain, t) : 0;
   const effHalation = adj.halation ? lerp(0, adj.halation, t) : 0;
 
-  // Pre-calculate factors
+  // Steps 1–3 (exposure, temperature/tint, contrast) are per-channel and linear: one 256-entry table per channel.
   const exposureMul = 1 + effExposure / 100;
   const contrastFactor = (259 * (effContrast * 2.55 + 255)) / (255 * (259 - effContrast * 2.55));
   const tempR = effTemp > 0 ? 1 + (effTemp / 100) * 0.22 : 1;
   const tempB = effTemp < 0 ? 1 + (Math.abs(effTemp) / 100) * 0.22 : 1;
   const tintG = effTint < 0 ? 1 + (Math.abs(effTint) / 100) * 0.12 : 1;
   const tintM = effTint > 0 ? 1 + (effTint / 100) * 0.12 : 1;
+  const lutR = new Float32Array(256);
+  const lutG = new Float32Array(256);
+  const lutB = new Float32Array(256);
+  for (let v = 0; v < 256; v++) {
+    lutR[v] = contrastFactor * (v * exposureMul * tempR * tintM - 128) + 128;
+    lutG[v] = contrastFactor * (v * exposureMul * tintG - 128) + 128;
+    lutB[v] = contrastFactor * (v * exposureMul * tempB - 128) + 128;
+  }
+
+  const hK = (effHighlights / 100) * 26 / 127;
+  const sK = (effShadows / 100) * 26 / 128;
+  const floor = effFade > 0 ? (effFade / 100) * 24 : 0;
+  const satMul = 1 + effSat / 100;
+  const halK = effHalation / 100 / 90;
+  const grainAmp = effGrain * 0.4;
 
   const data = imageData.data;
-  const len = data.length;
   const width = imageData.width;
+  const height = Math.floor(data.length / 4 / width);
   const resolutionScale = options.resolutionScale ?? 1;
   const refWidth = Math.round(width * resolutionScale);
 
-  for (let i = 0; i < len; i += 4) {
-    let r = data[i];
-    let g = data[i + 1];
-    let b = data[i + 2];
+  let i = 0;
+  for (let y = 0; y < height; y++) {
+    // Grain is sampled on the export-resolution grid (see PresetRenderOptions)
+    const grainRow = resolutionScale === 1 ? 0 : Math.floor(y * resolutionScale) * refWidth;
+    for (let x = 0; x < width; x++, i += 4) {
+      let r = lutR[data[i]];
+      let g = lutG[data[i + 1]];
+      let b = lutB[data[i + 2]];
 
-    // 1. Exposure
-    r *= exposureMul;
-    g *= exposureMul;
-    b *= exposureMul;
-
-    // 2. Temperature & Tint
-    r *= tempR * tintM;
-    g *= tintG;
-    b *= tempB;
-
-    // 3. Contrast around mid-gray 128
-    r = contrastFactor * (r - 128) + 128;
-    g = contrastFactor * (g - 128) + 128;
-    b = contrastFactor * (b - 128) + 128;
-
-    // 4. Highlights & Shadows adjustments
-    const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    if (lum > 128 && effHighlights !== 0) {
-      const hWeight = (lum - 128) / 127;
-      const hDelta = (effHighlights / 100) * 26 * hWeight;
-      r += hDelta;
-      g += hDelta;
-      b += hDelta;
-    } else if (lum <= 128 && effShadows !== 0) {
-      const sWeight = (128 - lum) / 128;
-      const sDelta = (effShadows / 100) * 26 * sWeight;
-      r += sDelta;
-      g += sDelta;
-      b += sDelta;
-    }
-
-    // 5. Matte Fade (Floor lift)
-    if (effFade > 0) {
-      const floor = (effFade / 100) * 24;
-      r = Math.max(floor, r);
-      g = Math.max(floor, g);
-      b = Math.max(floor, b);
-    }
-
-    // 6. Saturation adjustment
-    if (effSat !== 0) {
-      const gray = 0.2989 * r + 0.587 * g + 0.114 * b;
-      const satMul = 1 + effSat / 100;
-      r = gray + (r - gray) * satMul;
-      g = gray + (g - gray) * satMul;
-      b = gray + (b - gray) * satMul;
-    }
-
-    // 7. Optical Halation (warm red/amber highlight bloom for Night Cinematic)
-    if (effHalation > 0 && lum > 165) {
-      const hFactor = ((lum - 165) / 90) * (effHalation / 100);
-      r += 32 * hFactor;
-      g += 10 * hFactor;
-      b -= 14 * hFactor;
-    }
-
-    // 8. 35mm Analog Film Grain (organic silver halide noise for Amber Grain)
-    if (effGrain > 0) {
-      let grainIndex = i;
-      if (resolutionScale !== 1) {
-        const p = i >> 2;
-        const x = p % width;
-        const y = (p - x) / width;
-        grainIndex = (Math.floor(y * resolutionScale) * refWidth + Math.floor(x * resolutionScale)) * 4;
+      // 4. Highlights & shadows
+      const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      if (lum > 128) {
+        if (hK !== 0) {
+          const d = (lum - 128) * hK;
+          r += d;
+          g += d;
+          b += d;
+        }
+      } else if (sK !== 0) {
+        const d = (128 - lum) * sK;
+        r += d;
+        g += d;
+        b += d;
       }
-      const hash = ((grainIndex * 1664525 + 1013904223) >>> 16) / 65535;
-      const gNoise = (hash - 0.5) * (effGrain * 0.40);
-      r += gNoise;
-      g += gNoise;
-      b += gNoise;
-    }
 
-    // Clamp
-    data[i] = Math.min(255, Math.max(0, Math.round(r)));
-    data[i + 1] = Math.min(255, Math.max(0, Math.round(g)));
-    data[i + 2] = Math.min(255, Math.max(0, Math.round(b)));
+      // 5. Matte fade (floor lift)
+      if (floor > 0) {
+        if (r < floor) r = floor;
+        if (g < floor) g = floor;
+        if (b < floor) b = floor;
+      }
+
+      // 6. Saturation
+      if (effSat !== 0) {
+        const gray = 0.2989 * r + 0.587 * g + 0.114 * b;
+        r = gray + (r - gray) * satMul;
+        g = gray + (g - gray) * satMul;
+        b = gray + (b - gray) * satMul;
+      }
+
+      // 7. Optical halation (warm highlight bloom)
+      if (halK > 0 && lum > 165) {
+        const h = (lum - 165) * halK;
+        r += 32 * h;
+        g += 10 * h;
+        b -= 14 * h;
+      }
+
+      // 8. 35mm grain
+      if (grainAmp > 0) {
+        const gi = resolutionScale === 1 ? i : (grainRow + Math.floor(x * resolutionScale)) * 4;
+        const n = ((((gi * 1664525 + 1013904223) >>> 16) / 65535) - 0.5) * grainAmp;
+        r += n;
+        g += n;
+        b += n;
+      }
+
+      // Clamp + round half up (same as Math.round for these values)
+      data[i] = r <= 0 ? 0 : r >= 255 ? 255 : (r + 0.5) | 0;
+      data[i + 1] = g <= 0 ? 0 : g >= 255 ? 255 : (g + 0.5) | 0;
+      data[i + 2] = b <= 0 ? 0 : b >= 255 ? 255 : (b + 0.5) | 0;
+    }
   }
 
   return imageData;

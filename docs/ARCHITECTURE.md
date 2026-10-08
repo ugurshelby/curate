@@ -24,6 +24,20 @@ Kural: önizleme ve export aynı çizim fonksiyonunu aynı parametre şemasıyla
 
 Önizleme bir kez çözülmüş orijinalden çizilir; taban adımı (boyut, sığdırma, uyum, kırp anahtarıyla) önbelleklenir, kaydırıcı yalnız görünüm adımını yeniden hesaplar. Kare başına en çok bir çizim (`requestAnimationFrame`).
 
+**Önizleme çözünürlüğü (Faz 5, 2026-10-08):** `previewRenderSize` önizlemeyi export boyutundan büyük olmamak üzere sahnenin CSS kutusu × piksel yoğunluğu kadar çizer; yoğunluk en çok 2 (`PREVIEW_MAX_DPR`). Kaydırıcı sürüklenirken yarısı. Gren export ızgarasında örneklenir (`outputWidth`), yani ölçek dışında aynı sonuç. Taslak taban boşta önceden hesaplanır (`prepareBase`, `whenIdle`). Preset çekirdeği kanal başına 256 girişli tablolarla tek geçiş.
+
+**Ölçüm (Chromium 1194, 390×844, DPR 2,75, 12 MP sentetik JPEG, production build; telefonda ölçülmedi):**
+
+| Durum | Taban (önce) | Sonra |
+|---|---|---|
+| Carousel preset değişimi, masaüstü CPU (medyan çizim) | 57 ms (DPR 1) | 19 ms |
+| Carousel preset değişimi, 4× CPU yavaşlatma | 256 ms | 71 ms (panel açıldıktan sonraki ilk dokunuş 263 ms) |
+| Carousel sürükleme karesi, 4× (medyan / en kötü) | 69 / 131 ms | 17,8 / 30,8 ms |
+| Düzenle preset değişimi, 4× | 259 ms | 32 ms |
+| Düzenle sürükleme karesi, 4× (medyan / en kötü) | 64 / 116 ms | 7,6 / 18,3 ms |
+
+4× CPU yavaşlatma Redmi sınıfı telefonun yaklaşık taklididir; gerçek cihaz ölçümü yok.
+
 ## 3. Worker / OffscreenCanvas
 Son doğrulama: 2026-10-08
 

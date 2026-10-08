@@ -139,6 +139,37 @@ export function applyCarouselLook(
   return out;
 }
 
+/**
+ * Preview canvas size: the export size, capped at what the stage can actually show (CSS box × device pixel ratio).
+ * Same draw function and parameters as the export; only the scale differs (CDS §8). Grain stays on the export
+ * grid through `outputWidth`. `draft` halves it while a slider is dragged. Never upscales past the export size.
+ */
+/**
+ * Preview pixel density cap. Phones report DPR 2.6–3; at 2 the preview is still crisp at arm's length and
+ * costs ~45% fewer pixels than at 2.75 (Faz 5 perf baseline: 4× CPU throttle, 12 MP source). Export is unaffected.
+ */
+export const PREVIEW_MAX_DPR = 2;
+
+export function previewRenderSize(
+  exportW: number,
+  exportH: number,
+  boxCssW: number,
+  boxCssH: number,
+  dpr: number,
+  draft = false,
+): { width: number; height: number } {
+  const ratio = exportW / exportH;
+  let s = 1;
+  if (boxCssW > 0 && boxCssH > 0 && dpr > 0) {
+    // the displayed image fits the box keeping the export ratio
+    const shownW = Math.min(boxCssW, boxCssH * ratio) * Math.min(dpr, PREVIEW_MAX_DPR);
+    s = Math.min(1, shownW / exportW);
+  }
+  if (draft) s *= 0.5;
+  const width = Math.max(1, Math.round(exportW * s));
+  return { width, height: Math.max(1, Math.round(width / ratio)) };
+}
+
 function resolutionScaleFor(targetW: number, options: CarouselRenderOptions): number {
   return (options.outputWidth ?? targetW) / targetW;
 }
@@ -211,6 +242,29 @@ export class CarouselPreviewRenderer {
     }
     const look = applyCarouselLook(base.imageData, options, resolutionScaleFor(targetW, options));
     ctx.putImageData(look, base.x, base.y);
+  }
+
+  /**
+   * Computes and caches step 1 for another size without drawing it (e.g. the draft size while idle),
+   * so the first frame of a slider drag does not pay for the downscale of the full source.
+   */
+  prepareBase(
+    ctx: CanvasRenderingContext2D,
+    img: CarouselSource,
+    imageKey: string,
+    targetW: number,
+    targetH: number,
+    options: CarouselRenderOptions,
+  ): void {
+    if (imageKey !== this.imageKey) return; // only for the image currently shown
+    const key = `${targetW}x${targetH}|${options.fitMode}|${metricsKey(options.heroColorMetrics)}|${editCropKey(options.crop)}`;
+    if (this.cache.has(key)) return;
+    const base = renderCarouselBase(ctx, img, targetW, targetH, options);
+    if (this.cache.size >= 2) {
+      const first = this.cache.keys().next().value;
+      if (first !== undefined) this.cache.delete(first);
+    }
+    this.cache.set(key, base);
   }
 
   reset() {

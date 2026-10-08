@@ -127,3 +127,20 @@ describe('Hero harmonize metrics come from the raw frame (audit finding #5)', ()
     expect(Math.abs(metrics.avgR - metrics.avgB)).toBeGreaterThan(5);
   });
 });
+
+describe('previewRenderSize (preview at the shown size, never above export)', () => {
+  it('caps at the stage box × device pixel ratio and keeps the export ratio', async () => {
+    const { previewRenderSize } = await import('../lib/engine/carousel-render');
+    // 390 phone: stage 351×439 CSS px, DPR 2.75 → density capped at 2 → 702 px wide
+    expect(previewRenderSize(1080, 1350, 351, 439, 2.75)).toEqual({ width: 702, height: 878 });
+    expect(previewRenderSize(1080, 1350, 232, 290, 1.5)).toEqual({ width: 348, height: 435 });
+    // big box: export size (no upscaling)
+    expect(previewRenderSize(1080, 1350, 2000, 2000, 2)).toEqual({ width: 1080, height: 1350 });
+    // draft halves
+    expect(previewRenderSize(1080, 1350, 2000, 2000, 2, true)).toEqual({ width: 540, height: 675 });
+    // unknown box → export size
+    expect(previewRenderSize(1080, 1920, 0, 0, 3)).toEqual({ width: 1080, height: 1920 });
+    // tall box limited by width
+    expect(previewRenderSize(1080, 1920, 300, 1000, 2).width).toBe(600);
+  });
+});

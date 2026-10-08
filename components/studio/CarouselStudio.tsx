@@ -16,6 +16,8 @@ import {
   CAROUSEL_OUTPUT_WIDTH,
   extractHeroMetrics,
   createExportCanvas,
+  previewRenderSize,
+  whenIdle,
 } from "@/lib";
 import { InstagramOverlay } from "./InstagramOverlay";
 import { TikTokOverlay } from "./TikTokOverlay";
@@ -79,8 +81,8 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   const spec = PLATFORM_SPECS[TARGET_PLATFORM[target]];
   const FULL_W = spec.width;
   const FULL_H = spec.height;
-  const DRAFT_W = FULL_W / 2;
-  const DRAFT_H = FULL_H / 2;
+  // Sahnenin CSS kutusu: önizleme ekranın gösterebildiği piksel kadar çizilir (previewRenderSize)
+  const stageBoxRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
 
   const selectedPresetId = state.globalPreset?.id ?? null;
   const itemIntensity = Math.round((state.globalPreset?.intensity ?? 1.0) * 100);
@@ -104,6 +106,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   const optionsRef = useRef<CarouselRenderOptions>(buildRenderOptions(activePhoto));
   optionsRef.current = buildRenderOptions(activePhoto);
   const draggingRef = useRef(false);
+  const warmCancelRef = useRef<(() => void) | null>(null);
   const rafRef = useRef<number | null>(null);
 
   // Kare başına en çok bir çizim: bekleyen istekler birleşir, her zaman en güncel durum çizilir
@@ -114,8 +117,8 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
     const source = sourceRef.current;
     if (!canvas || !source) return;
     const draft = draggingRef.current;
-    const W = draft ? DRAFT_W : FULL_W;
-    const H = draft ? DRAFT_H : FULL_H;
+    const box = stageBoxRef.current;
+    const { width: W, height: H } = previewRenderSize(FULL_W, FULL_H, box.w, box.h, window.devicePixelRatio || 1, draft);
     if (canvas.width !== W || canvas.height !== H) {
       canvas.width = W;
       canvas.height = H;
@@ -125,6 +128,20 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
     const t0 = performance.now();
     rendererRef.current.render(ctx, source.img, source.key, W, H, optionsRef.current);
     reportRenderTime(performance.now() - t0);
+    // Boşta taslak tabanı hazırla: kaydırıcının ilk karesi tam kaynağı küçültmek zorunda kalmasın
+    if (!draft) {
+      warmCancelRef.current?.();
+      warmCancelRef.current = whenIdle(() => {
+        const s = sourceRef.current;
+        if (!s) return;
+        const d = previewRenderSize(FULL_W, FULL_H, box.w, box.h, window.devicePixelRatio || 1, true);
+        const c = document.createElement("canvas");
+        c.width = d.width;
+        c.height = d.height;
+        const wctx = c.getContext("2d", { willReadFrequently: true });
+        if (wctx) rendererRef.current.prepareBase(wctx, s.img, s.key, d.width, d.height, optionsRef.current);
+      });
+    }
   };
   const scheduleRender = () => {
     if (rafRef.current === null) {
@@ -167,12 +184,30 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
       // StrictMode effect'i iki kez çalıştırır: iptalden sonra ref sıfırlanmazsa sonraki çizimler kilitlenir
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
+      warmCancelRef.current?.();
     };
   }, []);
 
   // Preset kartı önizlemeleri: filmstrip proxy'sinden küçük boyutta (ortak PresetStrip)
   const thumbSrc = activePhoto ? activePhoto.proxyUrl || activePhoto.originalUrl : null;
   const presetThumbs = usePresetThumbs(thumbSrc);
+
+  // Sahne boyutu değişince (panel açıldı, döndürüldü) önizleme çözünürlüğü yeniden hesaplanır
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const measure = (w: number, h: number) => {
+      const prev = stageBoxRef.current;
+      if (Math.abs(prev.w - w) < 1 && Math.abs(prev.h - h) < 1) return;
+      stageBoxRef.current = { w, h };
+      scheduleRender();
+    };
+    measure(el.clientWidth, el.clientHeight);
+    const ro = new ResizeObserver(([entry]) => measure(entry.contentRect.width, entry.contentRect.height));
+    ro.observe(el);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasPhoto, target]);
 
   // Wheel zoom: native, non-passive dinleyici (React onWheel passive olduğu için preventDefault hatası veriyordu)
   useEffect(() => {
