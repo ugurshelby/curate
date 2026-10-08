@@ -2,7 +2,7 @@
 
 Tek durum dosyası. Her anlamlı adımdan sonra aynı commit'te güncellenir. Yeni oturum: `AGENTS.md` → `docs/INDEX.md` → bu dosya → `git status` → `git log`.
 
-**Son güncelleme:** 2026-10-08
+**Son güncelleme:** 2026-10-08 (oturum sonu)
 **Görev tanımı:** sahibin 2026-10-08 tarihli "Bağımsız Ajan Görevi" belgesi (anayasa → tasarım dili → arayüz → erişim/gizlilik → özellikler). Fazlar ve sıra: `docs/ROADMAP.md`.
 
 ## Fazlar
@@ -14,14 +14,14 @@ Tek durum dosyası. Her anlamlı adımdan sonra aynı commit'te güncellenir. Ye
 | 2 | Tasarım dili v3 + kural-kontrol testi | bitti | CDS v3, `tests/ui-rules.test.ts` |
 | 3 | Arayüz denetimi ve yeniden tasarım | bitti | `docs/reports/2026-10-08-faz2-3.md` (ihlal 23 → 1; açık: preset adları, Faz 5) |
 | 4 | Erişim (KIRMIZI, plan), kalıcılık, PWA | kısmen bitti | B kalıcılık ve C PWA bitti; A erişim kapısı planı sahip onayında (`docs/reports/2026-10-08-erisim-plani.md`) |
-| 5 | Performans, D2 Düzeltme, preset kütüphanesi, Otomatik, AI Preset (önce özet) | yapılmadı | |
+| 5 | Performans, D2 Düzeltme, preset kütüphanesi, Otomatik, AI Preset (önce özet) | kısmen bitti | 8.1, 8.2, 8.4, 8.5 bitti; 8.3 AI Preset özeti onayda; 8.6 gerçek AI çağrısı yapılamadı (PIN/anahtar yok) |
 | 6 | İdame | sürekli | Prosedür 8 |
 
 ## Sıradaki adım
-Faz 5: 8.1 performans tabanı → 8.2 D2 Düzeltme → 8.4 bilgi tabanı + preset kütüphanesi + Otomatik → 8.3 AI Preset tasarım özeti (kod yok).
+Sahip yanıtları: erişim planı (4-A) ve AI Preset özeti (5.3). Onay gelirse önce 4-A, sonra AI Preset. Gelmezse: bir oturum sonra AI Preset kodu; rutin bakım (Prosedür 8).
 
 ## Son commit
-`881e7fb` (Faz 3).
+`d1015db` + kapanış belgeleri (bu commit).
 
 ## Sahibe sorular (açık)
 0b. **AI Preset tasarım özeti:** `docs/reports/2026-10-08-ai-preset-ozeti.md` §8 (devam mı, stiller, kota ağırlığı, ≤ 6 deneme çağrısı). İtiraz gelmezse bir oturum sonra kodlanır.

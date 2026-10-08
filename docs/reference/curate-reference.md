@@ -19,10 +19,12 @@ Son doğrulama: 2026-10-08
 |---|---|---|
 | `npx tsc --noEmit` | çıkış 0 | [ÖLÇÜLDÜ] 2026-10-08 |
 | `npm run lint` | "No ESLint warnings or errors" | [ÖLÇÜLDÜ] 2026-10-08 |
-| `npm test` | 14 dosya, 150 test geçti | [ÖLÇÜLDÜ] 2026-10-08 |
-| `npm run build` | çıkış 0; `/` 30,9 kB (ilk yük 168 kB), `/api/ai` dinamik | [ÖLÇÜLDÜ] 2026-10-08 |
-| `npm run check:secrets` | 77 dosya (19 istemci), 0 gerçek değer arandı (`.env` yok), 0 bulgu | [ÖLÇÜLDÜ] 2026-10-08 |
-| Prosedür 2 (`scripts/audit-ui.mjs`, production build, Chromium 1194 emülasyon) | 45 ekran 360/390/430'da geçti, en düşük metin kontrastı 4,70 | [ÖLÇÜLDÜ] 2026-10-08 |
+| `npm test` | 19 dosya, 253 test geçti (oturum başında 14 / 150) | [ÖLÇÜLDÜ] 2026-10-08 |
+| `npm run build` | çıkış 0; `/` ≈ 33 kB, `/api/ai` dinamik | [ÖLÇÜLDÜ] 2026-10-08 |
+| `npm run check:secrets` | 84 dosya (26 istemci), 0 gerçek değer arandı (`.env` yok), 0 bulgu | [ÖLÇÜLDÜ] 2026-10-08 |
+| Prosedür 2 (`scripts/audit-ui.mjs`, production build, Chromium 1194 emülasyon) | 52 ekran (360/390/430 + masaüstü ana sayfa; Düzeltme dahil) geçti, en düşük metin kontrastı 4,70 | [ÖLÇÜLDÜ] 2026-10-08 |
+| Export (Chromium, indirilen dosya ölçüldü) | Instagram tek 1080×1350, 3 kare zip, TikTok zip 1080×1920, Story 1080×1920, Çerçeve 1080×1350, Düzenle+Düzeltme 4000×3000; hepsinde EXIF yok | [ÖLÇÜLDÜ] 2026-10-08 |
+| Canlı (`curate-teal-omega.vercel.app`, yalnız okuma) | 10 dağıtım READY; güvenlik başlıkları 4/4; manifest ve simge 200; `lang="tr"`; `/api/ai` çerezsiz `pin_required` | [ÖLÇÜLDÜ] 2026-10-08 |
 | Telefon, yatay yön, gerçek dokunma, gerçek parlaklık | Denenmedi | [DOĞRULANMADI] cihaz yok |
 
 Bilinen sınırlar (kod okuma): Story/Çerçeve/Büyüt önizlemesi export ile aynı geometriyi kullanır, aynı piksel fonksiyonunu değil; Story ve Çerçeve preset uygulamaz; Büyüt önizlemesi CSS filtresidir ("Lanczos" diye etiketlenmez). [ÖLÇÜLDÜ] kod.
@@ -70,12 +72,12 @@ Son doğrulama: 2026-10-08
 |---|---|---|
 | Tip denetimi | `npx tsc --noEmit` | geçiyor |
 | Lint | `npm run lint` | geçiyor |
-| Test | `npm test` (Vitest) | 150/150 |
+| Test | `npm test` (Vitest) | 253/253 |
 | Build | `npm run build` | geçiyor |
 | Sır taraması | `npm run check:secrets` | 0 bulgu |
 | Renk belirteçleri | `tests/color-tokens.test.ts` | geçiyor |
 | Tasarım kuralları | `tests/ui-rules.test.ts` (12 px, monospace, 44 px, jargon, malzeme, self-host yazı tipi) | geçiyor (2026-10-08) |
-| Mobil denetim | `scripts/audit-ui.mjs` (Prosedür 2) | 45 ekran geçiyor (emülasyon) |
+| Mobil denetim | `scripts/audit-ui.mjs` (Prosedür 2) | 52 ekran geçiyor (emülasyon) |
 
 ## 7. Konvansiyonlar
 Son doğrulama: 2026-10-08
@@ -114,9 +116,8 @@ Son doğrulama: 2026-10-08
 
 1. Telefonda hiçbir ölçüm yok (performans, jestler, PWA kurulumu).
 2. Service worker yok (çevrimdışı açılış yok); eklemek KIRMIZI.
-4. Düzeltme sekmesi (D2) yok.
-5. Preset değerleri referans görsellerden kalibre edilmedi (kaynak belgeler repoda yok).
-6. Arayüz metinlerinde motor jargonu (Lanczos-3, konvolüsyon, EXIF) ve İngilizce kalıntılar.
+3. Tüm uygulama PIN kapısı ve AI Preset: sahip onayı bekliyor.
+4. Preset kalibrasyonu ölçülebilir sınırlara ve 13 referansa göre yapıldı; sahibin kendi kaynak belgeleri (spec §5) hâlâ yok.
 
 ## 11. Sahibe açık sorular
 Son doğrulama: 2026-10-08
