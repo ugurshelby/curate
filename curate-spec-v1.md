@@ -190,6 +190,7 @@ Bunlar bilinçli olarak dışarıda bırakılıyor — "madem elimizdeyiz" diye 
 | **Faz D1 — Düzenle: iskelet, Preset, Kırp** | §4.5 E1, E4–E9 | Prosedür 2 Düzenle'de 360/390/430'da geçer; kırpma matematiği, export boyut/MIME ve parite testleri |
 | **Faz AI1 — Düzenle: AI ile onar** | §4.5 E12 | Sahte fetch'le istek şeması, eşlemeler, şifre/kota/4 MB/JPEG/görsel yok testleri; build çıktısında sır yok (`npm run check:secrets`); Prosedür 2 yeni sayfaları 360/390/430'da geçer |
 | **Faz C — Renk sistemi** | §4.4 K6 | Kodda `#f5a623` ve türevi 0; sabit renk yalnız `app/globals.css` ve `lib/ui/colors.ts`; kontrast tablosu; Prosedür 2 beş modül ve yeni sayfalarda 360/390/430'da değişmeden geçer |
+| **Faz P — Yoklama (geçici, 2026-10-08)** | Ürün özelliği yok: `/probe` web yoklaması ve `probe-apk/` native test APK'sı telefonun kamera/donanım tavanını ölçer, `probe/v1` JSON üretir (`docs/probe/README.md`) | Kök kapılar sıfır hata, `probe-apk` kapıları etkilemez; sahte kamerayla sayfa çökmeden geçerli JSON üretir; ağa veri gitmez. Telefonda doğrulama sahipte. Yol haritası kararı verilince iki araç silinir |
 | **Faz D2 — Düzenle: Düzeltme sekmesi** | §4.5 E3, E10 | Sentetik görsellerle ölçülebilir kabul (spec dışı prompt `prompt-D2.md`), parite testi |
 | **Faz 5+ — Nice-to-have** | Otomatik preset önerisi, 9:16 dump kolajı iyileştirmeleri, vb. | Ayrı değerlendirilir, bu fazlar tamamlanmadan başlanmaz |
 
@@ -222,6 +223,7 @@ Buna göre her faz için prompt şöyle yazılır:
 8. ~~8 MB sınırı ve Upscale~~ **KAPANDI (sahip onayı 2026-10-03):** Sınır yalnız platform hedeflerine (post, story, TikTok, Çerçeve) uygulanır; Upscale'e uygulanmaz.
 9. ~~Story güvenli alan bandı~~ **KAPANDI (sahip onayı 2026-10-03):** 250 px üst ve alt. Telefonda Instagram arayüzüyle karşılaştırma hâlâ yapılmadı.
 11. ~~Faz C vurgu dolgusu~~ **KAPANDI (sahip onayı 2026-10-03):** `#0071E3`. Tarih damgası turuncu kalır.
+12. **(Uğur)** Faz P: `/probe` ve "Curate Probe" APK'sının Redmi'de ürettiği iki JSON getirildiğinde yol haritası çizilir. §7 madde 5 kamera/çekim asistanı özelliklerini kapsam dışı sayar; sonuçların Curate'e mi, ayrı kamera uygulamasına mı yoksa hiçbir yere mi gideceği sahip kararıdır.
 10. **(Uğur)** AI1: Vercel'de gerçek süre ve zaman aşımı, telefonda akış, gerçek maliyet (Billing) ve sayacın dağıtık çalışması doğrulanmadı; ₺ tahminleri üçüncü taraf fiyatlarıdır.
 
 ---

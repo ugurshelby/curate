@@ -1,0 +1,27 @@
+{
+  "name": "curate-probe",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "expo": "~57.0.27",
+    "expo-clipboard": "~57.0.2",
+    "expo-file-system": "~57.0.7",
+    "expo-sharing": "~57.0.22",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "typecheck": "tsc --noEmit",
+    "doctor": "expo-doctor",
+    "prebuild": "expo prebuild --platform android --clean"
+  },
+  "private": true,
+  "description": "Geçici ölçüm uygulaması: Redmi kamera/donanım tavanı (docs/probe/README.md). Yol haritası kararından sonra silinir."
+}

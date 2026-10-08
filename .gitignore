@@ -43,3 +43,9 @@ yarn-error.log*
 /screenshots/
 /.edge-temp/
 capture-screenshots.mjs
+
+# Native yoklama APK'sı (docs/probe/README.md): bağımlılık ve üretilen yerel projeler
+/probe-apk/node_modules/
+/probe-apk/android/
+/probe-apk/ios/
+.expo/

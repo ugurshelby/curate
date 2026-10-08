@@ -94,5 +94,6 @@ npm run build
 npm run check:secrets
 ```
 
+- **Yoklama (geçici):** `/probe` sayfası (linklenmez) ve `probe-apk/` (Expo, ayrı paket) telefonun kamera/donanım tavanını ölçer; ayrıntı ve silme koşulu `docs/probe/README.md`. Akış testi: `node scripts/probe-fake-camera.mjs` (dev sunucusu :3101).
 - **CI/CD:** GitHub Actions iş akışı (`.github/workflows/ci.yml`) pull request aşamasında `tsc`, `lint`, `test` ve `build` kontrollerini otomatik çalıştırır.
 

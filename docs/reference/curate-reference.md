@@ -96,7 +96,7 @@ Letterbox math in the daily log matches the formula in `getExportBlob`: a 1920×
 ---
 
 ## 3. Architecture (stack, structure, data flow, directory map)
-Last verified: 2026-10-03
+Last verified: 2026-10-08
 
 ### Stack
 
@@ -133,6 +133,8 @@ Shared UI since Faz M1: `components/studio/StudioShell.tsx` (header / stage / bo
 
 No `app/api`, no `middleware`, no `prisma`, no `supabase`. [VERIFIED] `git ls-files`.
 
+Temporary probe phase (2026-10-08, `docs/probe/README.md`; deleted once the roadmap decision is made): route `app/probe/` (`/probe`, not linked from `/`, `robots: noindex`), logic `lib/probe/` (`schema.ts`, `frame-stats.ts`, `run-web.ts`, `export.ts`), `scripts/probe-fake-camera.mjs`, `tests/probe-schema.test.ts`, and a separate Expo package `probe-apk/` (own `package.json`, local Kotlin module `modules/curate-probe`). `probe-apk/` is excluded from root `tsconfig.json`, `.eslintrc.json` (`ignorePatterns`) and `vitest.config.ts`; `next build` does not see it. [VERIFIED] gates 2026-10-08.
+
 Largest application files: `CarouselStudio.tsx` 674 lines, `StoryStudio.tsx` 549 lines, `FrameStudio.tsx` 367 lines, `presets.ts` 312 lines, `page.tsx` 302 lines, `state-machine.ts` 246 lines, `UpscaleStudio.tsx` 246 lines. [VERIFIED]
 
 ### Data flow
@@ -163,7 +165,7 @@ Earlier statements in this file that "worker and proxy are unwired" (§10 item 4
 ---
 
 ## 4. Data and infrastructure (DB, schema, migrations, external APIs, cron jobs, deployment, branch and deploy triggers)
-Last verified: 2026-10-03
+Last verified: 2026-10-08
 
 | Concern | State | Tag |
 |---|---|---|
@@ -179,7 +181,7 @@ Last verified: 2026-10-03
 | Vercel | Project `curate` exists (framework nextjs, Node 24.x); latest production deployment READY (2026-10-03 read via Vercel API). No `vercel.json`. AI route `maxDuration` 120 s; docs: fluid compute (default on) allows up to 300 s on Hobby, 800 s on Pro | [VERIFIED] API + docs |
 | Deploy trigger | Automatic on push to `main` if connected to Vercel | [UNVERIFIED] |
 
-Images never leave the browser except through Düzenle → "AI ile onar" (one photo per user tap, to Google via our proxy; not stored or logged). Reference photos sit in a public GitHub repo. [VERIFIED] `gh repo view` `isPrivate: false`.
+Images never leave the browser except through Düzenle → "AI ile onar" (one photo per user tap, to Google via our proxy; not stored or logged). The `/probe` page opens the camera but sends nothing: `scripts/probe-fake-camera.mjs` counted 0 requests after "Testi başlat" (dev and `next start`, 2026-10-08); the native probe APK blocks `INTERNET` in its manifest (`probe-apk/app.json`, verified in `expo prebuild` output). Reference photos sit in a public GitHub repo. [VERIFIED] `gh repo view` `isPrivate: false`.
 
 PWA manifest exists (`public/manifest.json`, `display: standalone`). `app/layout.tsx` does not link it. [VERIFIED]
 
@@ -215,15 +217,17 @@ Paid: Google Vertex image models per call. Estimates in `lib/ai/config.ts` (A ~�
 ---
 
 ## 6. Quality gates (tests, lint, build, typecheck: what exists, what actually passes)
-Last verified: 2026-10-03
+Last verified: 2026-10-08
 
 | Gate | Exists? | Status (2026-10-02) |
 |---|---|---|
 | `npx tsc --noEmit` | Required by rules | Pass, exit 0 [VERIFIED] |
 | `npm run lint` | `"lint": "next lint"` | Pass, no warnings [VERIFIED] |
 | `npm run build` | `"build": "next build"` | Pass, exit 0 [VERIFIED] |
-| `npm test` | Added in Phase 5 via Vitest | Pass, exit 0, 13 files / 127 tests (2026-10-03, Faz C; includes `tests/color-tokens.test.ts`) [VERIFIED] |
-| `npm run check:secrets` | `scripts/check-bundle-secrets.mjs`, run after build | 0 findings (2026-10-03) [VERIFIED] |
+| `npm test` | Added in Phase 5 via Vitest (`vitest.config.ts` excludes `probe-apk/**`) | Pass, exit 0, 14 files / 141 tests (2026-10-08, probe phase; includes `tests/color-tokens.test.ts`, `tests/probe-schema.test.ts`) [VERIFIED] |
+| `npm run check:secrets` | `scripts/check-bundle-secrets.mjs`, run after build | 0 findings, 85 files (21 client) (2026-10-08) [VERIFIED] |
+| `node scripts/probe-fake-camera.mjs` | `/probe` end to end with Chromium fake camera (`--use-fake-device-for-media-stream`), 390×844 | 2026-10-08: PASS on dev and `next start` (45 tests, schema valid, 0 network requests after start, no h-scroll, no target < 44 px, no text < 12 px). The fake camera does not emulate real controls [VERIFIED]; phone [UNVERIFIED] |
+| `probe-apk/` | `npx tsc --noEmit`, `npx expo-doctor`, `npx expo prebuild --platform android` | 2026-10-08: tsc 0 errors, expo-doctor 21/21, prebuild OK (local module autolinked). Kotlin compile [UNVERIFIED]: no Android SDK on this machine |
 | `node scripts/audit-ui.mjs` | Procedure 2 invariants plus computed text contrast, puppeteer-core + local Chrome, 360/390/430 | 2026-10-03 (Faz C): 42 screens `pass: true`, lowest text contrast 4.70 (emulated; phone and real screen brightness [UNVERIFIED]) |
 | CI | `.github/workflows/ci.yml` | Triggers: push to `main`, pull request to `main`, manual. Node 22: tsc, lint, test, build [VERIFIED] file read; run results not checked [UNVERIFIED] |
 | Visual / mobile viewport check | Required after UI changes (AGENTS.md §4, CDS §6.5) | 2026-10-03 (Faz D1): Procedure 2 passes in all five modules at 360×740, 390×844, 430×932 (emulated, desktop CPU) [VERIFIED]; phone and landscape [UNVERIFIED] |
@@ -263,7 +267,7 @@ Last verified: 2026-10-02
 ---
 
 ## 9. Documentation inventory
-Last verified: 2026-10-02
+Last verified: 2026-10-08
 
 | Path | Purpose | Freshness | Conflict |
 |---|---|---|---|
@@ -276,6 +280,7 @@ Last verified: 2026-10-02
 | `design/skills/*` | apple-design, animate, improve-animations, redesign-existing-projects | Added by owner 2026-10-02 | `apple-design` §18 and `DESIGN.md`/tokens are not Curate's (CDS §0) |
 | `docs/reports/2026-10-02-audit.md` | Audit and design cleanup report | Current | None |
 | `design/tokens.curate.json` | DTCG tokens duplicate | Maintained as token reference | Not imported by code |
+| `docs/probe/README.md`, `docs/probe/SCHEMA.md` | Temporary probe phase: what the web and native probes measure, how to run, `probe/v1` schema | Added 2026-10-08; delete with the probe after the roadmap decision | None |
 | `.agents/rules/ui-ux-design-hierarchy.md` | UI rule order, rewritten 2026-10-02 to reference only existing files | Current | None |
 
 ---
@@ -321,7 +326,7 @@ Incorporated into `AGENTS.md` (see Phase 2).
 ---
 
 ## 13. Open questions for owner
-Last verified: 2026-10-03
+Last verified: 2026-10-08
 
 1. ~~Which audience sentence is binding?~~ **Resolved 2026-10-02:** single-user personal tool.
 2. Do the six shipping profiles replace Moody Teal / Warm Silhouette / Night Cinematic / Muted Coastal / Amber Grain / Monochrome Noir, sit beside them, or get replaced by them?
@@ -338,6 +343,7 @@ Last verified: 2026-10-03
 13. ~~Düzenle module~~ **Defined 2026-10-03:** spec §4.5, phases D1 and D2 (not implemented yet).
 14. ~~Carousel overlay off state~~ **Resolved 2026-10-03:** one target always selected; overlay can be hidden with the eye toggle.
 15. TikTok 1080×1920 to be confirmed on phone. (spec §10 q6)
+16. Probe phase (2026-10-08): owner runs `/probe` and the EAS-built APK on the Redmi and brings both `probe/v1` JSONs; the roadmap is drawn from them. Spec §7 item 5 lists camera/shooting-assistant features as non-goals; whether the results feed Curate, a separate camera app, or nothing is the owner's decision. (spec §10 q12)
 16. ~~Story with more than 6 library photos~~ **Resolved 2026-10-03:** first 6 with a warning.
 17. ~~8 MB limit for Upscale~~ **Resolved 2026-10-03:** not applied.
 20. ~~Accent fill tone (Faz C)~~ **Resolved 2026-10-03:** `#0071E3` (white text 4.70:1); date stamp stays orange.
