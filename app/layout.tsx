@@ -4,6 +4,7 @@ import "./globals.css";
 import { tr } from "@/lib/i18n/tr";
 import { PerfHud } from "@/components/studio/PerfHud";
 import { NoticeToast } from "@/components/studio/NoticeToast";
+import { DeviceSync } from "@/components/studio/DeviceSync";
 import { THEME_COLOR } from "@/lib/ui/colors";
 
 /**
@@ -44,6 +45,7 @@ export default function RootLayout({
         {children}
         <PerfHud />
         <NoticeToast />
+        <DeviceSync />
       </body>
     </html>
   );

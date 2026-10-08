@@ -34,11 +34,13 @@ Son doğrulama: 2026-10-08
 ## 4. Depolama ve kalıcılık
 Son doğrulama: 2026-10-08
 
+Hepsi cihazda (D18). Eşitleyici: `lib/core/device-sync.ts` (store'u izler, 400 ms gecikmeyle sıralı yazar), tarayıcıda `components/studio/DeviceSync.tsx` (layout'ta bir kez; sayfa gizlenince bekleyen yazımı bitirir).
+
 | Ne | Nerede | Durum |
 |---|---|---|
-| Fotoğraflar | Bellek (`URL.createObjectURL`); sayfa yenilenince gider | Kalıcı değil |
-| Tercihler | — | Henüz yok (Faz 4-B: localStorage) |
-| Kütüphane önbelleği | — | Henüz yok (Faz 4-B: IndexedDB, isteğe bağlı) |
+| Fotoğraflar (çalışma anı) | Bellek (`URL.createObjectURL`) | Var |
+| Kütüphane önbelleği | IndexedDB `curate-library` (`photos`: kullanıcının eklediği orijinal dosya; `meta`: sıra, seçim, Düzenle ve Story kadraj ayarları) — `lib/core/library-cache.ts` | Var; varsayılan açık, ana sayfadaki anahtarla kapanır (kapanınca cihazdaki kopyalar silinir). Sınır: 40 fotoğraf, 400 MB, kalan kotanın en çok yarısı. Kütüphane temizlenince önbellek de silinir. Kota dolarsa sığanlar kalır ve ana sayfa söyler; IndexedDB yoksa (gizli sekme) "saklanamıyor" der |
+| Tercihler | localStorage `curate.prefs.v1` (Carousel hedef/doldur/katman, son seri preset'i ve miktarı, Story boşluk/zemin, Çerçeve ayarları, Büyüt çarpanı, fotoğraf hafızası açık/kapalı, favoriler) — `lib/core/prefs.ts` | Var; okurken doğrulanır, bozuk veride varsayılan |
 | AI cihaz eşleme | HttpOnly çerez `curate_ai` (Path=/api/ai, 365 gün) | Var |
 | Eski AI şifresi | localStorage `curate.ai.password` | Açılışta silinir |
 | Kota sayaçları | Upstash Redis REST (yoksa sunucu belleği) | Var |

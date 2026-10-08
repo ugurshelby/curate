@@ -49,6 +49,14 @@ export const tr = {
     clearAll: 'Tümünü kaldır',
     clearConfirm: 'Kütüphanedeki tüm fotoğraflar kaldırılsın mı?',
     trustBadge: 'Yerel ve gizli işleme',
+    rememberTitle: 'Fotoğrafları bu cihazda hatırla',
+    rememberStatus: {
+      kept: (n: number, size: string) => (n > 0 ? `${n} fotoğraf bu cihazda (${size})` : 'Eklediğin fotoğraflar bu cihazda kalır'),
+      partial: (n: number, size: string, skipped: number) => `${n} fotoğraf bu cihazda (${size}); ${skipped} tanesi sığmadı`,
+      full: (n: number) => `Cihazda yer doldu; ${n} fotoğraf saklandı`,
+      off: 'Kapalı: sayfa yenilenince fotoğraflar gider',
+      unavailable: 'Bu tarayıcıda saklanamıyor (gizli sekme olabilir)',
+    },
     trustDetail:
       "Fotoğrafların bu cihazda işlenir ve hiçbir yere yüklenmez. Tek istisna: Düzenle'de \"AI ile onar\"a dokunduğunda o fotoğraf işlenmek için Google'a gönderilir ve saklanmaz.",
   },

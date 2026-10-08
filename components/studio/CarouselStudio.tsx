@@ -53,11 +53,13 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   const photos = state.items;
   const activePhotoId = activePhoto?.id || null;
 
-  const [fitMode, setFitMode] = useState<"fill" | "fit">("fill");
+  // Görünüm tercihleri store'da (cihazda hatırlanır, lib/core/prefs.ts)
+  const { fitMode, target, showOverlay } = state.carouselView;
+  const setFitMode = (m: "fill" | "fit") => actions.setCarouselView({ fitMode: m });
+  const setTarget = (t: "instagram" | "tiktok") => actions.setCarouselView({ target: t });
+  const setShowOverlay = (fn: (v: boolean) => boolean) => actions.setCarouselView({ showOverlay: fn(showOverlay) });
   // Sahip kararı: her zaman bir hedef seçili, varsayılan Instagram (export hedefi Faz S'de bağlanır)
-  const [target, setTarget] = useState<"instagram" | "tiktok">("instagram");
   // Platform arayüz katmanı yalnız önizlemede; renk değerlendirmesi için gizlenebilir (sahip kararı 2026-10-03)
-  const [showOverlay, setShowOverlay] = useState<boolean>(true);
   const [zoomScale, setZoomScale] = useState<number>(1);
   const [isEditSheetOpen, setIsEditSheetOpen] = useState<boolean>(false);
   const [isToolsOpen, setIsToolsOpen] = useState<boolean>(false);

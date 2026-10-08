@@ -57,6 +57,10 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 - **Format Desteği:** JPEG, PNG, WEBP; HEIC desteği cihazın yerel tarayıcı desteğine bağlıdır (harici JS decoder paketi bulunmamaktadır).
 - **İndirme:** Tek görsel her zaman doğrudan dosya olarak iner (`dump_01.jpg`, `tiktok_01.jpg`, `story_01.jpg`, `frame_01.jpg`, `duzenle_01.jpg`). Zip yalnız çoklu Carousel serisinde: `dump_N.zip` / `tiktok_N.zip`, içinde `dump_01.jpg`, `dump_02.jpg`…
 
+## 💾 Cihazda hatırlama
+
+Fotoğraflar ve tercihler yalnız bu cihazda kalır: tercihler localStorage'da, fotoğraflar (isteğe bağlı, varsayılan açık) IndexedDB'de. Ana sayfadaki "Fotoğrafları bu cihazda hatırla" anahtarı kapatılınca cihazdaki kopyalar silinir. Sınır: 40 fotoğraf / 400 MB.
+
 ## 🧪 Referans Görseller
 
 `public/reference-images/` altındaki 13 görsel sahip kararıyla repoda kalır. Kütüphane boş başlar. Ana sayfada (ikincil bağlantı) ve modül içi "+" menüsünde "Referans görsel yükle" eylemi vardır (çoklu seçim, "Hepsi"; Story en çok 6, Çerçeve/Upscale tek görsel). Görseller aynı kökten yüklenir, hiçbir yere gönderilmez.

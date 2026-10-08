@@ -7,7 +7,7 @@
  * 4. Lossless Upscale (Lanczos-3)
  */
 
-import { StudioItem, StudioModule, StudioState, ActivePreset, CubeLUT, ColorMetrics, ImageDimensions, StoryCellTransform, EditParams, EditCrop, DerivedKind } from './types';
+import { StudioItem, StudioModule, StudioState, ActivePreset, CubeLUT, ColorMetrics, ImageDimensions, StoryCellTransform, EditParams, EditCrop, DerivedKind, CarouselView } from './types';
 import { DEFAULT_EDIT_PARAMS } from '../engine/edit-geometry';
 import { revokeUrl, cleanupAllUrls, generateProxyImage, registerUrl } from '../engine/proxy';
 
@@ -69,6 +69,11 @@ const INITIAL_STATE: StudioState = {
     borderWidth: 24,
     borderRadius: 12,
     showTimestamp: true,
+  },
+  carouselView: {
+    target: 'instagram',
+    fitMode: 'fill',
+    showOverlay: true,
   },
   edits: {},
   upscaleConfig: {
@@ -343,6 +348,10 @@ class StudioStateMachine {
     }));
   }
 
+  public setCarouselView(view: Partial<CarouselView>) {
+    this.setState((prev) => ({ carouselView: { ...prev.carouselView, ...view } }));
+  }
+
   public setUpscaleScale(scaleFactor: 2 | 4) {
     this.setState((prev) => ({
       upscaleConfig: { ...prev.upscaleConfig, scaleFactor },
@@ -423,9 +432,14 @@ export function getStudioSelection(
 /**
  * Creates a StudioItem from File with immediate reactivity and async proxy generation
  */
-export function createStudioItem(file: File, index: number = 0): StudioItem {
+export function createStudioItem(
+  file: File,
+  index: number = 0,
+  /** Cihaz önbelleğinden geri yüklerken kimlik ve tarih korunur (lib/core/library-cache.ts) */
+  restore?: { id: string; createdAt: number },
+): StudioItem {
   const url = registerUrl(URL.createObjectURL(file));
-  const id = `photo_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 6)}`;
+  const id = restore?.id ?? `photo_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 6)}`;
   const item: StudioItem = {
     id,
     file,
@@ -437,7 +451,7 @@ export function createStudioItem(file: File, index: number = 0): StudioItem {
     preset: null,
     harmonize: { enabled: false, referenceItemId: null, strength: 0.2 },
     order: index,
-    createdAt: Date.now() + index,
+    createdAt: restore?.createdAt ?? Date.now() + index,
   };
 
   // Inspect natural dimensions and generate high-efficiency proxy asynchronously

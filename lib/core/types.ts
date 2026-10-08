@@ -74,6 +74,12 @@ export interface FrameConfig {
   showTimestamp: boolean;
 }
 
+export interface CarouselView {
+  target: 'instagram' | 'tiktok';
+  fitMode: 'fill' | 'fit';
+  showOverlay: boolean;
+}
+
 export interface StoryCellTransform {
   zoom: number; // 1 – 4, cover boyutuna göre
   panX: number; // -1 – 1, izin verilen kaydırma aralığının oranı
@@ -145,6 +151,8 @@ export interface StudioState {
     cellTransforms: Record<string, StoryCellTransform>;
   };
   frameConfig: FrameConfig;
+  /** Carousel görünüm tercihleri (cihazda hatırlanır, lib/core/prefs.ts) */
+  carouselView: CarouselView;
   /** Düzenle modülü ayarları, fotoğraf kimliğine göre */
   edits: Record<string, EditParams>;
   upscaleConfig: {

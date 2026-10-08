@@ -22,6 +22,8 @@ import { EditStudio } from "@/components/studio/EditStudio";
 import { StudioModule, StudioItem, useStudio, createStudioItem } from "@/lib";
 import { ReferencePicker } from "@/components/studio/ReferencePicker";
 import { tr } from "@/lib/i18n/tr";
+import { useDeviceStorage } from "@/components/studio/DeviceSync";
+import { formatBytes } from "@/lib";
 
 const MODULE_ORDER: { id: StudioModule; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "carousel", icon: Layers },
@@ -53,6 +55,7 @@ export default function CurateStudioMain() {
   const [isReferenceOpen, setIsReferenceOpen] = useState(false);
   const [isTrustOpen, setIsTrustOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { status: storage, setRemember } = useDeviceStorage();
 
   const openModule = (mod: StudioModule) => {
     actions.setModule(mod);
@@ -228,6 +231,50 @@ export default function CurateStudioMain() {
             })}
           </div>
         </section>
+
+        {/* Device memory (IndexedDB, owner decision D18): on by default, can be turned off */}
+        {storage && (
+          <section className="material-card rounded-[20px] p-4 flex items-center gap-3">
+            <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+              <span id="remember-title" className="text-subhead text-ink-1">
+                {tr.hub.rememberTitle}
+              </span>
+              <span data-storage-status className="text-footnote text-ink-2">
+                {storage.state === "unavailable"
+                  ? tr.hub.rememberStatus.unavailable
+                  : storage.state === "off"
+                    ? tr.hub.rememberStatus.off
+                    : storage.state === "full"
+                      ? tr.hub.rememberStatus.full(storage.keptCount)
+                      : storage.state === "partial"
+                        ? tr.hub.rememberStatus.partial(storage.keptCount, formatBytes(storage.keptBytes), storage.skippedCount)
+                        : tr.hub.rememberStatus.kept(storage.keptCount, formatBytes(storage.keptBytes))}
+              </span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={storage.remember && storage.available}
+              aria-labelledby="remember-title"
+              disabled={!storage.available}
+              onClick={() => setRemember(!storage.remember)}
+              className="touch-target shrink-0 rounded-full disabled:bg-transparent"
+            >
+              <span
+                aria-hidden
+                className={`relative block w-[51px] h-[31px] rounded-full transition-colors duration-200 ${
+                  storage.remember && storage.available ? "bg-accent-fill" : "bg-surface-2 border border-separator"
+                }`}
+              >
+                <span
+                  className={`absolute top-[2px] left-[2px] w-[27px] h-[27px] rounded-full bg-white shadow transition-transform duration-200 ${
+                    storage.remember && storage.available ? "translate-x-[20px]" : ""
+                  }`}
+                />
+              </span>
+            </button>
+          </section>
+        )}
 
         {/* Single trust badge instead of a log-like footer (CDS §7) */}
         <section className="flex flex-col items-start gap-2">

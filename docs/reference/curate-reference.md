@@ -44,7 +44,7 @@ Son doğrulama: 2026-10-08
 | Veritabanı, şema | Yok | [ÖLÇÜLDÜ] |
 | Dış API | Google Vertex `generateContent` yalnız `/api/ai` üzerinden; Upstash Redis REST (kota) | [ÖLÇÜLDÜ] kod |
 | Kimlik | Yalnız AI rotası: 4 haneli PIN (`CURATE_AI_PASSWORD`, sunucu) → imzalı HttpOnly çerez `curate_ai` (Path=/api/ai, 365 gün, SameSite=Strict, Secure). Uygulamanın geri kalanı açık | [ÖLÇÜLDÜ] kod, testler |
-| Tarayıcı depolama | Yok (eski `curate.ai.password` açılışta silinir) | [ÖLÇÜLDÜ] grep |
+| Tarayıcı depolama | localStorage `curate.prefs.v1` (tercihler); IndexedDB `curate-library` (fotoğraf hafızası, varsayılan açık, 40 fotoğraf / 400 MB). Eski `curate.ai.password` açılışta silinir | [ÖLÇÜLDÜ] `tests/device-sync.test.ts`, Chromium'da ekle → yenile → geri geldi (2026-10-08) |
 | Ortam değişkenleri (ad) | `VERTEX_API_KEY`, `CURATE_AI_PASSWORD`, `AI_ENABLED`, `AI_DAILY_LIMIT`, `AI_MONTHLY_LIMIT`, `UPSTASH_REDIS_REST_URL/TOKEN` veya `KV_REST_API_URL/TOKEN` (`.env.example`) | [ÖLÇÜLDÜ] |
 | Dal | Yalnız `main` (uzakta tek dal) | [ÖLÇÜLDÜ] `git ls-remote` 2026-10-08 |
 | CI | `.github/workflows/ci.yml`: `main` push/PR, Node 22, tsc/lint/test/build | [ÖLÇÜLDÜ] dosya; koşu sonuçları [DOĞRULANMADI] |
