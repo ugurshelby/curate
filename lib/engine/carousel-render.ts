@@ -15,6 +15,7 @@ import { calculateAspectCrop } from '../export/platform-specs';
 import { applyHarmonizeSync, extractColorMetrics } from './harmonize';
 import { applyCubeLutToImageData, applyPresetToImageData, CURATE_PRESETS } from './presets';
 import { EXPORT_COLORS } from '../ui/colors';
+import { applyCorrections, CorrectionParams, correctionsKey } from './corrections';
 
 /** Export width the look is calibrated for (grain grid). */
 export const CAROUSEL_OUTPUT_WIDTH = 1080;
@@ -31,6 +32,8 @@ export interface CarouselRenderOptions {
   outputWidth?: number;
   /** Düzenle: kırp/döndür/çevir geometrisi. Verilirse fitMode yerine bu çizim kullanılır. */
   crop?: EditCrop | null;
+  /** Düzenle → Düzeltme (D2): taban adımında, kırptan sonra, görünümden önce */
+  corrections?: CorrectionParams | null;
 }
 
 export interface CarouselBase {
@@ -90,12 +93,14 @@ export function renderCarouselBase(
   img: CarouselSource,
   targetW: number,
   targetH: number,
-  options: Pick<CarouselRenderOptions, 'fitMode' | 'heroColorMetrics' | 'crop'>
+  options: Pick<CarouselRenderOptions, 'fitMode' | 'heroColorMetrics' | 'crop' | 'corrections' | 'outputWidth'>
 ): CarouselBase {
   if (options.crop) {
     // Düzenle: aynı taban adımı, çizim kırp geometrisiyle (tüm hedef alanı kaplar)
     drawEditGeometry(ctx, img, targetW, targetH, options.crop);
     let cropped = ctx.getImageData(0, 0, targetW, targetH);
+    // Düzeltme satırları (yarıçaplar export pikseli cinsinden; önizlemede ölçeklenir)
+    if (options.corrections) applyCorrections(cropped, options.corrections, (options.outputWidth ?? targetW) / targetW);
     if (options.heroColorMetrics) {
       cropped = applyHarmonizeSync(cropped, options.heroColorMetrics, HERO_HARMONIZE_STRENGTH);
     }
@@ -227,7 +232,7 @@ export class CarouselPreviewRenderer {
       this.cache.clear();
       this.imageKey = imageKey;
     }
-    const key = `${targetW}x${targetH}|${options.fitMode}|${metricsKey(options.heroColorMetrics)}|${editCropKey(options.crop)}`;
+    const key = this.baseKey(targetW, targetH, options);
     let base = this.cache.get(key);
     if (!base) {
       base = renderCarouselBase(ctx, img, targetW, targetH, options);
@@ -257,10 +262,33 @@ export class CarouselPreviewRenderer {
     options: CarouselRenderOptions,
   ): void {
     if (imageKey !== this.imageKey) return; // only for the image currently shown
-    const key = `${targetW}x${targetH}|${options.fitMode}|${metricsKey(options.heroColorMetrics)}|${editCropKey(options.crop)}`;
+    const key = this.baseKey(targetW, targetH, options);
     if (this.cache.has(key)) return;
     const base = renderCarouselBase(ctx, img, targetW, targetH, options);
     if (this.cache.size >= 2) {
+      const first = this.cache.keys().next().value;
+      if (first !== undefined) this.cache.delete(first);
+    }
+    this.cache.set(key, base);
+  }
+
+  /** Cache key of step 1 for this size and options */
+  baseKey(targetW: number, targetH: number, options: CarouselRenderOptions): string {
+    return `${targetW}x${targetH}|${options.fitMode}|${metricsKey(options.heroColorMetrics)}|${editCropKey(options.crop)}|${correctionsKey(options.corrections)}`;
+  }
+
+  hasBase(imageKey: string, key: string): boolean {
+    return imageKey === this.imageKey && this.cache.has(key);
+  }
+
+  /**
+   * Stores a step-1 result computed elsewhere (Düzeltme runs in the worker with the same applyCorrections).
+   * Ignored if the image changed meanwhile.
+   */
+  setBase(imageKey: string, key: string, base: CarouselBase): void {
+    if (imageKey !== this.imageKey && this.imageKey !== '') return;
+    this.imageKey = imageKey;
+    if (this.cache.size >= 2 && !this.cache.has(key)) {
       const first = this.cache.keys().next().value;
       if (first !== undefined) this.cache.delete(first);
     }

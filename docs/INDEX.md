@@ -35,18 +35,19 @@ Son doğrulama: 2026-10-08
 | `components/studio/StoryStudio.tsx` | Story modülü |
 | `components/studio/FrameStudio.tsx` | Çerçeve modülü |
 | `components/studio/UpscaleStudio.tsx` | Büyüt modülü |
-| `components/studio/EditStudio.tsx` | Düzenle modülü (Preset, Kırp; AI ile onar) |
+| `components/studio/EditStudio.tsx` | Düzenle modülü (Preset, Kırp, Düzeltme; AI ile onar) |
 | `components/studio/AiRepairSheet.tsx`, `AiReviewScreen.tsx` | AI görev sayfası (PIN adımı dahil) ve önce/sonra kontrol sayfası |
 | `components/studio/QuickExportSheet.tsx` | Export sayfası |
 | `components/studio/PresetStrip.tsx` | Yatay preset kartları (Carousel + Düzenle) |
 | `components/studio/Filmstrip.tsx` | Filmstrip ve sürükleyerek sıralama |
 | `components/studio/AddMenu.tsx`, `ReferencePicker.tsx` | "+" menüsü ve referans görsel seçici |
 | `components/studio/usePanPinch.ts` | Ortak sürükle/yakınlaştır jesti (Story, Düzenle Kırp) |
+| `components/studio/Switch.tsx` | Aç/kapa anahtarı (44 px) |
 | `components/studio/DeviceSync.tsx` | Cihaz eşitleyicisini başlatır (layout); `useDeviceStorage` ana sayfa anahtarı için |
 | `components/studio/NoticeToast.tsx`, `PerfHud.tsx`, `ResettableSlider.tsx`, `InstagramOverlay.tsx`, `TikTokOverlay.tsx` | Bildirim, `?perf=1` ölçüm, kaydırıcı, platform katmanları |
 | `lib/index.ts` | Ortak dışa aktarım |
 | `lib/core/` | `types`, `state-machine` (store), `use-studio`, `worker-bridge`, `reference-images`, `prefs` (localStorage tercihler), `library-cache` (IndexedDB fotoğraf hafızası), `device-sync` (store ↔ cihaz eşitleyici) |
-| `lib/engine/` | `carousel-render` (önizleme=export), `presets`, `harmonize`, `edit-geometry`, `story-layout`, `upscale-lanczos`, `upscale-slider`, `adaptive-gradient`, `proxy` |
+| `lib/engine/` | `carousel-render` (önizleme=export), `corrections` (Düzeltme: 6 satır + Otomatik, parçalı), `presets`, `harmonize`, `edit-geometry`, `story-layout`, `upscale-lanczos`, `upscale-slider`, `adaptive-gradient`, `proxy` |
 | `lib/export/` | `platform-specs` (hedefler veri olarak), `export-plan` (kalite basamağı, dosya adı), `exif-sanitizer`, `zip-packager` |
 | `lib/ai/` | `config` (model/istem/₺ tek yer), `server`, `quota`, `client`, `diff-check` |
 | `lib/ui/colors.ts` | Export/canvas içerik renkleri ve tarih damgası yazı tipi (arayüz paleti değil) |

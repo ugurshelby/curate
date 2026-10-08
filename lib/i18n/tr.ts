@@ -160,6 +160,23 @@ export const tr = {
     tooLargeToEnlarge: 'Büyütmek için çok büyük',
   },
 
+  fix: {
+    auto: 'Otomatik',
+    autoNone: 'Belirgin bir sorun bulunmadı; düzeltme gerekmiyor.',
+    note: 'Yalnız iyileştirir, olmayan ayrıntıyı üretmez. Çok karanlık karelerde sınırlıdır.',
+    holdHint: 'Basılı tut: düzeltmesiz',
+    before: 'Düzeltmesiz',
+    strength: 'Şiddet',
+    rows: {
+      noise: { title: 'Noise Azalt', hint: 'Gren ve renk lekelerini temizler' },
+      edgeSharp: { title: 'Kenar Netliği', hint: 'Kenarlarda kaybolan netliği toplar' },
+      edgeColor: { title: 'Kenar Renk Düzelt', hint: 'Köşelerdeki kararmayı ve renk kaymasını giderir' },
+      shadows: { title: 'Gölge Aç', hint: 'Karanlıkta kalan ayrıntıyı açar' },
+      highlights: { title: 'Parlak Alan Kurtar', hint: 'Fazla parlak yerlerde ayrıntıyı geri getirir' },
+      dehaze: { title: 'Pus Gider', hint: 'Sisli, soluk görünümü netleştirir' },
+    },
+  },
+
   frame: {
     empty: 'Çerçeve için henüz fotoğraf yok',
     width: 'Genişlik',

@@ -163,6 +163,11 @@ for (const [w, h] of VIEWPORTS) {
   await record(page, w, 'Düzenle Preset');
   await clickText(page, 'Kırp', '[role=tab]');
   await record(page, w, 'Düzenle Kırp');
+  await clickText(page, 'Düzeltme', '[role=tab]');
+  await record(page, w, 'Düzenle Düzeltme');
+  await clickText(page, 'Otomatik');
+  await wait(1500);
+  await record(page, w, 'Düzeltme Otomatik');
   await clickText(page, 'Preset', '[role=tab]');
   await clickText(page, 'AI ile onar');
   await wait(800);

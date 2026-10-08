@@ -144,3 +144,46 @@ describe('previewRenderSize (preview at the shown size, never above export)', ()
     expect(previewRenderSize(1080, 1920, 300, 1000, 2).width).toBe(600);
   });
 });
+
+describe('Düzenle + Düzeltme parity (Faz D2): preview equals export, also through the worker path', () => {
+  it('renderer (sync) and the worker-style setBase path both equal the export at the export size', async () => {
+    const { DEFAULT_EDIT_CROP } = await import('../lib/engine/edit-geometry');
+    const { DEFAULT_CORRECTIONS, applyCorrections } = await import('../lib/engine/corrections');
+    const img = makePhoto(900, 700);
+    const OW = 600;
+    const OH = 600;
+    const corrections = {
+      ...DEFAULT_CORRECTIONS,
+      noise: { on: true, strength: 60 },
+      edgeColor: { on: true, strength: 50 },
+      edgeSharp: { on: true, strength: 40 },
+      shadows: { on: true, strength: 30 },
+    };
+    const opts: CarouselRenderOptions = {
+      fitMode: 'fill',
+      crop: { ...DEFAULT_EDIT_CROP, aspect: '1:1' },
+      presetId: 'amber_grain',
+      presetIntensity: 0.7,
+      outputWidth: OW,
+      corrections,
+    };
+    const exp = new FakeContext(OW, OH);
+    drawCarouselFrame(asCtx(exp), asImg(img), OW, OH, opts);
+
+    const sync = new FakeContext(OW, OH);
+    new CarouselPreviewRenderer().render(asCtx(sync), asImg(img), 'photo', OW, OH, opts);
+    expect(countDiff(sync.buf, exp.buf)).toBe(0);
+
+    // worker path: geometry-only base, corrections applied separately, stored with setBase
+    const r = new CarouselPreviewRenderer();
+    const geo = new FakeContext(OW, OH);
+    const base = renderCarouselBase(asCtx(geo), asImg(img), OW, OH, { ...opts, corrections: null });
+    applyCorrections(base.imageData, corrections, 1);
+    const key = r.baseKey(OW, OH, opts);
+    r.setBase('photo', key, base);
+    expect(r.hasBase('photo', key)).toBe(true);
+    const viaWorker = new FakeContext(OW, OH);
+    r.render(asCtx(viaWorker), asImg(img), 'photo', OW, OH, opts);
+    expect(countDiff(viaWorker.buf, exp.buf)).toBe(0);
+  });
+});

@@ -15,7 +15,7 @@ Son doğrulama: 2026-10-08
 | Modül | Önizleme | Export | Ortak fonksiyon |
 |---|---|---|---|
 | Carousel | `CarouselPreviewRenderer` (canvas, 1080×1350 veya 1080×1920; kaydırıcı sürüklenirken yarı boyut) | `drawCarouselFrame` aynı seçeneklerle, tam boyut | `lib/engine/carousel-render.ts`: adım 1 `renderCarouselBase` (zemin + kırp/sığdır + seri uyumu), adım 2 `applyCarouselLook` (preset veya `.cube`). Parite: `tests/carousel-parity.test.ts` (0 bayt fark) |
-| Düzenle | Aynı renderer, taban adımında kırp geometrisi (`crop`), uzun kenar 1350 | `drawCarouselFrame`, kırpımın kendi boyutu (≤ 4096) | `lib/engine/edit-geometry.ts` `drawEditGeometry` |
+| Düzenle | Aynı renderer, taban adımında kırp geometrisi (`crop`) ve Düzeltme (`corrections`, worker'da: `workerBridge.applyCorrections`, sonuç `setBase` ile önbelleğe), uzun kenar 1350 | Aynı adımlar, kırpımın kendi boyutu (≤ 4096); Düzeltme worker'da, 2,5 MP üstünde paylı parçalarla | `lib/engine/edit-geometry.ts` `drawEditGeometry`, `lib/engine/corrections.ts` `applyCorrections`. Parite: `tests/carousel-parity.test.ts` (worker yolu dahil 0 fark) |
 | Story | DOM (hücre başına `<img>` + CSS dönüşüm) | Canvas 1080×1920 | Geometri ortak: `computeStoryCells`, `computeCellDraw` (`lib/engine/story-layout.ts`). Piksel paritesi yok, geometri paritesi var |
 | Çerçeve | DOM | Canvas 1080×1350 | Renkler `lib/ui/colors.ts`; çizim kodu modül içinde |
 | Büyüt | CSS (yalnız önizleme, "Lanczos" diye etiketlenmez) | Lanczos-3 (2 geçiş), worker'da | `lib/engine/upscale-lanczos.ts` |

@@ -110,6 +110,8 @@ export interface EditParams {
   presetId: string | null;
   intensity: number; // 0–1
   crop: EditCrop;
+  /** Düzeltme sekmesi (D2); yoksa hepsi kapalı */
+  corrections?: import('../engine/corrections').CorrectionParams;
 }
 
 export interface StudioItem {

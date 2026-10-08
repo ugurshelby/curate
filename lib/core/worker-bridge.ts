@@ -5,6 +5,7 @@
  */
 
 import { upscaleLanczos3 } from '../engine/upscale-lanczos';
+import { applyCorrections as applyCorrectionsSync, CorrectionParams } from '../engine/corrections';
 import { applyPresetToImageData, CURATE_PRESETS } from '../engine/presets';
 import { extractColorMetrics, applyHarmonizeSync } from '../engine/harmonize';
 import { extractAdaptiveGradient } from '../engine/adaptive-gradient';
@@ -133,6 +134,15 @@ export class WorkerBridge {
         resolve(fallbackFn());
       }
     });
+  }
+
+  /** Düzeltme (D2): heavy local filters off the main thread; same function as the export path */
+  public async applyCorrections(imageData: ImageData, corrections: CorrectionParams, correctionScale: number): Promise<ImageData> {
+    return this.postOrFallback<ImageData>(
+      'APPLY_CORRECTIONS',
+      { imageData, corrections, correctionScale },
+      () => applyCorrectionsSync(imageData, corrections, correctionScale)
+    );
   }
 
   public async upscaleLanczos(imageData: ImageData, scaleFactor: 2 | 4): Promise<ImageData> {

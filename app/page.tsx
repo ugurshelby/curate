@@ -23,6 +23,7 @@ import { StudioModule, StudioItem, useStudio, createStudioItem } from "@/lib";
 import { ReferencePicker } from "@/components/studio/ReferencePicker";
 import { tr } from "@/lib/i18n/tr";
 import { useDeviceStorage } from "@/components/studio/DeviceSync";
+import { Switch } from "@/components/studio/Switch";
 import { formatBytes } from "@/lib";
 
 const MODULE_ORDER: { id: StudioModule; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -251,28 +252,12 @@ export default function CurateStudioMain() {
                         : tr.hub.rememberStatus.kept(storage.keptCount, formatBytes(storage.keptBytes))}
               </span>
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={storage.remember && storage.available}
-              aria-labelledby="remember-title"
+            <Switch
+              checked={storage.remember && storage.available}
               disabled={!storage.available}
-              onClick={() => setRemember(!storage.remember)}
-              className="touch-target shrink-0 rounded-full disabled:bg-transparent"
-            >
-              <span
-                aria-hidden
-                className={`relative block w-[51px] h-[31px] rounded-full transition-colors duration-200 ${
-                  storage.remember && storage.available ? "bg-accent-fill" : "bg-surface-2 border border-separator"
-                }`}
-              >
-                <span
-                  className={`absolute top-[2px] left-[2px] w-[27px] h-[27px] rounded-full bg-white shadow transition-transform duration-200 ${
-                    storage.remember && storage.available ? "translate-x-[20px]" : ""
-                  }`}
-                />
-              </span>
-            </button>
+              labelledBy="remember-title"
+              onChange={(on) => setRemember(on)}
+            />
           </section>
         )}
 
