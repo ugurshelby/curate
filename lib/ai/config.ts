@@ -195,7 +195,7 @@ export const AI_ERRORS = {
   disabled: 'AI şu an kapalı.',
   not_configured: 'AI sunucuda ayarlanmamış.',
   forbidden: 'İstek reddedildi.',
-  pin_required: 'Bu cihazı eşlemek için AI PIN’ini gir.',
+  pin_required: 'Bu cihazı eşlemek için PIN’ini gir.',
   wrong_pin: 'PIN yanlış.',
   pin_locked_ip: 'Bu bağlantıdan çok fazla yanlış PIN. Yarın tekrar dene.',
   pin_locked_day: 'Bugün çok fazla yanlış PIN girildi; yeni cihaz eşleme yarına kadar kapalı.',

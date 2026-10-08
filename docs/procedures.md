@@ -32,7 +32,7 @@ Son doğrulama: 2026-10-08
 - **Tetikleyici:** "mobil denetim turu", "arayüzü denetle" / "mobile audit".
 - **Kapsam:** CDS ve AGENTS.md §5 kuralları; 360×740, 390×844, 430×932 (ve elle 844×390).
 - **Adımlar:**
-  1. Otomatik: `npx next start -p 3101` (build sonrası) ve `CHROME=<chromium yolu> node scripts/audit-ui.mjs`. Bulut kapsayıcıda yol: `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`. Betik `/api/ai`'yi taklit eder (ücretli çağrı yok), PIN adımını da ölçer.
+  1. Otomatik: sunucu yalnız TEST değerleriyle: `VERTEX_API_KEY=<herhangi test metni> CURATE_AI_PASSWORD=<test 4 hane> npx next start -p 3101` (build sonrası), sonra `AUDIT_PIN=<aynı test 4 hane> CHROME=<chromium yolu> node scripts/audit-ui.mjs`. Gerçek PIN asla kullanılmaz. Betik önce çerezsiz bağlamda kilit ekranını (360/390/430) ve bir yanlış PIN'i ölçer, sonra `scripts/lib/unlock.mjs` ile kapıyı açar. Bulut kapsayıcıda yol: `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`. Betik `/api/ai`'yi taklit eder (ücretli çağrı yok), PIN adımını da ölçer.
   2. Şart: `overlap` false, `hScroll` false; `offscreen`, `smallTargets` (44 px altı), `tinyText` (12 px altı) boş; görünür cam yüzey ≤ 3; metin kontrastı ≥ 4,5 (büyük yazı ≥ 3).
   3. Filmstrip ve panel alt yığın bütçesine (≤ 40dvh) sığar; sahne ≥ 34dvh.
   4. Güvenli alan (`env(safe-area-inset-*)`), kök yükseklik `dvh`.

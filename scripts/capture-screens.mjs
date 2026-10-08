@@ -1,9 +1,10 @@
 // Yerel görsel doğrulama: 390 genişlikte ekran görüntüleri (puppeteer-core + yerel Chrome).
-// Kullanım: node scripts/capture-screens.mjs <etiket>   (dev sunucusu http://localhost:3101 üzerinde çalışmalı)
+// Kullanım: AUDIT_PIN=<test PIN'i> node scripts/capture-screens.mjs <etiket>   (sunucu http://localhost:3101, test değerleriyle; scripts/lib/unlock.mjs)
 // Çıktı: screenshots/<etiket>/*.png (screenshots/ git'te izlenmez). /api/ai taklit edilir: ücretli çağrı yok.
 import puppeteer from 'puppeteer-core';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { unlockGate } from './lib/unlock.mjs';
 
 const label = process.argv[2] || 'shot';
 const base = process.env.BASE || 'http://localhost:3101';
@@ -14,6 +15,7 @@ const resultJpeg = readFileSync(join(process.cwd(), 'public/reference-images/ic-
 
 const browser = await puppeteer.launch({ executablePath: chrome, headless: 'new', args: ['--no-sandbox'] });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+await unlockGate(browser, base);
 
 async function fresh() {
   const page = await browser.newPage();

@@ -1,9 +1,11 @@
 // Prosedür 2 + metin kontrastı denetimi (puppeteer-core + yerel Chrome, emüle edilmiş telefon ekranı).
-// Kullanım: node scripts/audit-ui.mjs   (dev sunucusu http://localhost:3101). /api/ai taklit edilir: ücretli çağrı yok.
+// Kullanım: AUDIT_PIN=<test PIN'i> node scripts/audit-ui.mjs   (sunucu http://localhost:3101, test değerleriyle; scripts/lib/unlock.mjs).
+// /api/ai taklit edilir: ücretli çağrı yok. Önce kilit ekranı (çerezsiz bağlam), sonra kapı açılır.
 // Çıktı: her genişlik ve ekran için yerleşim değişmezleri (docs/procedures.md §2) ve en düşük metin kontrastı.
 import puppeteer from 'puppeteer-core';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { unlockGate } from './lib/unlock.mjs';
 
 const base = process.env.BASE || 'http://localhost:3101';
 const chrome = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
@@ -126,6 +128,26 @@ async function record(page, w, name, withStage = true) {
   const m = await page.evaluate(measure, { withStage });
   results.push({ w, name, ...m });
 }
+
+// Kilit ekranı (D27): çerezsiz ayrı bağlamda; yanlış PIN yalnız bir kez (sayaç: IP başına günde 5)
+{
+  const ctx = await browser.createBrowserContext();
+  for (const [w, h] of VIEWPORTS) {
+    const page = await ctx.newPage();
+    await page.setViewport({ width: w, height: h, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    await page.goto(base, { waitUntil: 'networkidle0' });
+    await record(page, w, 'PIN ekranı', false);
+    if (w === 390) {
+      if (new URL(page.url()).pathname !== '/kilit') throw new Error('Kapı yönlendirmedi: ' + page.url());
+      await page.type('#lock-pin', process.env.AUDIT_PIN === '0000' ? '1111' : '0000');
+      await page.waitForFunction(() => document.querySelector('[role=alert]')?.textContent?.trim(), { timeout: 10000 });
+      await record(page, w, 'PIN hatalı', false);
+    }
+    await page.close();
+  }
+  await ctx.close();
+}
+await unlockGate(browser, base);
 
 for (const [w, h] of VIEWPORTS) {
   let page = await fresh(w, h);

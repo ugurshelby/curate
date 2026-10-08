@@ -4,6 +4,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import { studioStore, createStudioItem, CURATE_PRESETS } from "@/lib";
 import { DeviceSync as DeviceSyncEngine, DeviceSyncStatus } from "@/lib/core/device-sync";
 import { openPhotoStore, freeQuotaBytes } from "@/lib/core/library-cache";
+import { LOCK_PATH } from "@/lib/access/session";
 
 /** One sync per page (StrictMode runs effects twice; the promise guards it) */
 let engine: DeviceSyncEngine | null = null;
@@ -40,6 +41,8 @@ function start(): Promise<void> {
 /** Mounted once in app/layout.tsx: preferences and (optionally) photos stay on this device */
 export function DeviceSync() {
   useEffect(() => {
+    // the lock page has no library: nothing to restore or save there
+    if (window.location.pathname === LOCK_PATH) return;
     void start();
     const flush = () => {
       if (document.visibilityState === "hidden") void engine?.flushNow();

@@ -71,6 +71,14 @@ export const tr = {
     upscale: { title: 'Büyüt', subtitle: 'Baskı ve paylaşım için 2× ya da 4×', tags: ['Tek fotoğraf'] },
   } as Record<ModuleId, { title: string; subtitle: string; tags: string[] }>,
 
+  lock: {
+    title: 'Curate',
+    prompt: 'Devam etmek için PIN’ini gir.',
+    pinLabel: 'PIN (4 hane)',
+    remembered: 'Bu cihaz bir yıl hatırlanır.',
+    checking: 'Kontrol ediliyor',
+  },
+
   addMenu: {
     open: 'Ekle',
   },
@@ -110,11 +118,12 @@ export const tr = {
   ai: {
     title: 'AI ile onar',
     checking: 'Kontrol ediliyor…',
-    pinLabel: 'AI PIN\'i (4 hane) — bu cihaz hatırlanır',
+    pinLabel: 'PIN (4 hane) — bu cihaz hatırlanır',
     pinSubmit: 'Devam',
     orderHint: 'En iyi sıra: önce AI ile onar, sonra kırp ve preset uygula.',
     aspectWarn: 'Bu fotoğrafın oranı desteklenen oranlardan farklı; model kareyi kırpabilir veya uzatabilir.',
     forgetDevice: 'Bu cihazı unut',
+    forgetConfirm: 'Bu cihaz unutulur; Curate’e yeniden girmek için PIN gerekir.',
     cancel: 'İptal',
     privacy: "Bu işlem için fotoğraf Google'a gönderilir.",
     canceled: 'İptal edildi.',

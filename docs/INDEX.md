@@ -50,13 +50,14 @@ Son doğrulama: 2026-10-08
 | `lib/core/` | `types`, `state-machine` (store), `use-studio`, `worker-bridge`, `reference-images`, `prefs` (localStorage tercihler), `library-cache` (IndexedDB fotoğraf hafızası), `device-sync` (store ↔ cihaz eşitleyici) |
 | `lib/engine/` | `carousel-render` (önizleme=export), `corrections` (Düzeltme: 6 satır + Otomatik, parçalı), `presets` (kütüphane v2, 16 preset), `scene` (Akıllı Otomatik), `frame-render` (Çerçeve, önizleme=export), `harmonize`, `edit-geometry`, `story-layout`, `upscale-lanczos`, `upscale-slider`, `adaptive-gradient`, `proxy` |
 | `lib/export/` | `platform-specs` (hedefler ve Çerçeve boyutları `FRAME_SIZES` veri olarak), `export-plan` (kalite basamağı, dosya adı), `exif-sanitizer`, `zip-packager` |
+| `middleware.ts`, `lib/access/` | Tüm uygulama PIN kapısı (D27): `session` (imza, karar, Edge+Node), `client` (kilit ekranı isteği); ekran `app/kilit/page.tsx` |
 | `lib/ai/` | `config` (model/istem/₺ tek yer), `server`, `quota`, `client`, `diff-check` |
 | `lib/ui/colors.ts` | Export/canvas içerik renkleri ve tarih damgası yazı tipi (arayüz paleti değil) |
 | `lib/i18n/tr.ts` | Tüm arayüz metni (Türkçe); jargon yalnız `gelismis` altında |
 | `lib/workers/image-processor.worker.ts` | Worker (Büyüt export'u) |
 | `public/` | `manifest.json`, `icon.svg`, PNG simgeler (`icon-192`, `icon-512`, `icon-maskable-512`, `apple-touch-icon`), `reference-images/` (13 görsel) |
-| `tests/` | Vitest testleri (parite, export planı, geometri, AI sunucu/istemci, renk belirteçleri, `ui-rules` tasarım kuralları, sağlamlık…) |
-| `scripts/` | `audit-ui.mjs` (Prosedür 2), `capture-screens.mjs` (390 ekran görüntüsü), `check-bundle-secrets.mjs`, `make-icons.mjs` (PWA simgeleri) |
+| `tests/` | Vitest testleri (parite, export planı, geometri, AI sunucu/istemci, renk belirteçleri, `ui-rules` tasarım kuralları, `access` kapı, sağlamlık…) |
+| `scripts/` | `audit-ui.mjs` (Prosedür 2), `capture-screens.mjs` (390 ekran görüntüsü), `check-bundle-secrets.mjs`, `make-icons.mjs` (PWA simgeleri), `lib/unlock.mjs` (denetimde kapıyı test PIN'iyle açar) |
 
 ## Komutlar
 | Komut | Ne |
@@ -65,5 +66,5 @@ Son doğrulama: 2026-10-08
 | `npm run dev` | Geliştirme sunucusu |
 | `npx tsc --noEmit` · `npm run lint` · `npm test` · `npm run build` | Kalite kapıları |
 | `npm run check:secrets` | Build sonrası sır taraması (0 bulgu şart) |
-| `npx next start -p 3101` + `CHROME=/opt/pw-browsers/chromium-1194/chrome-linux/chrome node scripts/audit-ui.mjs` | Prosedür 2 (bulut kapsayıcıda yol) |
-| `node scripts/capture-screens.mjs <etiket>` | `screenshots/<etiket>/` (git izlemez) |
+| `VERTEX_API_KEY=<test> CURATE_AI_PASSWORD=<test 4 hane> npx next start -p 3101` + `AUDIT_PIN=<test 4 hane> CHROME=/opt/pw-browsers/chromium-1194/chrome-linux/chrome node scripts/audit-ui.mjs` | Prosedür 2 (bulut kapsayıcıda yol; gerçek PIN asla) |
+| `AUDIT_PIN=<test 4 hane> node scripts/capture-screens.mjs <etiket>` | `screenshots/<etiket>/` (git izlemez) |

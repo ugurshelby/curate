@@ -1,6 +1,7 @@
 "use client";
 
 import { tr } from "@/lib/i18n/tr";
+import { LOCK_PATH } from "@/lib/access/session";
 import React, { useEffect, useRef, useState } from "react";
 import { X, Sparkles, Lock } from "lucide-react";
 import {
@@ -105,14 +106,12 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
     if (digits.length === AI_PIN_LENGTH) void submitPin(digits);
   };
 
+  // The PIN now opens the whole app (D27): forgetting the device logs it out and shows the lock page
   const forget = async () => {
-    if (busyRef.current) return;
+    if (busyRef.current || !window.confirm(tr.ai.forgetConfirm)) return;
     busyRef.current = true;
     await forgetAiDevice();
-    busyRef.current = false;
-    setRemaining(null);
-    setError(null);
-    setStep("pin");
+    window.location.assign(LOCK_PATH);
   };
 
   const run = async (task: AiTask) => {

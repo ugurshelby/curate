@@ -57,7 +57,7 @@ Hepsi cihazda (D18). Eşitleyici: `lib/core/device-sync.ts` (store'u izler, 400 
 | Fotoğraflar (çalışma anı) | Bellek (`URL.createObjectURL`) | Var |
 | Kütüphane önbelleği | IndexedDB `curate-library` (`photos`: kullanıcının eklediği orijinal dosya; `meta`: sıra, seçim, Düzenle ve Story kadraj ayarları) — `lib/core/library-cache.ts` | Var; varsayılan açık, ana sayfadaki anahtarla kapanır (kapanınca cihazdaki kopyalar silinir). Sınır: 40 fotoğraf, 400 MB, kalan kotanın en çok yarısı. Kütüphane temizlenince önbellek de silinir. Kota dolarsa sığanlar kalır ve ana sayfa söyler; IndexedDB yoksa (gizli sekme) "saklanamıyor" der |
 | Tercihler | localStorage `curate.prefs.v1` (Carousel hedef/doldur/katman, son seri preset'i ve miktarı, Story boşluk/zemin, Çerçeve ayarları, Büyüt çarpanı, fotoğraf hafızası açık/kapalı, favoriler) — `lib/core/prefs.ts` | Var; okurken doğrulanır, bozuk veride varsayılan |
-| AI cihaz eşleme | HttpOnly çerez `curate_ai` (Path=/api/ai, 365 gün) | Var |
+| Cihaz oturumu (kapı + AI) | HttpOnly çerez `curate_session` (Path=/, SameSite=Lax, Secure, 365 gün, 30 günden eskiyse yenilenir) — `lib/access/session.ts` | Var (D27). Eski `curate_ai` (Path=/api/ai) bir sürüm daha AI'da kabul edilir, eşlemede silinir |
 | Eski AI şifresi | localStorage `curate.ai.password` | Açılışta silinir |
 | Kota sayaçları | Upstash Redis REST (yoksa sunucu belleği) | Var |
 
@@ -75,11 +75,19 @@ Son doğrulama: 2026-10-08
 Son doğrulama: 2026-10-08
 
 - Tek sunucu rotası: `app/api/ai/route.ts` (Node runtime, `maxDuration` 120 sn). Mantık `lib/ai/server.ts`; yapılandırma (model, istem, boyut, ₺) yalnız `lib/ai/config.ts`; sayaç `lib/ai/quota.ts`; istemci `lib/ai/client.ts`.
-- `GET` durum/kalan hak, `PUT` PIN ile eşleme (çerez), `POST` görev, `DELETE` cihazı unut. Başka siteden istek (`Sec-Fetch-Site`) 403.
+- `GET` durum/kalan hak, `PUT` PIN ile eşleme (uygulama oturum çerezi; `AI_ENABLED=false` iken de çalışır, yanıt `{enabled:false}`), `POST` görev, `DELETE` cihazı unut (oturum biter, kilit ekranı). Başka siteden istek (`Sec-Fetch-Site`) 403.
 - Giden: aktif fotoğrafın kendi pikselleri, uzun kenar ≤ 2048, JPEG 0,92; sunucu 4 MB üstünü reddeder. Dönen sonuç JPEG, ≤ 4,3 MB.
 - Kota: günde 20, ayda 150 (env ile değişir), model çağrısından önce atomik ayrılır. Yanlış PIN sınırları: IP 5/gün, genel 10/gün, 30/ay.
 - Sırlar (yalnız ad): `VERTEX_API_KEY`, `CURATE_AI_PASSWORD`, `AI_ENABLED`, `AI_DAILY_LIMIT`, `AI_MONTHLY_LIMIT`, `UPSTASH_REDIS_REST_URL/TOKEN` veya `KV_REST_API_URL/TOKEN`. Hepsi yalnız Vercel sunucu ortamında.
-- Uygulamanın geri kalanı (sayfa, modüller) PIN'siz açılır. Tüm uygulama kapısı: Faz 4-A, sahip onayı bekliyor.
+
+## 6b. Tüm uygulama kapısı (D27)
+Son doğrulama: 2026-10-08
+
+- `middleware.ts` (Edge) her istekte `decideAccess` (`lib/access/session.ts`) çağırır: geçerli `curate_session` yoksa sayfa `/kilit?next=…`'e yönlenir (307), bozuk çerez silinir. Kapı dışı: `/kilit`, `/api/*` (kendi çerez kontrolü), `/_next/*`, `/manifest.json`, simgeler, `/favicon.ico`. Referans görseller kapı arkasında.
+- İmza: HMAC-SHA256, anahtar `HMAC(VERTEX_API_KEY, "curate-session-v1:" + PIN)`, yalnız Web Crypto (Edge ve Node aynı kod; `tests/access.test.ts` node:crypto referans imzasıyla eşler). PIN değişince tüm cihazlar düşer. Değişkenlerden biri yoksa kapı kapalı kalır (fail closed).
+- Kayan ömür: çerez 30 günden eskiyse middleware 365 günlük yenisini verir. Kapılı yanıtlar `Cache-Control: private, no-store`.
+- Tanı: `/kilit` yanıtı `X-Curate-Gate: ready` ya da `not-configured` (değer içermez). - PIN ekranı `app/kilit/page.tsx`: 4 kutu, 4. hanede kendiliğinden gönderim, `PUT /api/ai`; yanlış PIN sınırları aynı (IP 5/gün, genel 10/gün, 30/ay). Başarıda `next` yalnız aynı kökenli yola (`safeNext`).
+- Yerel denetim: sunucu test değerleriyle başlatılır, betikler `scripts/lib/unlock.mjs` ile kapıyı açar (Prosedür 2).
 
 ## 7. Güvenlik başlıkları
 Son doğrulama: 2026-10-08

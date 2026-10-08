@@ -34,7 +34,7 @@ describe('AI client requests', () => {
       vi.fn(async () => new Response(JSON.stringify({ error, message: 'x' }), { status }));
     const cases: [number, string, string][] = [
       [401, 'wrong_pin', 'PIN yanlış.'],
-      [401, 'pin_required', 'Bu cihazı eşlemek için AI PIN’ini gir.'],
+      [401, 'pin_required', 'Bu cihazı eşlemek için PIN’ini gir.'],
       [503, 'service_error', 'Sunucu sayacına ulaşılamadı. Biraz sonra tekrar dene.'],
       [429, 'quota_day', 'Bugünkü AI hakkı doldu.'],
       [504, 'timeout', 'Süre aşıldı. Tekrar dene.'],

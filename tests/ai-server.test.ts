@@ -195,18 +195,34 @@ describe('AI proxy: access and limits', () => {
     expect(await res.json()).toMatchObject({ enabled: true, remainingDay: 20, remainingMonth: 150, counter: 'memory' });
   });
 
-  it('correct PIN → 200, HttpOnly Secure SameSite=Strict cookie on /api/ai for 365 days; the cookie then works', async () => {
+  it('correct PIN → 200, app session cookie (HttpOnly, Secure, SameSite=Lax, Path=/, 365 days) that then works for AI', async () => {
     const { deps } = makeDeps();
     const res = await handleAiUnlock(unlock(PIN), deps);
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ enabled: true, remainingDay: 20, remainingMonth: 150 });
-    const set = res.headers.get('set-cookie')!;
-    expect(set).toMatch(/^curate_ai=v1\.\d+\.[A-Za-z0-9_-]{43};/);
-    for (const attr of ['Path=/api/ai', 'Max-Age=31536000', 'HttpOnly', 'Secure', 'SameSite=Strict']) expect(set).toContain(attr);
+    const [set, clearLegacy] = res.headers.getSetCookie();
+    expect(set).toMatch(/^curate_session=s1\.\d+\.[A-Za-z0-9_-]{43};/);
+    for (const attr of ['Path=/;', 'Max-Age=31536000', 'HttpOnly', 'Secure', 'SameSite=Lax']) expect(set).toContain(attr);
     expect(set).not.toContain(PIN);
+    expect(clearLegacy).toMatch(/^curate_ai=; Path=\/api\/ai; Max-Age=0;/);
     const cookie = set.split(';')[0];
     expect((await handleAiStatus(status(cookie), deps)).status).toBe(200);
     expect((await handleAiPost(post(await jpeg(40, 30), { cookie }), deps)).status).toBe(200);
+  });
+
+  it('PIN pairing works while AI is switched off (the app gate must not lock the owner out)', async () => {
+    const { deps } = makeDeps({ env: { AI_ENABLED: 'false' } });
+    const res = await handleAiUnlock(unlock(PIN), deps);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ enabled: false });
+    expect(res.headers.getSetCookie()[0]).toMatch(/^curate_session=s1\./);
+    const cookie = res.headers.getSetCookie()[0].split(';')[0];
+    expect((await (await handleAiStatus(status(cookie), deps)).json()).error).toBe('disabled');
+  });
+
+  it('the legacy AI cookie is still accepted for one release', async () => {
+    const { deps } = makeDeps();
+    expect((await handleAiStatus(status(deviceCookie()), deps)).status).toBe(200);
   });
 
   it('tampered, expired, future or other-PIN/key cookies are rejected (and cleared)', async () => {
@@ -221,7 +237,7 @@ describe('AI proxy: access and limits', () => {
       const r = await handleAiStatus(status(c), deps);
       expect(r.status).toBe(401);
       expect((await r.json()).error).toBe('pin_required');
-      expect(r.headers.get('set-cookie')).toContain('Max-Age=0');
+      expect(r.headers.getSetCookie().every((c) => c.includes('Max-Age=0'))).toBe(true);
     }
     expect((await handleAiStatus(status(good), deps)).status).toBe(200);
   });
@@ -312,7 +328,9 @@ describe('AI proxy: access and limits', () => {
   it('DELETE clears the cookie', async () => {
     const r = await handleAiForget(new Request('http://localhost/api/ai', { method: 'DELETE' }));
     expect(r.status).toBe(204);
-    expect(r.headers.get('set-cookie')).toMatch(/^curate_ai=; Path=\/api\/ai; Max-Age=0;/);
+    const set = r.headers.getSetCookie();
+    expect(set[0]).toMatch(/^curate_session=; Path=\/; Max-Age=0;/);
+    expect(set[1]).toMatch(/^curate_ai=; Path=\/api\/ai; Max-Age=0;/);
   });
 
   it('counter failure → service_error, no model call (not "timeout")', async () => {

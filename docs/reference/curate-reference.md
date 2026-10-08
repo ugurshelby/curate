@@ -45,7 +45,7 @@ Son doğrulama: 2026-10-08
 |---|---|---|
 | Veritabanı, şema | Yok | [ÖLÇÜLDÜ] |
 | Dış API | Google Vertex `generateContent` yalnız `/api/ai` üzerinden; Upstash Redis REST (kota) | [ÖLÇÜLDÜ] kod |
-| Kimlik | Yalnız AI rotası: 4 haneli PIN (`CURATE_AI_PASSWORD`, sunucu) → imzalı HttpOnly çerez `curate_ai` (Path=/api/ai, 365 gün, SameSite=Strict, Secure). Uygulamanın geri kalanı açık | [ÖLÇÜLDÜ] kod, testler |
+| Kimlik | Tüm uygulama (D27): 4 haneli PIN (`CURATE_AI_PASSWORD`, sunucu) → `/kilit` → imzalı HttpOnly çerez `curate_session` (Path=/, 365 gün kayan, SameSite=Lax, Secure); `middleware.ts` her sayfayı kontrol eder; manifest/simgeler/`_next` açık, referans görseller kapalı | [ÖLÇÜLDÜ] testler + yerel production (curl: çerezsiz `/` → 307 `/kilit`; çerezli 200; `next=https://…` → `/`) + Chromium (PIN ekranı, yanlış PIN, doğru PIN). Telefonda [DOĞRULANMADI] |
 | Tarayıcı depolama | localStorage `curate.prefs.v1` (tercihler); IndexedDB `curate-library` (fotoğraf hafızası, varsayılan açık, 40 fotoğraf / 400 MB). Eski `curate.ai.password` açılışta silinir | [ÖLÇÜLDÜ] `tests/device-sync.test.ts`, Chromium'da ekle → yenile → geri geldi (2026-10-08) |
 | Ortam değişkenleri (ad) | `VERTEX_API_KEY`, `CURATE_AI_PASSWORD`, `AI_ENABLED`, `AI_DAILY_LIMIT`, `AI_MONTHLY_LIMIT`, `UPSTASH_REDIS_REST_URL/TOKEN` veya `KV_REST_API_URL/TOKEN` (`.env.example`) | [ÖLÇÜLDÜ] |
 | Dal | Yalnız `main` (uzakta tek dal) | [ÖLÇÜLDÜ] `git ls-remote` 2026-10-08 |
@@ -103,7 +103,7 @@ Son doğrulama: 2026-10-08
 | # | Çelişki | Durum |
 |---|---|---|
 | C1 | Spec §3.2 ve §5.1 kişisel İngilizce adlı 6 preset ailesi der; görev belgesi §8.4 Türkçe adlı 12–16 presetlik kütüphane ister ve kararı ajana bırakır | Faz 5'te: mevcut 6 aile korunarak yeni kütüphaneye eklenir (D24); spec kararı değişmez |
-| C2 | 2026-10-07 karar S1 "PIN yalnız AI için"; görev belgesi §7-A tüm uygulama kapısı ister | KIRMIZI: plan yazılır, sahip onayı beklenir |
+| C2 | 2026-10-07 karar S1 "PIN yalnız AI için"; görev belgesi §7-A tüm uygulama kapısı ister | Kapandı: sahip planı onayladı (D27), uygulandı 2026-10-08 |
 | C3 | 2026-10-07 S5 "PIN'i Vercel'e ajan yazar"; görev belgesi §1.6 Vercel'e araçla dokunmayı yasaklar | Yeni kural geçerli (D17) |
 | C4 | Eski UI kural dosyası CDS'i apple-design'ın üstüne koyar; görev belgesi apple-design ilkelerini üste koyar | Görev belgesi geçerli (D21) |
 | C5 | CDS v2 "özel font eklenmez"; görev belgesi self-host bir yedek yazı tipi ister | Faz 2'de CDS v3 ile çözülür |
@@ -116,7 +116,7 @@ Son doğrulama: 2026-10-08
 
 1. Telefonda hiçbir ölçüm yok (performans, jestler, PWA kurulumu).
 2. Service worker yok (çevrimdışı açılış yok); eklemek KIRMIZI.
-3. Tüm uygulama PIN kapısı ve AI Preset: sahip onayı bekliyor.
+3. AI Preset: onaylı (D28), kodlanıyor. Tüm uygulama kapısı uygulandı (D27); telefonda doğrulanmadı.
 4. Preset kalibrasyonu ölçülebilir sınırlara ve 13 referansa göre yapıldı; sahibin kendi kaynak belgeleri (spec §5) hâlâ yok.
 
 ## 11. Sahibe açık sorular

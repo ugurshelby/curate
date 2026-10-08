@@ -37,6 +37,7 @@ import {
   vertexEndpoint,
 } from './config';
 import { CounterStore, DAY_TTL_S, MONTH_TTL_S, counterStoreFromEnv, quotaKeys } from './quota';
+import { SESSION_COOKIE, sessionCookie, signSession, verifySession } from '../access/session';
 
 type EnvLike = Record<string, string | undefined>;
 
@@ -112,18 +113,24 @@ const ERROR_STATUS: Record<AiErrorCode, number> = {
   network: 502,
 };
 
-function errorResponse(code: AiErrorCode, extraHeaders?: Record<string, string>): Response {
+/** Extra headers as pairs so a response can carry several Set-Cookie lines */
+type HeaderPairs = Record<string, string> | [string, string][];
+
+function jsonHeaders(extra?: HeaderPairs): Headers {
+  const h = new Headers({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+  for (const [k, v] of Array.isArray(extra) ? extra : Object.entries(extra ?? {})) h.append(k, v);
+  return h;
+}
+
+function errorResponse(code: AiErrorCode, extraHeaders?: HeaderPairs): Response {
   return new Response(JSON.stringify({ error: code, message: AI_ERRORS[code] }), {
     status: ERROR_STATUS[code],
-    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...extraHeaders },
+    headers: jsonHeaders(extraHeaders),
   });
 }
 
-function jsonResponse(body: unknown, extraHeaders?: Record<string, string>): Response {
-  return new Response(JSON.stringify(body), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...extraHeaders },
-  });
+function jsonResponse(body: unknown, extraHeaders?: HeaderPairs): Response {
+  return new Response(JSON.stringify(body), { status: 200, headers: jsonHeaders(extraHeaders) });
 }
 
 export function clientIp(req: Request): string {
@@ -186,7 +193,11 @@ function deviceCookie(token: string, maxAge: number): string {
   return `${AI_DEVICE_COOKIE}=${token}; Path=${AI_DEVICE_COOKIE_PATH}; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Strict`;
 }
 
-const CLEAR_COOKIE = { 'Set-Cookie': deviceCookie('', 0) };
+/** Clears the app session (D27) and the legacy AI-only cookie */
+const CLEAR_COOKIES: [string, string][] = [
+  ['Set-Cookie', sessionCookie('', 0)],
+  ['Set-Cookie', deviceCookie('', 0)],
+];
 
 // --- Kapılar ---
 
@@ -207,16 +218,27 @@ function baseGate(req: Request, deps: AiDeps): GateResult {
   return { ok: true };
 }
 
-/** baseGate + geçerli cihaz çerezi */
-function deviceGate(req: Request, deps: AiDeps): GateResult {
+/** Configured and same-origin; NOT tied to AI_ENABLED, so the app gate (D27) still pairs a device when AI is off */
+function accessGate(req: Request, deps: AiDeps): GateResult {
+  const { config } = deps;
+  if (!config.apiKey || !config.pin) return { ok: false, response: errorResponse('not_configured') };
+  if (crossSite(req)) return { ok: false, response: errorResponse('forbidden') };
+  return { ok: true };
+}
+
+/** baseGate + a valid device: the app session cookie (D27) or, for one release, the legacy AI cookie */
+async function deviceGate(req: Request, deps: AiDeps): Promise<GateResult> {
   const base = baseGate(req, deps);
   if (!base.ok) return base;
-  const token = readCookie(req, AI_DEVICE_COOKIE);
-  if (!verifyDeviceToken(deps.config, token, deps.now())) {
-    // Bozuk/eski çerez varsa temizlenir
-    return { ok: false, response: errorResponse('pin_required', token ? CLEAR_COOKIE : undefined) };
+  const { config } = deps;
+  const session = readCookie(req, SESSION_COOKIE);
+  if (session && (await verifySession({ apiKey: config.apiKey as string, pin: config.pin as string }, session, deps.now())).ok) {
+    return { ok: true };
   }
-  return { ok: true };
+  const legacy = readCookie(req, AI_DEVICE_COOKIE);
+  if (verifyDeviceToken(config, legacy, deps.now())) return { ok: true };
+  // a broken or foreign cookie is cleared so the device starts clean
+  return { ok: false, response: errorResponse('pin_required', session || legacy ? CLEAR_COOKIES : undefined) };
 }
 
 async function remaining(deps: AiDeps): Promise<{ day: number; month: number }> {
@@ -227,7 +249,7 @@ async function remaining(deps: AiDeps): Promise<{ day: number; month: number }> 
 
 /** GET: cihaz eşli mi ve kalan hak (para harcamaz, sayaç artırmaz) */
 export async function handleAiStatus(req: Request, deps: AiDeps): Promise<Response> {
-  const g = deviceGate(req, deps);
+  const g = await deviceGate(req, deps);
   if (!g.ok) return g.response;
   try {
     const r = await remaining(deps);
@@ -245,7 +267,7 @@ const MAX_UNLOCK_BODY = 256;
  * Böylece paralel tahminler de sınırı geçemez. Doğru PIN ayırmayı geri alır ve çerez verir.
  */
 export async function handleAiUnlock(req: Request, deps: AiDeps): Promise<Response> {
-  const g = baseGate(req, deps);
+  const g = accessGate(req, deps);
   if (!g.ok) return g.response;
   const { config, counter } = deps;
 
@@ -286,12 +308,14 @@ export async function handleAiUnlock(req: Request, deps: AiDeps): Promise<Respon
     }
 
     await undo();
-    const r = await remaining(deps);
     deps.log({ status: 'paired' });
-    return jsonResponse(
-      { enabled: true, remainingDay: r.day, remainingMonth: r.month, counter: counter.kind },
-      { 'Set-Cookie': deviceCookie(issueDeviceToken(config, deps.now()), AI_DEVICE_MAX_AGE_S) },
-    );
+    const cookies: [string, string][] = [
+      ['Set-Cookie', sessionCookie(await signSession({ apiKey: config.apiKey as string, pin: config.pin as string }, deps.now()))],
+      ['Set-Cookie', deviceCookie('', 0)],
+    ];
+    if (!config.enabled) return jsonResponse({ enabled: false }, cookies);
+    const r = await remaining(deps);
+    return jsonResponse({ enabled: true, remainingDay: r.day, remainingMonth: r.month, counter: counter.kind }, cookies);
   } catch {
     return errorResponse('service_error');
   }
@@ -300,7 +324,9 @@ export async function handleAiUnlock(req: Request, deps: AiDeps): Promise<Respon
 /** DELETE: "Bu cihazı unut" — çerezi siler */
 export async function handleAiForget(req: Request): Promise<Response> {
   if (crossSite(req)) return errorResponse('forbidden');
-  return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store', ...CLEAR_COOKIE } });
+  const headers = new Headers({ 'Cache-Control': 'no-store' });
+  for (const [k, v] of CLEAR_COOKIES) headers.append(k, v);
+  return new Response(null, { status: 204, headers });
 }
 
 /** Vertex yanıtındaki ilk görsel parçası */
@@ -349,7 +375,7 @@ function isAbort(err: unknown): boolean {
 /** POST: tek görsel, tek görev */
 export async function handleAiPost(req: Request, deps: AiDeps): Promise<Response> {
   const started = deps.now();
-  const g = deviceGate(req, deps);
+  const g = await deviceGate(req, deps);
   if (!g.ok) return g.response;
 
   const taskRaw = req.headers.get(AI_HEADER_TASK);
