@@ -12,16 +12,16 @@ Tek durum dosyası. Her anlamlı adımdan sonra aynı commit'te güncellenir. Ye
 | 0 | Tanışma (yalnız okuma) | bitti | Bulgular: `docs/reports/2026-10-08-faz0-1.md` |
 | 1 | Anayasa ve belge sistemi | bitti | `docs/reports/2026-10-08-faz0-1.md` |
 | 2 | Tasarım dili v3 + kural-kontrol testi | bitti | CDS v3, `tests/ui-rules.test.ts` |
-| 3 | Arayüz denetimi ve yeniden tasarım | sürüyor | Ana sayfa bitti; modül ekranları sırada |
-| 4 | Erişim (KIRMIZI, plan), kalıcılık, PWA | yapılmadı | Erişim kapısı sahip onayı olmadan kodlanmaz |
+| 3 | Arayüz denetimi ve yeniden tasarım | bitti | `docs/reports/2026-10-08-faz2-3.md` (ihlal 23 → 1; açık: preset adları, Faz 5) |
+| 4 | Erişim (KIRMIZI, plan), kalıcılık, PWA | sürüyor | Erişim kapısı sahip onayı olmadan kodlanmaz |
 | 5 | Performans, D2 Düzeltme, preset kütüphanesi, Otomatik, AI Preset (önce özet) | yapılmadı | |
 | 6 | İdame | sürekli | Prosedür 8 |
 
 ## Sıradaki adım
-Faz 3: modül ekranlarını (alt çubuk, sahne araç satırı, export ve AI sayfaları) yeni dile uydur; metinleri `lib/i18n/tr.ts`e taşı.
+Faz 4: A erişim planı (yalnız plan), B tercihler (localStorage) + kütüphane önbelleği (IndexedDB), C PWA (manifest bağlantısı, PNG simgeler).
 
 ## Son commit
-`e59036f` (oturum başı, `main`).
+`881e7fb` (Faz 3).
 
 ## Sahibe sorular (açık)
 1. Çerçeve modülünün hedef boyutu: 1080×1350 dışında başka oran/boyut istiyor musun? (spec §4.4 K5 "Frame 1080×1350 kalır" diyor; bu soru yalnız yeni boyut istenirse açık.)
