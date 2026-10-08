@@ -53,7 +53,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
   };
 
   const handleClear = () => {
-    if (window.confirm("Tüm fotoğraflar kaldırılsın mı?")) actions.clearItems();
+    if (window.confirm(tr.common.clearAllConfirm)) actions.clearItems();
   };
 
   // Görsel yüklendiğinde gradyan çıkar
@@ -222,7 +222,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
         ) : (
           <div className="flex flex-col items-center justify-center p-4 text-center text-ink-3 gap-1">
             <Crop className="w-8 h-8 text-disabled-ink" />
-            <span className="text-sm">Çerçeve için henüz fotoğraf yok</span>
+            <span className="text-sm">{tr.frame.empty}</span>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -249,7 +249,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
   const panel = (
     <div className="grid grid-cols-2 gap-4 p-3">
       <ResettableSlider
-        label="Genişlik"
+        label={tr.frame.width}
         value={borderWidth}
         min={12}
         max={56}
@@ -258,7 +258,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
         onChange={(val) => actions.setFrameConfig({ borderWidth: val })}
       />
       <ResettableSlider
-        label="Köşe"
+        label={tr.frame.corner}
         value={borderRadius}
         min={0}
         max={32}
@@ -276,7 +276,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
         onReference={() => setIsReferenceOpen(true)}
         onClear={state.items.length > 0 ? handleClear : undefined}
       />
-      <div role="radiogroup" aria-label="Çerçeve tipi" className="flex-1 min-w-0 flex p-0.5 rounded-xl bg-surface-2 border border-separator">
+      <div role="radiogroup" aria-label={tr.frame.type} className="flex-1 min-w-0 flex p-0.5 rounded-xl bg-surface-2 border border-separator">
         {(["polaroid", "matte", "gradient"] as const).map((t) => (
           <button
             key={t}
@@ -288,7 +288,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
               frameType === t ? "bg-accent-fill text-on-accent" : "text-ink-2"
             }`}
           >
-            {t === "polaroid" ? "Polaroid" : t === "matte" ? "Matte" : "Gradyan"}
+            {tr.frame.types[t]}
           </button>
         ))}
       </div>
@@ -296,7 +296,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
         type="button"
         onClick={() => actions.setFrameConfig({ showTimestamp: !showTimestamp })}
         aria-pressed={showTimestamp}
-        aria-label="Tarih damgası"
+        aria-label={tr.frame.stamp}
         className={`touch-target press rounded-xl border ${
           showTimestamp ? "border-accent bg-accent/15 text-accent" : "border-separator text-ink-3"
         }`}

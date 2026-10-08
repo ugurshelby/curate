@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/lib/i18n/tr";
 import React from "react";
 
 interface ResettableSliderProps {
@@ -44,9 +45,9 @@ export function ResettableSlider({
               type="button"
               onClick={() => onChange(defaultValue)}
               className="-my-2 h-11 px-2 text-xs text-ink-2"
-              title="Varsayılana sıfırla"
+              title={tr.common.resetToDefault}
             >
-              Sıfırla
+              {tr.common.reset}
             </button>
           )}
         </div>

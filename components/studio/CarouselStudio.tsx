@@ -38,7 +38,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
       img.crossOrigin = "anonymous";
     }
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Görsel yüklenemedi"));
+    img.onerror = () => reject(new Error(tr.common.imageLoadFailed));
     img.src = src;
   });
 }
@@ -200,7 +200,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
   };
 
   const handleClear = () => {
-    if (window.confirm("Serideki tüm fotoğraflar kaldırılsın mı?")) actions.clearItems();
+    if (window.confirm(tr.carousel.clearConfirm)) actions.clearItems();
   };
 
   // .CUBE LUT Yükleme
@@ -217,7 +217,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         actions.setGlobalPreset({ id: "custom_lut", intensity: itemIntensity / 100 });
       } catch (err) {
         console.error("LUT parse hatası:", err);
-        alert("Geçersiz .cube dosyası: Lütfen standart 3D LUT dosyası seçin.");
+        alert(tr.gelismis.lutInvalid);
       }
     };
     reader.readAsText(file);
@@ -296,7 +296,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
       ) : (
         <div className="flex flex-col items-center justify-center p-6 text-center text-ink-3 gap-1">
           <Layers className="w-8 h-8 text-disabled-ink" />
-          <span className="text-sm">Seride henüz fotoğraf yok</span>
+          <span className="text-sm">{tr.carousel.emptySeries}</span>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -315,7 +315,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
 
   const stageToolbar = (
     <>
-      <div role="radiogroup" aria-label="Hedef platform" className="flex p-0.5 rounded-xl bg-surface-2 border border-separator">
+      <div role="radiogroup" aria-label={tr.carousel.target} className="flex p-0.5 rounded-xl bg-surface-2 border border-separator">
         {(["instagram", "tiktok"] as const).map((t) => (
           <button
             key={t}
@@ -339,8 +339,8 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         onClick={() => setShowOverlay((v) => !v)}
         disabled={!hasPhoto}
         aria-pressed={!showOverlay}
-        aria-label={showOverlay ? "Arayüz katmanını gizle" : "Arayüz katmanını göster"}
-        title={showOverlay ? "Arayüz katmanını gizle" : "Arayüz katmanını göster"}
+        aria-label={showOverlay ? tr.carousel.overlayHide : tr.carousel.overlayShow}
+        title={showOverlay ? tr.carousel.overlayHide : tr.carousel.overlayShow}
         className={`touch-target press shrink-0 rounded-xl border ${
           showOverlay ? "bg-surface-2 border-separator text-ink-1" : "bg-accent/15 border-accent text-accent"
         }`}
@@ -352,10 +352,10 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         type="button"
         onClick={() => setFitMode(fitMode === "fill" ? "fit" : "fill")}
         disabled={!hasPhoto}
-        aria-label="Doldur veya sığdır"
+        aria-label={tr.carousel.fitToggle}
         className="press shrink-0 h-11 px-3 rounded-xl bg-surface-2 border border-separator text-xs font-semibold text-ink-1"
       >
-        {fitMode === "fill" ? "Doldur" : "Sığdır"}
+        {fitMode === "fill" ? tr.carousel.fill : tr.carousel.fit}
       </button>
     </>
   );
@@ -386,7 +386,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
             draggingRef.current = false;
             scheduleRender();
           }}
-          label="Yoğunluk"
+          label={tr.common.amount}
           value={itemIntensity}
           min={0}
           max={100}
@@ -408,7 +408,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
           aria-expanded={isToolsOpen}
           className="h-11 flex items-center justify-between text-sm text-ink-2"
         >
-          <span>Araçlar</span>
+          <span>{tr.common.tools}</span>
           <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isToolsOpen ? "rotate-180" : ""}`} />
         </button>
 
@@ -433,7 +433,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
               <button
                 type="button"
                 onClick={() => actions.setCustomLut(null)}
-                aria-label="Yüklü LUT'u kaldır"
+                aria-label={tr.gelismis.lutRemove}
                 className="touch-target press rounded-xl text-ink-2"
               >
                 <X className="w-4 h-4" />
@@ -485,7 +485,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
         }`}
       >
         <Sliders className="w-4 h-4" />
-        <span>Düzenle</span>
+        <span>{tr.carousel.editToggle}</span>
       </button>
     </div>
   );
@@ -522,7 +522,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
               className="h-11 px-3 text-left text-sm text-ink-1 hover:bg-separator rounded-lg flex items-center gap-2"
             >
               <Star className="w-4 h-4 text-ink-2" />
-              <span>Kapak yap</span>
+              <span>{tr.carousel.makeCover}</span>
             </button>
             <button
               type="button"
@@ -530,7 +530,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
               className="h-11 px-3 text-left text-sm text-ink-1 hover:bg-separator rounded-lg flex items-center gap-2"
             >
               <Palette className="w-4 h-4 text-ink-2" />
-              <span>Seriyi bu renge eşitle</span>
+              <span>{tr.carousel.syncToFrame}</span>
             </button>
             <div className="h-px bg-surface-2 my-0.5" />
             <button
@@ -539,7 +539,7 @@ export function CarouselStudio({ onBack }: CarouselStudioProps) {
               className="h-11 px-3 text-left text-sm text-danger hover:bg-danger/10 rounded-lg flex items-center gap-2"
             >
               <X className="w-4 h-4" />
-              <span>Seriden çıkar</span>
+              <span>{tr.carousel.removeFromSeries}</span>
             </button>
           </div>
         </>

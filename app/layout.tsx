@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { tr } from "@/lib/i18n/tr";
 import { PerfHud } from "@/components/studio/PerfHud";
 import { NoticeToast } from "@/components/studio/NoticeToast";
 import { THEME_COLOR } from "@/lib/ui/colors";
@@ -16,8 +17,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Curate",
-  description: "Fotoğraflarını tek dokunuşla düzenle, Instagram ve TikTok için hazırla.",
+  title: tr.app.name,
+  description: tr.app.description,
   icons: {
     icon: "/icon.svg",
   },

@@ -53,9 +53,9 @@ type EditTab = "preset" | "crop" | "fix";
 
 /** Sekme çubuğu üç sekmeye göre kurulu; Düzeltme D2'de görünür olacak (spec §4.5 E10) */
 const TABS: { id: EditTab; label: string; visible: boolean }[] = [
-  { id: "preset", label: "Preset", visible: true },
-  { id: "crop", label: "Kırp", visible: true },
-  { id: "fix", label: "Düzeltme", visible: false },
+  { id: "preset", label: tr.edit.tabPreset, visible: true },
+  { id: "crop", label: tr.edit.tabCrop, visible: true },
+  { id: "fix", label: tr.edit.tabFix, visible: false },
 ];
 
 const FRAME_PAD = 24;
@@ -67,7 +67,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     const img = new window.Image();
     if (!src.startsWith("data:") && !src.startsWith("blob:")) img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Görsel yüklenemedi"));
+    img.onerror = () => reject(new Error(tr.common.imageLoadFailed));
     img.src = src;
   });
 }
@@ -414,7 +414,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
     e.target.value = "";
   };
   const handleClear = () => {
-    if (window.confirm("Tüm fotoğraflar kaldırılsın mı?")) actions.clearItems();
+    if (window.confirm(tr.common.clearAllConfirm)) actions.clearItems();
   };
 
   // --- Export: kırpım kendi çözünürlüğünde, uzun kenar ≤ 4096; önizlemeyle aynı fonksiyon ---
@@ -523,7 +523,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
     stage = (
       <div data-stage className="relative w-[min(100cqw,calc(100cqh*4/5))] aspect-[4/5] rounded-xl border border-separator bg-base flex flex-col items-center justify-center gap-1 p-4 text-center text-ink-3">
         <Wand2 className="w-8 h-8 text-disabled-ink" />
-        <span className="text-sm">Düzenlemek için bir fotoğraf ekle</span>
+        <span className="text-sm">{tr.edit.empty}</span>
         <button type="button" onClick={() => fileInputRef.current?.click()} className="touch-target px-3 text-sm text-accent">
           {tr.common.uploadPhoto}
         </button>
@@ -578,7 +578,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
                 <div
                   key={pos}
                   role="slider"
-                  aria-label="Kırp köşesi"
+                  aria-label={tr.edit.cropCorner}
                   aria-valuenow={Math.round(fw)}
                   tabIndex={-1}
                   onPointerDown={onHandleDown}
@@ -619,7 +619,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
           <div className="absolute inset-0 bg-base flex items-center justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={item.proxyUrl || item.originalUrl} alt="" draggable={false} className="max-w-full max-h-full object-contain" />
-            <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 text-xs text-ink-1">Orijinal</span>
+            <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 text-xs text-ink-1">{tr.common.original}</span>
           </div>
         )}
       </div>
@@ -646,13 +646,13 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
               className="touch-target press shrink-0 h-11 px-3 rounded-xl text-sm font-semibold bg-surface-2 text-ink-1 flex items-center gap-1.5"
             >
               <Undo2 className="w-4 h-4" />
-              <span>Kaynağa dön</span>
+              <span>{tr.edit.backToSource}</span>
             </button>
           )}
         </div>
       ) : (
         <span className="text-xs text-ink-3 text-right truncate min-w-0">
-          {tab === "crop" ? "Sürükle, iki parmakla yakınlaştır" : "Basılı tut: orijinal"}
+          {tab === "crop" ? tr.common.dragPinchHint : tr.common.holdForOriginal}
         </span>
       )}
     </>
@@ -662,7 +662,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
 
   const panel = (
     <div className="flex flex-col gap-3 p-3">
-      <div role="tablist" aria-label="Düzenle sekmeleri" className="flex p-0.5 rounded-xl bg-surface-2 border border-separator">
+      <div role="tablist" aria-label={tr.edit.tabsAria} className="flex p-0.5 rounded-xl bg-surface-2 border border-separator">
         {TABS.filter((t) => t.visible).map((t) => (
           <button
             key={t.id}
@@ -687,7 +687,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
           <PresetStrip thumbs={thumbs} activeId={params.presetId} onSelect={(id) => setParams({ presetId: id })} />
           {params.presetId && (
             <ResettableSlider
-              label="Miktar"
+              label={tr.common.amount}
               value={intensityPct}
               min={0}
               max={100}
@@ -757,7 +757,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
               }`}
             >
               <FlipHorizontal2 className="w-4 h-4" />
-              <span>Çevir</span>
+              <span>{tr.edit.flip}</span>
             </button>
             <button
               type="button"
@@ -765,11 +765,11 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
               className="press ml-auto h-11 px-3 rounded-xl text-sm border border-separator bg-surface-2 text-ink-1 flex items-center gap-2"
             >
               <RotateCcw className="w-4 h-4" />
-              <span>Sıfırla</span>
+              <span>{tr.common.reset}</span>
             </button>
           </div>
           <ResettableSlider
-            label="Düzelt (ufuk)"
+            label={tr.edit.straighten}
             value={Math.round(crop.angle * 10) / 10}
             min={-EDIT_MAX_ANGLE}
             max={EDIT_MAX_ANGLE}
@@ -800,20 +800,20 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
         className="press ml-auto h-11 px-3 rounded-xl text-sm font-semibold bg-surface-2 text-ink-1 flex items-center gap-1.5"
       >
         <Sparkles className="w-4 h-4 text-ink-2" />
-        <span>AI ile onar</span>
+        <span>{tr.ai.title}</span>
       </button>
       {out && !canEnlarge && (
-        <span className="text-xs text-ink-2 text-right">Büyütmek için çok büyük</span>
+        <span className="text-xs text-ink-2 text-right">{tr.edit.tooLargeToEnlarge}</span>
       )}
       <button
         type="button"
         onClick={handleEnlarge}
         disabled={!hasPhoto || !out || isEnlarging || !canEnlarge}
-        title={out && !canEnlarge ? "Bu boyut için çok büyük" : undefined}
+        title={out && !canEnlarge ? tr.common.tooLarge : undefined}
         className={`press h-11 px-3 rounded-xl text-sm font-semibold bg-surface-2 text-ink-1 flex items-center gap-1.5`}
       >
         <ZoomIn className="w-4 h-4" />
-        <span>{isEnlarging ? "Hazırlanıyor" : "Büyüt"}</span>
+        <span>{isEnlarging ? tr.common.preparing : tr.edit.enlarge}</span>
       </button>
     </div>
   );

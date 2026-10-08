@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/lib/i18n/tr";
 import React, { useRef, useState } from "react";
 import { SuspectRegion } from "@/lib";
 
@@ -41,7 +42,7 @@ export function AiReviewScreen({ resultUrl, originalUrl, width, height, taskLabe
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="AI sonucunu kontrol et"
+      aria-label={tr.review.aria}
       className="fixed inset-0 z-[55] bg-base flex flex-col animate-fade-in"
     >
       <div
@@ -49,10 +50,10 @@ export function AiReviewScreen({ resultUrl, originalUrl, width, height, taskLabe
         className="shrink-0 px-4 pt-[calc(var(--safe-area-top)+12px)] pb-2 flex flex-col gap-1"
       >
         <div className="flex items-center justify-between gap-3">
-          <span className="text-[17px] font-semibold text-ink-1">Sonucu kontrol et</span>
+          <span className="text-[17px] font-semibold text-ink-1">{tr.review.title}</span>
           <span className="text-xs text-ink-2 truncate">{taskLabel}</span>
         </div>
-        <p className="text-sm text-ink-1">AI bazen fotoğrafta olmayan bir şey ekleyebilir. Kaydetmeden önce kontrol et.</p>
+        <p className="text-sm text-ink-1">{tr.review.warning}</p>
       </div>
 
       <div className="stage-fit flex-1 min-h-0 flex items-center justify-center px-3">
@@ -79,7 +80,7 @@ export function AiReviewScreen({ resultUrl, originalUrl, width, height, taskLabe
               }}
             >
               <span className="absolute left-0 top-full mt-1 whitespace-nowrap px-1.5 py-0.5 rounded bg-black/80 text-xs text-white">
-                Buraya dikkatli bak
+                {tr.review.lookHere}
               </span>
             </div>
           )}
@@ -87,7 +88,7 @@ export function AiReviewScreen({ resultUrl, originalUrl, width, height, taskLabe
             <div className="absolute inset-0 bg-base flex items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={originalUrl} alt="" draggable={false} className="w-full h-full object-contain pointer-events-none" />
-              <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 text-xs text-ink-1">Orijinal</span>
+              <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 text-xs text-ink-1">{tr.common.original}</span>
             </div>
           )}
         </div>
@@ -97,21 +98,21 @@ export function AiReviewScreen({ resultUrl, originalUrl, width, height, taskLabe
         data-review-bar
         className="shrink-0 px-4 pt-2 pb-[calc(var(--safe-area-bottom)+12px)] flex flex-col gap-2"
       >
-        <p className="text-xs text-ink-3 text-center">Basılı tut: orijinal</p>
+        <p className="text-xs text-ink-3 text-center">{tr.review.holdHint}</p>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={onDiscard}
             className="press flex-1 h-12 rounded-xl bg-surface-2 text-ink-1 text-sm font-semibold"
           >
-            At
+            {tr.review.discard}
           </button>
           <button
             type="button"
             onClick={onUse}
             className="press flex-1 h-12 rounded-xl bg-accent-fill text-on-accent text-sm font-semibold"
           >
-            Kullan
+            {tr.review.use}
           </button>
         </div>
       </div>

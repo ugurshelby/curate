@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/lib/i18n/tr";
 import React, { useEffect, useRef, useState } from "react";
 import { X, Sparkles, Lock } from "lucide-react";
 import {
@@ -127,7 +128,7 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
       const input = await prepareInput();
       // Hazırlık sırasında iptal: istek hiç gitmez (ücret yok)
       if (controller.signal.aborted) {
-        setError({ code: "canceled", message: "İptal edildi." });
+        setError({ code: "canceled", message: tr.ai.canceled });
         setStep("pick");
         return;
       }
@@ -138,7 +139,7 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
         }
         // Kontrol sayfası açılana kadar beklenir; açılamazsa sayfa boş ve kapatılamaz kalmaz
         if (await onResult(task, r.blob)) return;
-        setError({ code: "no_image", message: "Sonuç açılamadı." });
+        setError({ code: "no_image", message: tr.ai.resultUnreadable });
         setStep("pick");
         return;
       }
@@ -150,7 +151,7 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
       setError(r);
       setStep("pick");
     } catch {
-      setError({ code: "bad_image", message: "Fotoğraf hazırlanamadı." });
+      setError({ code: "bad_image", message: tr.ai.prepareFailed });
       setStep("pick");
     } finally {
       busyRef.current = false;
@@ -171,20 +172,20 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="AI ile onar"
+        aria-label={tr.ai.title}
         data-ai-sheet
         className="w-full max-w-lg max-h-[85dvh] overflow-y-auto rounded-t-sheet sm:rounded-sheet bg-surface p-5 pb-[calc(var(--safe-area-bottom)+20px)] border border-separator shadow-2xl animate-panel-in flex flex-col gap-3"
       >
         <div className="flex items-center justify-between">
           <span className="text-[17px] font-semibold text-ink-1 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-ink-2" />
-            AI ile onar
+            {tr.ai.title}
           </span>
           {step !== "running" && (
             <button
               type="button"
               onClick={onClose}
-              aria-label="Kapat"
+              aria-label={tr.common.close}
               className="touch-target press rounded-full text-ink-2 hover:text-ink-1"
             >
               <X className="w-5 h-5" />
@@ -192,7 +193,7 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
           )}
         </div>
 
-        {step === "checking" && <p className="text-sm text-ink-2 h-11 flex items-center">Kontrol ediliyor…</p>}
+        {step === "checking" && <p className="text-sm text-ink-2 h-11 flex items-center">{tr.ai.checking}</p>}
 
         {step === "pin" && (
           <form
@@ -204,7 +205,7 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
           >
             <label htmlFor="ai-pin" className="text-sm text-ink-2 flex items-center gap-1.5">
               <Lock className="w-4 h-4" />
-              AI PIN&apos;i (4 hane) — bu cihaz hatırlanır
+              {tr.ai.pinLabel}
             </label>
             <div className="flex gap-2">
               <input
@@ -224,7 +225,7 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
                 disabled={pin.length !== AI_PIN_LENGTH}
                 className="press h-11 px-4 rounded-xl bg-accent-fill text-on-accent text-sm font-semibold"
               >
-                Devam
+                {tr.ai.pinSubmit}
               </button>
             </div>
           </form>
@@ -232,10 +233,10 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
 
         {step === "pick" && (
           <>
-            <p className="text-xs text-ink-2">En iyi sıra: önce AI ile onar, sonra kırp ve preset uygula.</p>
+            <p className="text-xs text-ink-2">{tr.ai.orderHint}</p>
             {aspect && aspect.deviation > AI_ASPECT_WARN && (
               <p className="text-xs text-ink-1">
-                Bu fotoğrafın oranı desteklenen oranlardan farklı; model kareyi kırpabilir veya uzatabilir.
+                {tr.ai.aspectWarn}
               </p>
             )}
             <div className="flex flex-col rounded-xl bg-surface-2 border border-separator divide-y divide-separator">
@@ -268,7 +269,7 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
                   onClick={forget}
                   className="press h-11 px-2 -mr-2 text-xs text-ink-2 hover:text-ink-1"
                 >
-                  Bu cihazı unut
+                  {tr.ai.forgetDevice}
                 </button>
               </div>
             )}
@@ -289,7 +290,7 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
               onClick={cancel}
               className="press h-11 rounded-xl bg-surface-2 text-ink-1 text-sm font-semibold"
             >
-              İptal
+              {tr.ai.cancel}
             </button>
           </div>
         )}
@@ -300,7 +301,7 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
           </p>
         )}
 
-        <p className="text-xs text-ink-3">Bu işlem için fotoğraf Google&apos;a gönderilir.</p>
+        <p className="text-xs text-ink-3">{tr.ai.privacy}</p>
       </div>
     </div>
   );
