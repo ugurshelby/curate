@@ -40,24 +40,19 @@ const config: Config = {
         lg: "18px",
         sheet: "28px",
       },
+      // Yazı yığını app/globals.css --font-sans'ta (CDS §2). Arayüzde monospace yok: mono ailesi tanımlı değil.
       fontFamily: {
-        sans: [
-          "-apple-system",
-          "BlinkMacSystemFont",
-          "SF Pro Display",
-          "SF Pro Text",
-          "Inter",
-          "system-ui",
-          "sans-serif",
-        ],
-        mono: [
-          "ui-monospace",
-          "SFMono-Regular",
-          "Menlo",
-          "Monaco",
-          "Consolas",
-          "monospace",
-        ],
+        sans: ["var(--font-sans)"],
+      },
+      // Tip ölçeği (CDS §2): boyut, satır yüksekliği, harf aralığı birlikte; en küçük 12px
+      fontSize: {
+        display: ["28px", { lineHeight: "1.15", letterSpacing: "-0.02em", fontWeight: "600" }],
+        title: ["20px", { lineHeight: "1.2", letterSpacing: "-0.02em", fontWeight: "600" }],
+        headline: ["17px", { lineHeight: "1.3", letterSpacing: "-0.01em", fontWeight: "600" }],
+        body: ["15px", { lineHeight: "1.45", letterSpacing: "-0.005em" }],
+        subhead: ["14px", { lineHeight: "1.4" }],
+        footnote: ["13px", { lineHeight: "1.4" }],
+        caption: ["12px", { lineHeight: "1.35", letterSpacing: "0.01em", fontWeight: "500" }],
       },
       boxShadow: {
         glass: "inset 0 1px 0 rgb(var(--ink-1) / 0.12), 0 8px 32px rgb(var(--base) / 0.5)",

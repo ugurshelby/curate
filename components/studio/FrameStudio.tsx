@@ -8,7 +8,7 @@ import { StudioShell, StageNote } from "./StudioShell";
 import { AddMenu } from "./AddMenu";
 import { ReferencePicker } from "./ReferencePicker";
 import { extractAdaptiveGradient, AdaptiveGradientResult, useStudio, getStudioSelection, createStudioItem, createExportCanvas, PLATFORM_SPECS } from "@/lib";
-import { EXPORT_COLORS } from "@/lib/ui/colors";
+import { EXPORT_COLORS, STAMP_FONT_FAMILY } from "@/lib/ui/colors";
 
 interface FrameStudioProps {
   onBack: () => void;
@@ -183,7 +183,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
     if (showTimestamp) {
       const stampText = getTodayStamp();
       ctx.save();
-      ctx.font = "bold 26px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+      ctx.font = `bold 26px ${STAMP_FONT_FAMILY}`;
       ctx.fillStyle = frameType === "polaroid" ? EXPORT_COLORS.stampOnLight : EXPORT_COLORS.stampOnDark;
       ctx.shadowColor = EXPORT_COLORS.stampShadow;
       ctx.shadowBlur = 8;
@@ -233,11 +233,11 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
         )}
       </div>
 
-      {/* Analog tarih damgası: görüntünün parçası (export'taki monospace çizimle aynı), arayüz metni değil */}
+      {/* Analog tarih damgası: görüntünün parçası (export'taki çizimle aynı yazı tipi), arayüz metni değil */}
       {hasPhoto && showTimestamp && (
         <div
-          className="absolute bottom-3 right-4 font-mono font-bold tracking-widest text-xs select-none"
-          style={{ color: frameType === "polaroid" ? EXPORT_COLORS.stampOnLight : EXPORT_COLORS.stampOnDark, textShadow: `0 0 6px ${EXPORT_COLORS.stampShadow}` }}
+          className="absolute bottom-3 right-4 font-bold tracking-widest text-xs select-none"
+          style={{ fontFamily: STAMP_FONT_FAMILY, color: frameType === "polaroid" ? EXPORT_COLORS.stampOnLight : EXPORT_COLORS.stampOnDark, textShadow: `0 0 6px ${EXPORT_COLORS.stampShadow}` }}
         >
           {getTodayStamp()}
         </div>

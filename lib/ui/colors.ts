@@ -24,5 +24,11 @@ export const EXPORT_COLORS = {
   storyBlack: '#000000',
 } as const;
 
+/**
+ * Analog tarih damgasının yazı tipi: fotoğrafın (export içeriğinin) parçası, arayüz metni değil.
+ * Arayüzde monospace yasak (tests/ui-rules.test.ts); bu dosya tek istisna yeridir.
+ */
+export const STAMP_FONT_FAMILY = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+
 /** Tarayıcı çubuğu rengi (viewport.themeColor); zemin belirteciyle aynı */
 export const THEME_COLOR = '#000000';
