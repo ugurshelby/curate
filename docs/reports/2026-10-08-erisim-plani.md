@@ -1,6 +1,6 @@
 # Plan — Tüm uygulama için PIN kapısı (Faz 4-A) — 2026-10-08
 
-**Durum: KIRMIZI, sahip onayı bekliyor. Kod yazılmadı.** PIN değeri hiçbir yerde yazılı değil ve değiştirilmeyecek.
+**Durum: onaylandı (D27) ve uygulandı 2026-10-08.** PIN değeri hiçbir yerde yazılı değil ve değiştirilmeyecek.
 
 ## 1. İstek
 Uygulamaya sahibin dışında kimse giremesin. PIN sabit kalır (ortam değişkeni `CURATE_AI_PASSWORD`, 4 hane, yalnız sahip bilir).

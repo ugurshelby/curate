@@ -36,7 +36,7 @@ Yalnız sahip (Uğur). Başka kullanıcı, hesap, paylaşım yok.
 | Story | 2–6 fotoğraf, otomatik grid, hücre başına kadraj | 1080×1920 |
 | Çerçeve | Polaroid, mat, akıllı gradyan zemin, tarih damgası | 10 standart oran (4:5, 1:1, 9:16, 3:4, 2:3, 5:4, 4:3, 3:2, 16:9, 1.91:1), kısa kenar 1080 ya da 4K (2160); varsayılan 1080×1350 |
 | Büyüt (Upscale) | Yerel 2×/4× büyütme | Kaynak × çarpan (uzun kenar ≤ 8192, ≤ 16 MP) |
-| Düzenle | Tek fotoğraf: Preset, Kırp, Düzeltme (D2, yapılacak), AI ile onar | Kırpımın kendi çözünürlüğü (uzun kenar ≤ 4096) |
+| Düzenle | Tek fotoğraf: Preset (AI Preset dahil), Kırp, Düzeltme, AI ile onar | Kırpımın kendi çözünürlüğü (uzun kenar ≤ 4096) |
 
 ## Kapsam dışı
 Panorama, AI ile içerik üretme (inpainting/outpainting), hesaplar, bulut senkronu, sunucuda fotoğraf saklama, manuel renk arayüzü, kamera/çekim asistanı, ışık sızıntısı ve eklenen estetik vinyet. Tam liste: `AGENTS.md` §4.

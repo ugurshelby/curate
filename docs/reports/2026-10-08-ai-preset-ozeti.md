@@ -1,6 +1,6 @@
 # Tasarım Özeti — AI Preset ("Işık ve Renk Planı") — 2026-10-08
 
-**Durum: sahip onayı bekliyor. Kod yazılmadı.** Görev belgesi §8.3: sahip "tamam" derse kodlanır; itiraz gelmezse bu özetten bir oturum sonra başlanır. Ücretli çağrı yapılmadı (0/6).
+**Durum: onaylandı (D28) ve uygulandı 2026-10-08.** Sapma: "Bölgeleri göster" katmanı yapılmadı; kırpım dönüşümü planı orijinal koordinatta saklayarak çözüldü; güvenli ölçek planla birlikte saklanır. Görev belgesi §8.3: sahip "tamam" derse kodlanır; itiraz gelmezse bu özetten bir oturum sonra başlanır. Ücretli çağrı yapılmadı (0/6).
 
 ## 1. Amaç
 Düz preset maske yapamaz: gökyüzünü koyulaştırırken yüzü aydınlatamaz. AI fotoğrafa bakıp **bölgelere özel bir ışık/renk planı** (JSON) döndürür; Curate planı kendi yerel motoruyla uygular.

@@ -131,6 +131,33 @@ export const tr = {
     prepareFailed: 'Fotoğraf hazırlanamadı.',
   },
 
+  aiPreset: {
+    card: 'AI Preset',
+    title: 'AI Preset',
+    intro: 'AI fotoğrafına bakıp ışık ve renk planı çıkarır; Curate planı cihazında uygular. AI görsel üretmez.',
+    styles: {
+      natural_portrait: 'Doğal Portre',
+      golden_hour: 'Altın Saat',
+      cinematic_night: 'Sinematik Gece',
+      clean_daylight: 'Temiz Gündüz',
+    } as Record<string, string>,
+    hints: {
+      natural_portrait: 'Yüzde eşit ışık, doğal ten',
+      golden_hour: 'Sıcak, alçak güneş hissi',
+      cinematic_night: 'Derin gölge, kontrollü ışıklar',
+      clean_daylight: 'Nötr beyaz, canlı ama inandırıcı',
+    } as Record<string, string>,
+    useCurrent: (style: string) => `Mevcut planı kullan: ${style}`,
+    running: (style: string) => `${style} planı hazırlanıyor…`,
+    seconds: (n: number, est: number) => `${n} sn / ~${est} sn`,
+    estimate: (sec: number, cost: number) => `~${sec} sn · ~₺${cost.toLocaleString('tr-TR')}`,
+    privacy: 'Fotoğrafın küçük bir kopyası Google’a gönderilir; geri yalnız ayar planı gelir.',
+    applied: (style: string) => `AI Preset uygulandı: ${style}`,
+    name: (style: string) => `AI · ${style}`,
+    cancel: 'İptal',
+    unlock: 'PIN ekranına git',
+  },
+
   review: {
     aria: 'AI sonucunu kontrol et',
     title: 'Sonucu kontrol et',

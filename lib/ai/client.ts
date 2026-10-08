@@ -14,7 +14,13 @@ import {
   AiErrorCode,
   AiTask,
   aiInputSize,
+  AI_HEADER_STYLE,
+  AI_PLAN_INPUT_JPEG_QUALITY,
+  AI_PLAN_INPUT_LONG_EDGE,
+  AI_PLAN_TASK,
+  type AiPlanStyle,
 } from './config';
+import { planSafeScale, validatePlan, type AiPlanRecord } from '../engine/ai-plan';
 
 /** Eski sürümün localStorage'da düz metin tuttuğu şifreyi siler */
 export function clearLegacyAiPassword(): void {
@@ -152,4 +158,57 @@ export async function prepareAiInput(img: CanvasImageSource & { naturalWidth: nu
   return new Promise<Blob>((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('JPEG üretilemedi'))), 'image/jpeg', AI_INPUT_JPEG_QUALITY),
   );
+}
+
+// --- AI Preset: Işık ve Renk Planı (D28) ---
+
+export type AiPlanResult = { ok: true; record: AiPlanRecord; remainingDay: number | null; remainingMonth: number | null } | AiFailure;
+
+/**
+ * Sends a small preview of the original photo (long edge ≤ 768, JPEG 0.8) and gets back a JSON plan only.
+ * The plan is validated again here, and its safety scale is measured on the same preview pixels.
+ */
+export async function requestAiPlan(
+  style: AiPlanStyle,
+  img: CanvasImageSource & { naturalWidth: number; naturalHeight: number },
+  signal?: AbortSignal,
+  fetchFn: typeof fetch = fetch,
+): Promise<AiPlanResult> {
+  const s = Math.min(1, AI_PLAN_INPUT_LONG_EDGE / Math.max(img.naturalWidth, img.naturalHeight));
+  const width = Math.max(1, Math.round(img.naturalWidth * s));
+  const height = Math.max(1, Math.round(img.naturalHeight * s));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return fail('bad_image');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, width, height);
+  const jpeg = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', AI_PLAN_INPUT_JPEG_QUALITY));
+  if (!jpeg) return fail('bad_image');
+  try {
+    const res = await fetchFn(AI_ENDPOINT, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { [AI_HEADER_TASK]: AI_PLAN_TASK, [AI_HEADER_STYLE]: style, 'Content-Type': 'image/jpeg' },
+      body: jpeg,
+      signal,
+      cache: 'no-store',
+    });
+    if (!res.ok) return failureFromResponse(res);
+    const json = (await res.json()) as { plan?: unknown };
+    const v = validatePlan(json.plan);
+    if (!v.ok) return fail('bad_plan');
+    const safeScale = planSafeScale(ctx.getImageData(0, 0, width, height), v.plan);
+    return {
+      ok: true,
+      record: { style, plan: v.plan, safeScale, createdAt: Date.now() },
+      remainingDay: numHeader(res, AI_HEADER_REMAINING_DAY),
+      remainingMonth: numHeader(res, AI_HEADER_REMAINING_MONTH),
+    };
+  } catch (err) {
+    if (signal?.aborted || (err instanceof Error && err.name === 'AbortError')) return fail('canceled');
+    return fail('network');
+  }
 }

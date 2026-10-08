@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Wand2 } from "lucide-react";
-import { CURATE_PRESETS, calculateAspectCrop, applyPresetToImageData, measureScene, suggestScene, SceneSuggestion } from "@/lib";
+import { Sparkles, Wand2 } from "lucide-react";
+import { CURATE_PRESETS, calculateAspectCrop, applyPresetToImageData, measureScene, suggestScene, SceneSuggestion, AI_PLAN_PRESET_ID } from "@/lib";
 import { tr } from "@/lib/i18n/tr";
 
 export const PRESET_THUMB_W = 100;
@@ -11,6 +11,7 @@ export const PRESET_THUMB_H = 76;
 /** UI name of a preset id (Turkish copy in lib/i18n/tr.ts) */
 export function presetName(id: string | null): string {
   if (!id) return tr.presets.original;
+  if (id === AI_PLAN_PRESET_ID) return tr.aiPreset.card;
   return tr.presets.items[id]?.name ?? id;
 }
 
@@ -83,10 +84,12 @@ interface PresetStripProps {
   onSelect: (presetId: string | null) => void;
   /** Akıllı Otomatik: picks preset + amount from the scene (first card) */
   onAuto?: () => void;
+  /** AI Preset card (Düzenle only, D28): opens the style sheet */
+  onAiPreset?: () => void;
 }
 
 /** One horizontally scrolling row (CDS §6.3); Carousel and Düzenle share it */
-export function PresetStrip({ thumbs, activeId, onSelect, onAuto }: PresetStripProps) {
+export function PresetStrip({ thumbs, activeId, onSelect, onAuto, onAiPreset }: PresetStripProps) {
   const cards = [
     { id: null as string | null, name: tr.presets.original, hint: "" },
     ...CURATE_PRESETS.map((p) => ({ id: p.id as string | null, name: presetName(p.id), hint: tr.presets.items[p.id]?.hint ?? "" })),
@@ -104,6 +107,21 @@ export function PresetStrip({ thumbs, activeId, onSelect, onAuto }: PresetStripP
         >
           <Wand2 className="w-5 h-5" />
           <span className="text-xs font-semibold">{tr.presets.auto}</span>
+        </button>
+      )}
+      {onAiPreset && (
+        <button
+          type="button"
+          onClick={onAiPreset}
+          aria-pressed={activeId === AI_PLAN_PRESET_ID}
+          data-preset={AI_PLAN_PRESET_ID}
+          className={`press shrink-0 snap-start rounded-xl border-2 bg-surface-2 flex flex-col items-center justify-center gap-1.5 text-ink-1 ${
+            activeId === AI_PLAN_PRESET_ID ? "border-accent" : "border-separator"
+          }`}
+          style={{ width: PRESET_THUMB_W - 24, height: PRESET_THUMB_H }}
+        >
+          <Sparkles className="w-5 h-5" />
+          <span className="text-xs font-semibold">{tr.aiPreset.card}</span>
         </button>
       )}
       {cards.map((p) => {

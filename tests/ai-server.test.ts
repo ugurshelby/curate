@@ -14,6 +14,11 @@ import {
   aiInputSize,
   buildVertexBody,
   nearestAspectRatio,
+  AI_DEFAULT_DAILY_LIMIT,
+  AI_DEFAULT_MONTHLY_LIMIT,
+  AI_PLAN_MODELS,
+  AI_PLAN_RESPONSE_SCHEMA,
+  aiPlanPrompt,
 } from '../lib/ai/config';
 import {
   handleAiPost,
@@ -26,6 +31,7 @@ import {
   verifyDeviceToken,
   AiDeps,
   readAiConfig,
+  extractText,
 } from '../lib/ai/server';
 import { MemoryCounterStore, UpstashCounterStore, counterStoreFromEnv, istanbulDay, redisEnv, CounterStore } from '../lib/ai/quota';
 
@@ -192,14 +198,14 @@ describe('AI proxy: access and limits', () => {
     const { deps } = makeDeps();
     const res = await handleAiStatus(status(), deps);
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ enabled: true, remainingDay: 20, remainingMonth: 150, counter: 'memory' });
+    expect(await res.json()).toMatchObject({ enabled: true, remainingDay: AI_DEFAULT_DAILY_LIMIT, remainingMonth: AI_DEFAULT_MONTHLY_LIMIT, counter: 'memory' });
   });
 
   it('correct PIN → 200, app session cookie (HttpOnly, Secure, SameSite=Lax, Path=/, 365 days) that then works for AI', async () => {
     const { deps } = makeDeps();
     const res = await handleAiUnlock(unlock(PIN), deps);
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ enabled: true, remainingDay: 20, remainingMonth: 150 });
+    expect(await res.json()).toMatchObject({ enabled: true, remainingDay: AI_DEFAULT_DAILY_LIMIT, remainingMonth: AI_DEFAULT_MONTHLY_LIMIT });
     const [set, clearLegacy] = res.headers.getSetCookie();
     expect(set).toMatch(/^curate_session=s1\.\d+\.[A-Za-z0-9_-]{43};/);
     for (const attr of ['Path=/;', 'Max-Age=31536000', 'HttpOnly', 'Secure', 'SameSite=Lax']) expect(set).toContain(attr);
@@ -527,5 +533,75 @@ describe('AI quota store', () => {
   it('day boundary is Europe/Istanbul', () => {
     expect(istanbulDay(new Date('2026-10-02T21:30:00Z'))).toBe('2026-10-03');
     expect(istanbulDay(new Date('2026-10-02T20:30:00Z'))).toBe('2026-10-02');
+  });
+});
+
+describe('AI Preset plan (task P, D28)', () => {
+  const PLAN = {
+    version: 1,
+    scene: { type: 'landscape', light: 'golden', issues: ['bright_sky'] },
+    global: { exposure: 0.1, temperature: 0.05 },
+    regions: [{ label: 'sky', shape: { type: 'linear', x0: 0.5, y0: 0, x1: 0.5, y1: 0.45, feather: 0.1 }, adjust: { exposure: -0.3 } }],
+  };
+  const vertexText = (text: string) =>
+    new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  const planPost = async (style = 'golden_hour', cookie?: string) => {
+    const r = post(await jpeg(64, 48), { task: 'P', cookie });
+    const h = new Headers(r.headers);
+    h.set('x-curate-style', style);
+    return new Request(r.url, { method: 'POST', headers: h, body: await r.arrayBuffer() });
+  };
+
+  it('returns a validated JSON plan (no pixels), sends a JSON-only request with a schema, counts one quota unit', async () => {
+    const fetchFn = vi.fn(async () => vertexText(JSON.stringify(PLAN)));
+    const { deps, logs } = makeDeps({ fetchFn: fetchFn as unknown as typeof fetch });
+    const res = await handleAiPost(await planPost(), deps);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('application/json');
+    const body = await res.json();
+    expect(body.plan.regions[0].label).toBe('sky');
+    expect(res.headers.get('x-curate-remaining-day')).toBe(String(AI_DEFAULT_DAILY_LIMIT - 1));
+    const sent = JSON.parse((fetchFn.mock.calls[0] as unknown as [string, RequestInit])[1].body as string);
+    expect(sent.generationConfig.responseMimeType).toBe('application/json');
+    expect(sent.generationConfig.responseSchema).toEqual(AI_PLAN_RESPONSE_SCHEMA);
+    expect(sent.generationConfig.responseModalities).toBeUndefined();
+    expect((fetchFn.mock.calls[0] as unknown as [string])[0]).toContain(AI_PLAN_MODELS[0]);
+    expect(logs.at(-1)).toMatchObject({ task: 'P', status: 'ok', model: AI_PLAN_MODELS[0] });
+    expect(JSON.stringify(logs)).not.toContain(PIN);
+  });
+
+  it('404 (unknown or retired model) moves on to the next model id', async () => {
+    let n = 0;
+    const fetchFn = vi.fn(async () => (n++ === 0 ? new Response('{}', { status: 404 }) : vertexText(JSON.stringify(PLAN))));
+    const { deps, logs } = makeDeps({ fetchFn: fetchFn as unknown as typeof fetch });
+    expect((await handleAiPost(await planPost(), deps)).status).toBe(200);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(logs.at(-1)).toMatchObject({ model: AI_PLAN_MODELS[1] });
+  });
+
+  it('a broken or out-of-schema answer → bad_plan; unknown style → bad_task (no model call)', async () => {
+    for (const text of ['not json', JSON.stringify({ ...PLAN, version: 2 }), JSON.stringify({ ...PLAN, extra: 1 })]) {
+      const { deps } = makeDeps({ fetchFn: vi.fn(async () => vertexText(text)) as unknown as typeof fetch });
+      const r = await handleAiPost(await planPost(), deps);
+      expect((await r.json()).error).toBe('bad_plan');
+    }
+    const fetchFn = vi.fn();
+    const { deps } = makeDeps({ fetchFn: fetchFn as unknown as typeof fetch });
+    expect((await (await handleAiPost(await planPost('neon'), deps)).json()).error).toBe('bad_task');
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it('needs a paired device like every AI task', async () => {
+    const fetchFn = vi.fn();
+    const { deps } = makeDeps({ fetchFn: fetchFn as unknown as typeof fetch });
+    expect((await handleAiPost(await planPost('golden_hour', ''), deps)).status).toBe(401);
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it('prompt forbids vignettes and generated images; extractText skips thought parts', () => {
+    const p = aiPlanPrompt('natural_portrait');
+    expect(p).toMatch(/never an image/);
+    expect(p).toMatch(/vignette/);
+    expect(extractText({ candidates: [{ content: { parts: [{ text: 'x', thought: true }, { text: '{}' }] } }] })).toBe('{}');
   });
 });

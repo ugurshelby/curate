@@ -7,6 +7,7 @@
 import type { StudioItem, StudioState } from './types';
 import { Prefs, loadPrefs, savePrefs, prefsFromState, statePatchFromPrefs } from './prefs';
 import { CacheMeta, CachedPhoto, PhotoStore, orderRestored, planCacheSync, toCachedPhoto } from './library-cache';
+import { AI_PLAN_PRESET_ID, sanitizeAiPlanRecord } from '../engine/ai-plan';
 
 export interface SyncStore {
   getState(): StudioState;
@@ -151,8 +152,17 @@ export class DeviceSync {
     const state = this.deps.store.getState();
     const pick = <T>(rec: Record<string, T> | undefined) =>
       Object.fromEntries(Object.entries(rec ?? {}).filter(([id]) => ids.has(id))) as Record<string, T>;
+    // AI plans come back from storage: validate them again (D28)
+    const edits = pick(meta?.edits);
+    for (const [id, e] of Object.entries(edits)) {
+      if (!e || !('aiPlan' in e)) continue;
+      const rec = sanitizeAiPlanRecord(e.aiPlan);
+      const next = { ...e, aiPlan: rec ?? undefined };
+      if (!rec && next.presetId === AI_PLAN_PRESET_ID) next.presetId = null;
+      edits[id] = next;
+    }
     this.deps.store.setState({
-      edits: { ...state.edits, ...pick(meta?.edits) },
+      edits: { ...state.edits, ...edits },
       storyLayout: { ...state.storyLayout, cellTransforms: { ...state.storyLayout.cellTransforms, ...pick(meta?.cellTransforms) } },
       selectedItemId: meta?.selectedId && ids.has(meta.selectedId) ? meta.selectedId : state.selectedItemId,
     });

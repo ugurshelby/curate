@@ -38,6 +38,7 @@ Son doğrulama: 2026-10-08
 | `components/studio/UpscaleStudio.tsx` | Büyüt modülü |
 | `components/studio/EditStudio.tsx` | Düzenle modülü (Preset, Kırp, Düzeltme; AI ile onar) |
 | `components/studio/AiRepairSheet.tsx`, `AiReviewScreen.tsx` | AI görev sayfası (PIN adımı dahil) ve önce/sonra kontrol sayfası |
+| `components/studio/AiPresetSheet.tsx` | AI Preset stil sayfası (D28) |
 | `components/studio/QuickExportSheet.tsx` | Export sayfası |
 | `components/studio/PresetStrip.tsx` | Yatay preset kartları (Carousel + Düzenle) |
 | `components/studio/Filmstrip.tsx` | Filmstrip ve sürükleyerek sıralama |
@@ -48,7 +49,7 @@ Son doğrulama: 2026-10-08
 | `components/studio/NoticeToast.tsx`, `PerfHud.tsx`, `ResettableSlider.tsx`, `InstagramOverlay.tsx`, `TikTokOverlay.tsx` | Bildirim, `?perf=1` ölçüm, kaydırıcı, platform katmanları |
 | `lib/index.ts` | Ortak dışa aktarım |
 | `lib/core/` | `types`, `state-machine` (store), `use-studio`, `worker-bridge`, `reference-images`, `prefs` (localStorage tercihler), `library-cache` (IndexedDB fotoğraf hafızası), `device-sync` (store ↔ cihaz eşitleyici) |
-| `lib/engine/` | `carousel-render` (önizleme=export), `corrections` (Düzeltme: 6 satır + Otomatik, parçalı), `presets` (kütüphane v2, 16 preset), `scene` (Akıllı Otomatik), `frame-render` (Çerçeve, önizleme=export), `harmonize`, `edit-geometry`, `story-layout`, `upscale-lanczos`, `upscale-slider`, `adaptive-gradient`, `proxy` |
+| `lib/engine/` | `carousel-render` (önizleme=export), `corrections` (Düzeltme: 6 satır + Otomatik, parçalı), `presets` (kütüphane v2, 16 preset), `scene` (Akıllı Otomatik), `frame-render` (Çerçeve, önizleme=export), `ai-plan` (AI Preset planı: doğrulayıcı, maskeler, uygulama), `harmonize`, `edit-geometry`, `story-layout`, `upscale-lanczos`, `upscale-slider`, `adaptive-gradient`, `proxy` |
 | `lib/export/` | `platform-specs` (hedefler ve Çerçeve boyutları `FRAME_SIZES` veri olarak), `export-plan` (kalite basamağı, dosya adı), `exif-sanitizer`, `zip-packager` |
 | `middleware.ts`, `lib/access/` | Tüm uygulama PIN kapısı (D27): `session` (imza, karar, Edge+Node), `client` (kilit ekranı isteği); ekran `app/kilit/page.tsx` |
 | `lib/ai/` | `config` (model/istem/₺ tek yer), `server`, `quota`, `client`, `diff-check` |

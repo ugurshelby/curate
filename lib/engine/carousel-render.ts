@@ -16,6 +16,7 @@ import { applyHarmonizeSync, extractColorMetrics } from './harmonize';
 import { applyPresetToImageData, CURATE_PRESETS } from './presets';
 import { EXPORT_COLORS } from '../ui/colors';
 import { applyCorrections, CorrectionParams, correctionsKey } from './corrections';
+import { applyAiPlan, planMapping, type AiLightPlan, type PlanGeometry } from './ai-plan';
 
 /** Export width the look is calibrated for (grain grid). */
 export const CAROUSEL_OUTPUT_WIDTH = 1080;
@@ -33,6 +34,15 @@ export interface CarouselRenderOptions {
   crop?: EditCrop | null;
   /** Düzenle → Düzeltme (D2): taban adımında, kırptan sonra, görünümden önce */
   corrections?: CorrectionParams | null;
+  /** Düzenle → AI Preset (D28): görünüm adımında, preset'ten önce; koordinatlar orijinal fotoğrafta */
+  aiPlan?: AiPlanRender | null;
+}
+
+export interface AiPlanRender {
+  plan: AiLightPlan;
+  /** Miktar × planın güvenli ölçeği (planSafeScale) */
+  strength: number;
+  geometry: PlanGeometry;
 }
 
 export interface CarouselBase {
@@ -127,11 +137,12 @@ export function renderCarouselBase(
 /** Step 2: preset on a copy of the base. The base is never mutated (it is cached by the preview). */
 export function applyCarouselLook(
   base: ImageData,
-  options: Pick<CarouselRenderOptions, 'presetId' | 'presetIntensity'>,
+  options: Pick<CarouselRenderOptions, 'presetId' | 'presetIntensity' | 'aiPlan'>,
   resolutionScale: number = 1
 ): ImageData {
-  const { presetId, presetIntensity = 1.0 } = options;
+  const { presetId, presetIntensity = 1.0, aiPlan } = options;
   const out = cloneImageData(base);
+  if (aiPlan) applyAiPlan(out, aiPlan.plan, aiPlan.strength, planMapping(aiPlan.geometry, out.width, out.height));
 
   if (presetId) {
     const preset = CURATE_PRESETS.find((p) => p.id === presetId);

@@ -141,6 +141,8 @@ export interface EditParams {
   crop: EditCrop;
   /** Düzeltme sekmesi (D2); yoksa hepsi kapalı */
   corrections?: import('../engine/corrections').CorrectionParams;
+  /** AI Preset planı (D28); presetId === AI_PLAN_PRESET_ID iken uygulanır */
+  aiPlan?: import('../engine/ai-plan').AiPlanRecord;
 }
 
 export interface StudioItem {

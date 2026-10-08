@@ -29,7 +29,15 @@ import {
   AI_PIN_PATTERN,
   AI_RETRY_WAIT_MS,
   AI_TASKS,
+  AI_HEADER_STYLE,
+  AI_PLAN_COST_TRY,
+  AI_PLAN_EST_SECONDS,
+  AI_PLAN_MAX_TEXT,
+  AI_PLAN_MODELS,
+  AI_PLAN_TASK,
   AiErrorCode,
+  buildPlanBody,
+  isAiPlanStyle,
   AiTask,
   aiModelId,
   buildVertexBody,
@@ -38,6 +46,7 @@ import {
 } from './config';
 import { CounterStore, DAY_TTL_S, MONTH_TTL_S, counterStoreFromEnv, quotaKeys } from './quota';
 import { SESSION_COOKIE, sessionCookie, signSession, verifySession } from '../access/session';
+import { validatePlan } from '../engine/ai-plan';
 
 type EnvLike = Record<string, string | undefined>;
 
@@ -109,6 +118,7 @@ const ERROR_STATUS: Record<AiErrorCode, number> = {
   model_busy: 503,
   model_error: 502,
   no_image: 502,
+  bad_plan: 502,
   canceled: 499,
   network: 502,
 };
@@ -373,55 +383,153 @@ function isAbort(err: unknown): boolean {
 }
 
 /** POST: tek görsel, tek görev */
+/** Reads and checks the posted JPEG (size, format) */
+async function readJpeg(req: Request): Promise<{ input: Buffer; width: number; height: number } | Response> {
+  const declared = Number(req.headers.get('content-length') ?? 0);
+  if (declared > AI_MAX_INPUT_BYTES) return errorResponse('too_large');
+  const input = Buffer.from(await req.arrayBuffer());
+  if (input.length > AI_MAX_INPUT_BYTES) return errorResponse('too_large');
+  if (input.length === 0) return errorResponse('bad_image');
+  try {
+    const meta = await sharp(input).metadata();
+    if (meta.format !== 'jpeg' || !meta.width || !meta.height) return errorResponse('bad_image');
+    return { input, width: meta.width, height: meta.height };
+  } catch {
+    return errorResponse('bad_image');
+  }
+}
+
+/** Atomic quota reservation before the model call (not given back if the model fails: Google may still bill) */
+async function reserveQuota(deps: AiDeps): Promise<Record<string, string> | Response> {
+  const nowDate = new Date(deps.now());
+  const dayKey = quotaKeys.day(nowDate);
+  const monthKey = quotaKeys.month(nowDate);
+  try {
+    const [usedDay, usedMonth] = await Promise.all([deps.counter.incr(dayKey, DAY_TTL_S), deps.counter.incr(monthKey, MONTH_TTL_S)]);
+    if (usedDay > deps.config.dailyLimit || usedMonth > deps.config.monthlyLimit) {
+      await Promise.all([deps.counter.decr(dayKey), deps.counter.decr(monthKey)]);
+      return errorResponse(usedDay > deps.config.dailyLimit ? 'quota_day' : 'quota_month');
+    }
+    return {
+      [AI_HEADER_REMAINING_DAY]: String(deps.config.dailyLimit - usedDay),
+      [AI_HEADER_REMAINING_MONTH]: String(deps.config.monthlyLimit - usedMonth),
+    };
+  } catch {
+    return errorResponse('service_error');
+  }
+}
+
+/** First text part of a Vertex generateContent answer */
+export function extractText(json: unknown): string | null {
+  const parts = (json as { candidates?: { content?: { parts?: { text?: unknown; thought?: unknown }[] } }[] })?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return null;
+  for (const p of parts) if (typeof p?.text === 'string' && !p.thought) return p.text;
+  return null;
+}
+
+/**
+ * AI Preset (task P, D28): the photo preview goes to a vision model that answers with a JSON plan only.
+ * Models are tried in order; 404 (unknown/retired id) costs nothing and moves to the next one.
+ * The plan is validated and clamped here and again in the browser. No pixels come back.
+ */
+async function handleAiPlan(req: Request, deps: AiDeps, started: number): Promise<Response> {
+  const style = req.headers.get(AI_HEADER_STYLE);
+  if (!isAiPlanStyle(style)) return errorResponse('bad_task');
+  const jpeg = await readJpeg(req);
+  if (jpeg instanceof Response) return jpeg;
+  const quota = await reserveQuota(deps);
+  if (quota instanceof Response) return quota;
+
+  const body = JSON.stringify(buildPlanBody(style, jpeg.input.toString('base64')));
+  const logBase = { task: AI_PLAN_TASK, style, inBytes: jpeg.input.length, inW: jpeg.width, inH: jpeg.height, costTry: AI_PLAN_COST_TRY };
+  const finish = (status: string, extra: Record<string, unknown> = {}) => deps.log({ ...logBase, status, ms: deps.now() - started, ...extra });
+
+  let attempts = 0;
+  let res: Response | null = null;
+  let model: string = AI_PLAN_MODELS[0];
+  for (let mi = 0; mi < AI_PLAN_MODELS.length; ) {
+    model = AI_PLAN_MODELS[mi];
+    attempts++;
+    const left = deps.budgetMs - (deps.now() - started);
+    if (left <= 0) {
+      finish('timeout', { model, attempts });
+      return errorResponse('timeout', quota);
+    }
+    const timeout = AbortSignal.timeout(left);
+    const signal = req.signal ? AbortSignal.any([req.signal, timeout]) : timeout;
+    try {
+      res = await deps.fetchFn(vertexEndpoint(model), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': deps.config.apiKey as string },
+        body,
+        signal,
+        cache: 'no-store',
+      });
+    } catch (err) {
+      if (req.signal?.aborted) {
+        finish('canceled', { model, attempts });
+        return errorResponse('canceled', quota);
+      }
+      finish(isAbort(err) ? 'timeout' : 'network', { model, attempts });
+      return errorResponse(isAbort(err) ? 'timeout' : 'network', quota);
+    }
+    if (res.status === 404) {
+      mi++;
+      continue;
+    }
+    const retryable = res.status === 429 || res.status === 503;
+    const remainingAfterWait = deps.budgetMs - (deps.now() - started) - AI_RETRY_WAIT_MS;
+    if (retryable && attempts === 1 && remainingAfterWait > AI_PLAN_EST_SECONDS * 1000) {
+      await deps.sleep(AI_RETRY_WAIT_MS);
+      continue;
+    }
+    break;
+  }
+
+  if (!res || !res.ok) {
+    const st = res?.status ?? 0;
+    finish(`vertex_${st}`, { model, attempts });
+    return errorResponse(st === 429 || st === 503 ? 'model_busy' : 'model_error', quota);
+  }
+
+  let text: string | null = null;
+  try {
+    text = extractText(await res.json());
+  } catch {
+    text = null;
+  }
+  let parsed: unknown = null;
+  try {
+    parsed = text && text.length <= AI_PLAN_MAX_TEXT ? JSON.parse(text) : null;
+  } catch {
+    parsed = null;
+  }
+  const v = validatePlan(parsed);
+  if (!v.ok) {
+    finish('bad_plan', { model, attempts, reason: v.reason, textBytes: text?.length ?? 0 });
+    return errorResponse('bad_plan', quota);
+  }
+  finish('ok', { model, attempts, regions: v.plan.regions.length, notes: v.notes.length });
+  return jsonResponse({ plan: v.plan, model }, Object.entries(quota));
+}
+
 export async function handleAiPost(req: Request, deps: AiDeps): Promise<Response> {
   const started = deps.now();
   const g = await deviceGate(req, deps);
   if (!g.ok) return g.response;
 
   const taskRaw = req.headers.get(AI_HEADER_TASK);
+  if (taskRaw === AI_PLAN_TASK) return handleAiPlan(req, deps, started);
   if (!isAiTask(taskRaw)) return errorResponse('bad_task');
   const task: AiTask = taskRaw;
 
-  const declared = Number(req.headers.get('content-length') ?? 0);
-  if (declared > AI_MAX_INPUT_BYTES) return errorResponse('too_large');
-  const input = Buffer.from(await req.arrayBuffer());
-  if (input.length > AI_MAX_INPUT_BYTES) return errorResponse('too_large');
-  if (input.length === 0) return errorResponse('bad_image');
+  const jpeg = await readJpeg(req);
+  if (jpeg instanceof Response) return jpeg;
+  const { input, width, height } = jpeg;
 
-  let width = 0;
-  let height = 0;
-  try {
-    const meta = await sharp(input).metadata();
-    if (meta.format !== 'jpeg' || !meta.width || !meta.height) return errorResponse('bad_image');
-    width = meta.width;
-    height = meta.height;
-  } catch {
-    return errorResponse('bad_image');
-  }
-
-  // Kota: model çağrısından önce atomik ayrılır (INCR dönüşü), sınırı aşan ayırma geri alınır.
-  // Model çağrısı başarısız olsa da geri alınmaz (Google yine ücretlendirebilir).
-  const nowDate = new Date(deps.now());
-  const dayKey = quotaKeys.day(nowDate);
-  const monthKey = quotaKeys.month(nowDate);
-  let usedDay = 0;
-  let usedMonth = 0;
-  try {
-    [usedDay, usedMonth] = await Promise.all([
-      deps.counter.incr(dayKey, DAY_TTL_S),
-      deps.counter.incr(monthKey, MONTH_TTL_S),
-    ]);
-    if (usedDay > deps.config.dailyLimit || usedMonth > deps.config.monthlyLimit) {
-      await Promise.all([deps.counter.decr(dayKey), deps.counter.decr(monthKey)]);
-      return errorResponse(usedDay > deps.config.dailyLimit ? 'quota_day' : 'quota_month');
-    }
-  } catch {
-    return errorResponse('service_error');
-  }
-  const quotaHeaders = {
-    [AI_HEADER_REMAINING_DAY]: String(deps.config.dailyLimit - usedDay),
-    [AI_HEADER_REMAINING_MONTH]: String(deps.config.monthlyLimit - usedMonth),
-  };
+  // Kota: model çağrısından önce atomik ayrılır, sınırı aşan ayırma geri alınır (reserveQuota)
+  const quotaHeaders = await reserveQuota(deps);
+  if (quotaHeaders instanceof Response) return quotaHeaders;
 
   const cfg = AI_TASKS[task];
   const model = aiModelId(task);

@@ -51,6 +51,9 @@ import {
   prepareAiInput,
   suspectRegionFromImages,
   acceptAiResult,
+  AI_PLAN_PRESET_ID,
+  planKey,
+  type AiPlanRender,
 } from "@/lib";
 import { StudioShell, StageNote } from "./StudioShell";
 import { AddMenu } from "./AddMenu";
@@ -63,6 +66,7 @@ import { usePanPinch, PanPinchDelta } from "./usePanPinch";
 import { reportRenderTime } from "./PerfHud";
 import { DerivedBadge } from "./NoticeToast";
 import { AiRepairSheet } from "./AiRepairSheet";
+import { AiPresetSheet } from "./AiPresetSheet";
 import { AiReviewScreen } from "./AiReviewScreen";
 
 type EditTab = "preset" | "crop" | "fix";
@@ -142,6 +146,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
   const [liveFrame, setLiveFrame] = useState<{ w: number; h: number } | null>(null);
   const [isEnlarging, setIsEnlarging] = useState(false);
   const [isAiOpen, setIsAiOpen] = useState(false);
+  const [isAiPresetOpen, setIsAiPresetOpen] = useState(false);
   const [aiReview, setAiReview] = useState<AiReview | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -168,11 +173,21 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
    * taban adımında kırp geometrisi (lib/engine/carousel-render.ts, edit-geometry.ts).
    */
   const corrections = params.corrections ?? DEFAULT_CORRECTIONS;
+  // AI Preset (D28): the stored plan replaces the library preset; Miktar × safety scale is its strength
+  const aiPlanFor = (geoCrop: EditCrop | null): AiPlanRender | null =>
+    params.presetId === AI_PLAN_PRESET_ID && params.aiPlan && srcDims
+      ? {
+          plan: params.aiPlan.plan,
+          strength: params.intensity * params.aiPlan.safeScale,
+          geometry: { crop: geoCrop, srcW: srcDims.w, srcH: srcDims.h },
+        }
+      : null;
   const buildOptions = (): CarouselRenderOptions => ({
     fitMode: "fill",
     crop,
-    presetId: params.presetId,
+    presetId: params.presetId === AI_PLAN_PRESET_ID ? null : params.presetId,
     presetIntensity: params.intensity,
+    aiPlan: aiPlanFor(crop),
     outputWidth: out?.width,
     // Düzeltme sekmesinde basılı tutunca: düzeltmesiz hâl (önce/sonra)
     corrections: showBeforeFix ? null : corrections,
@@ -218,6 +233,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
         presetId: o.presetId,
         presetIntensity: o.presetIntensity,
         outputWidth: w,
+        aiPlan: o.aiPlan ? { ...o.aiPlan, geometry: { ...o.aiPlan.geometry, crop: null } } : null,
       });
     } else {
       const canvas = canvasRef.current;
@@ -344,7 +360,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
   useEffect(() => {
     scheduleRender();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cropKey, params.presetId, params.intensity, tab, srcDims, hasPhoto, correctionsKey(corrections), showBeforeFix]);
+  }, [cropKey, params.presetId, params.intensity, planKey(params.aiPlan?.plan), tab, srcDims, hasPhoto, correctionsKey(corrections), showBeforeFix]);
 
   useEffect(() => {
     return () => {
@@ -843,6 +859,7 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
             thumbs={thumbs}
             activeId={params.presetId}
             onSelect={(id) => setParams({ presetId: id })}
+            onAiPreset={() => setIsAiPresetOpen(true)}
             onAuto={async () => {
               if (!item) return;
               const s = await suggestFromImage(item.proxyUrl || item.originalUrl);
@@ -1072,6 +1089,22 @@ export function EditStudio({ onBack, onOpenModule }: EditStudioProps) {
         size={srcDims ? { w: srcDims.w, h: srcDims.h } : null}
         prepareInput={prepareAiPixels}
         onResult={handleAiResult}
+      />
+
+      <AiPresetSheet
+        open={isAiPresetOpen}
+        onClose={() => setIsAiPresetOpen(false)}
+        getImage={async () => sourceRef.current?.img ?? (item ? await loadImage(item.originalUrl || item.proxyUrl) : null)}
+        current={params.aiPlan ?? null}
+        onUseCurrent={() => {
+          setParams({ presetId: AI_PLAN_PRESET_ID });
+          setIsAiPresetOpen(false);
+        }}
+        onResult={(record) => {
+          setParams({ presetId: AI_PLAN_PRESET_ID, aiPlan: record, intensity: 1 });
+          setIsAiPresetOpen(false);
+          actions.setNotice(tr.aiPreset.applied(tr.aiPreset.styles[record.style] ?? record.style));
+        }}
       />
 
       {aiReview && (

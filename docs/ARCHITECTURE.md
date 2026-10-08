@@ -15,7 +15,7 @@ Son doğrulama: 2026-10-08
 | Modül | Önizleme | Export | Ortak fonksiyon |
 |---|---|---|---|
 | Carousel | `CarouselPreviewRenderer` (canvas, 1080×1350 veya 1080×1920; kaydırıcı sürüklenirken yarı boyut) | `drawCarouselFrame` aynı seçeneklerle, tam boyut | `lib/engine/carousel-render.ts`: adım 1 `renderCarouselBase` (zemin + kırp/sığdır + seri uyumu), adım 2 `applyCarouselLook` (preset). Parite: `tests/carousel-parity.test.ts` (0 bayt fark) |
-| Düzenle | Aynı renderer, taban adımında kırp geometrisi (`crop`) ve Düzeltme (`corrections`, worker'da: `workerBridge.applyCorrections`, sonuç `setBase` ile önbelleğe), uzun kenar 1350 | Aynı adımlar, kırpımın kendi boyutu (≤ 4096); Düzeltme worker'da, 2,5 MP üstünde paylı parçalarla | `lib/engine/edit-geometry.ts` `drawEditGeometry`, `lib/engine/corrections.ts` `applyCorrections`. Parite: `tests/carousel-parity.test.ts` (worker yolu dahil 0 fark) |
+| Düzenle | Aynı renderer, görünüm adımında AI Preset planı (`aiPlan`, preset yerine; `lib/engine/ai-plan.ts`, maskeler 4 px ızgarada), taban adımında kırp geometrisi (`crop`) ve Düzeltme (`corrections`, worker'da: `workerBridge.applyCorrections`, sonuç `setBase` ile önbelleğe), uzun kenar 1350 | Aynı adımlar, kırpımın kendi boyutu (≤ 4096); Düzeltme worker'da, 2,5 MP üstünde paylı parçalarla | `lib/engine/edit-geometry.ts` `drawEditGeometry`, `lib/engine/corrections.ts` `applyCorrections`. Parite: `tests/carousel-parity.test.ts` (worker yolu dahil 0 fark) |
 | Story | DOM (hücre başına `<img>` + CSS dönüşüm) | Canvas 1080×1920 | Geometri ortak: `computeStoryCells`, `computeCellDraw` (`lib/engine/story-layout.ts`). Piksel paritesi yok, geometri paritesi var |
 | Çerçeve | Canvas, `drawFrame` (gösterilen boyutta) | Canvas, `drawFrame` (seçilen `FRAME_SIZES` boyutu) | Tek çizim fonksiyonu `lib/engine/frame-render.ts`; çerçeve ölçüleri kısa kenara göre ölçeklenir; renkler `lib/ui/colors.ts` |
 | Büyüt | CSS (yalnız önizleme, "Lanczos" diye etiketlenmez) | Lanczos-3 (2 geçiş), worker'da | `lib/engine/upscale-lanczos.ts` |
@@ -77,7 +77,8 @@ Son doğrulama: 2026-10-08
 - Tek sunucu rotası: `app/api/ai/route.ts` (Node runtime, `maxDuration` 120 sn). Mantık `lib/ai/server.ts`; yapılandırma (model, istem, boyut, ₺) yalnız `lib/ai/config.ts`; sayaç `lib/ai/quota.ts`; istemci `lib/ai/client.ts`.
 - `GET` durum/kalan hak, `PUT` PIN ile eşleme (uygulama oturum çerezi; `AI_ENABLED=false` iken de çalışır, yanıt `{enabled:false}`), `POST` görev, `DELETE` cihazı unut (oturum biter, kilit ekranı). Başka siteden istek (`Sec-Fetch-Site`) 403.
 - Giden: aktif fotoğrafın kendi pikselleri, uzun kenar ≤ 2048, JPEG 0,92; sunucu 4 MB üstünü reddeder. Dönen sonuç JPEG, ≤ 4,3 MB.
-- Kota: günde 20, ayda 150 (env ile değişir), model çağrısından önce atomik ayrılır. Yanlış PIN sınırları: IP 5/gün, genel 10/gün, 30/ay.
+- AI Preset (görev `P`, D28): `x-curate-style` başlığı + ≤ 768 px JPEG; model yalnız JSON döner (`responseMimeType` + `responseSchema`), `validatePlan` ile sunucuda ve istemcide sınırlanır; model adayları sırayla denenir, 404 sıradakine geçer (`AI_PLAN_MODELS`). Yanıt `{plan, model}`.
+- Kota (D28: sahibin kullanımına kısıt yok): kod varsayılanı günde 500, ayda 5000, yalnız kaçak döngü tavanı; `AI_DAILY_LIMIT` / `AI_MONTHLY_LIMIT` Vercel'de tanımlıysa onlar geçerli. Model çağrısından önce atomik ayrılır. Yanlış PIN sınırları: IP 5/gün, genel 10/gün, 30/ay.
 - Sırlar (yalnız ad): `VERTEX_API_KEY`, `CURATE_AI_PASSWORD`, `AI_ENABLED`, `AI_DAILY_LIMIT`, `AI_MONTHLY_LIMIT`, `UPSTASH_REDIS_REST_URL/TOKEN` veya `KV_REST_API_URL/TOKEN`. Hepsi yalnız Vercel sunucu ortamında.
 
 ## 6b. Tüm uygulama kapısı (D27)

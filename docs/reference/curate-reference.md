@@ -61,7 +61,7 @@ Son doğrulama: 2026-10-08
 - İzlenen kişisel görünümlü dosyalar: yalnız 13 referans görsel (`public/reference-images/*.jfif`, sahip kararıyla). [ÖLÇÜLDÜ]
 - Sırlar yalnız Vercel sunucu ortamında; `NEXT_PUBLIC_*` sır yok. 4 haneli PIN `check:secrets` ile değerle taranamaz; güvencesi tasarım: yalnız `lib/ai/server.ts` karşılaştırır. [ÖLÇÜLDÜ]
 - Güvenlik başlıkları: `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `Referrer-Policy: same-origin`, `nosniff`. [ÖLÇÜLDÜ] `next.config.mjs`
-- Kötüye kullanım sınırları: kota günde 20 / ayda 150 (atomik); yanlış PIN IP 5/gün, genel 10/gün, 30/ay; `AI_ENABLED=false` hepsini kapatır (Preview'da kapalı). Sayaç dağıtık yükte [DOĞRULANMADI].
+- Kötüye kullanım sınırları: kota (D28, sahibe kısıt yok) kod varsayılanı günde 500 / ayda 5000, yalnız kaçak döngü tavanı (atomik; Vercel env varsa o geçerli); yanlış PIN IP 5/gün, genel 10/gün, 30/ay; `AI_ENABLED=false` hepsini kapatır (Preview'da kapalı). Sayaç dağıtık yükte [DOĞRULANMADI].
 - Maliyet tahmini (`lib/ai/config.ts`): A ~₺8, B ~₺5, C ~₺5, D ~₺7; üçüncü taraf fiyatı [DOĞRULANMADI]. En kötü durum varsayılanlarla ayda 150 çağrı.
 - EXIF: export tuvalden yeniden kodlanır; `sanitizeJpegBuffer` APP1/APP2 yüklerini sıfırlar, bozuk segmentte atmadan durur. [ÖLÇÜLDÜ] `tests/robustness.test.ts`
 
@@ -116,7 +116,7 @@ Son doğrulama: 2026-10-08
 
 1. Telefonda hiçbir ölçüm yok (performans, jestler, PWA kurulumu).
 2. Service worker yok (çevrimdışı açılış yok); eklemek KIRMIZI.
-3. AI Preset: onaylı (D28), kodlanıyor. Tüm uygulama kapısı uygulandı (D27); telefonda doğrulanmadı.
+3. AI Preset ve tüm uygulama kapısı uygulandı (D27, D28); gerçek model çağrısı ve telefon [DOĞRULANMADI].
 4. Preset kalibrasyonu ölçülebilir sınırlara ve 13 referansa göre yapıldı; sahibin kendi kaynak belgeleri (spec §5) hâlâ yok.
 
 ## 11. Sahibe açık sorular

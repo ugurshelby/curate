@@ -18,6 +18,16 @@ const VIEWPORTS = [
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const browser = await puppeteer.launch({ executablePath: chrome, headless: 'new', args: ['--no-sandbox'] });
 
+const SAMPLE_PLAN = {
+  version: 1,
+  scene: { type: 'interior', light: 'indoor', issues: ['flat'] },
+  global: { contrast: 0.1, temperature: 0.08 },
+  regions: [
+    { label: 'highlight', shape: { type: 'linear', x0: 0.5, y0: 0, x1: 0.5, y1: 0.4, feather: 0.1 }, adjust: { highlights: -0.25 } },
+    { label: 'subject', shape: { type: 'radial', cx: 0.5, cy: 0.6, rx: 0.3, ry: 0.3, feather: 0.4 }, adjust: { exposure: 0.2, shadows: 0.15 } },
+  ],
+};
+
 async function fresh(w, h) {
   const page = await browser.newPage();
   await page.setViewport({ width: w, height: h, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
@@ -37,6 +47,10 @@ async function fresh(w, h) {
       return req.respond({ status: 200, contentType: 'application/json', body: JSON.stringify(status) });
     }
     await wait(500);
+    // AI Preset (görev P): yalnız JSON plan döner
+    if (req.headers()['x-curate-task'] === 'P') {
+      return req.respond({ status: 200, contentType: 'application/json', body: JSON.stringify({ plan: SAMPLE_PLAN }), headers: { 'x-curate-remaining-day': '18', 'x-curate-remaining-month': '148' } });
+    }
     return req.respond({ status: 200, contentType: 'image/jpeg', body: resultJpeg, headers: { 'x-curate-remaining-day': '18', 'x-curate-remaining-month': '148' } });
   });
   await page.goto(base, { waitUntil: 'networkidle0' });
@@ -197,6 +211,13 @@ for (const [w, h] of VIEWPORTS) {
   await wait(1500);
   await record(page, w, 'Düzeltme Otomatik');
   await clickText(page, 'Preset', '[role=tab]');
+  await clickText(page, 'AI Preset', '[data-preset=ai_plan]');
+  await wait(500);
+  await record(page, w, 'AI Preset sayfası', false);
+  await clickText(page, 'Altın Saat', '[data-ai-preset-sheet] button');
+  await page.waitForFunction(() => !document.querySelector('[data-ai-preset-sheet]'), { timeout: 20000 });
+  await wait(800);
+  await record(page, w, 'AI Preset uygulandı');
   await clickText(page, 'AI ile onar');
   await wait(800);
   await record(page, w, 'AI PIN adımı', false);
