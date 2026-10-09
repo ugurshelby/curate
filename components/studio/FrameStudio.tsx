@@ -1,7 +1,7 @@
 "use client";
 
 import { tr } from "@/lib/i18n/tr";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Calendar, Crop } from "lucide-react";
 import { ResettableSlider } from "./ResettableSlider";
 import { QuickExportSheet } from "./QuickExportSheet";
@@ -9,8 +9,10 @@ import { StudioShell, StageNote } from "./StudioShell";
 import { AddMenu } from "./AddMenu";
 import { ReferencePicker } from "./ReferencePicker";
 import {
-  extractAdaptiveGradient,
-  AdaptiveGradientResult,
+  extractEdgeColors,
+  sampleSize,
+  frameLayout,
+  frameCoverCrop,
   useStudio,
   getStudioSelection,
   createStudioItem,
@@ -44,7 +46,8 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
   const { hasPhoto, selectedItem: activeItem, photoUrl: photoPath } = getStudioSelection(state.items, state.selectedItemId);
 
   const { frameType, borderWidth, borderRadius, showTimestamp, size, resolution } = state.frameConfig;
-  const [adaptiveGradient, setAdaptiveGradient] = useState<AdaptiveGradientResult | null>(null);
+  // small copy of the photo for edge-colour sampling (D33); re-sampled per crop, never re-decoded
+  const [edgeSample, setEdgeSample] = useState<ImageData | null>(null);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [isReferenceOpen, setIsReferenceOpen] = useState<boolean>(false);
 
@@ -78,7 +81,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
     previewSrcRef.current = null;
     setSrcVersion((v) => v + 1);
     if (!photoPath) {
-      setAdaptiveGradient(null);
+      setEdgeSample(null);
       return;
     }
     let cancelled = false;
@@ -92,7 +95,15 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
       if (!ctx) return;
       ctx.drawImage(img, 0, 0, c.width, c.height);
       previewSrcRef.current = c;
-      setAdaptiveGradient(extractAdaptiveGradient(ctx.getImageData(0, 0, c.width, c.height)));
+      const s = sampleSize(img.naturalWidth, img.naturalHeight);
+      const sc = document.createElement("canvas");
+      sc.width = s.width;
+      sc.height = s.height;
+      const sctx = sc.getContext("2d", { willReadFrequently: true });
+      if (sctx) {
+        sctx.drawImage(img, 0, 0, s.width, s.height);
+        setEdgeSample(sctx.getImageData(0, 0, s.width, s.height));
+      }
       setSrcVersion((v) => v + 1);
     });
     return () => {
@@ -102,6 +113,15 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
 
   const out = frameOutputSize(size, resolution);
   const ratio = out.width / out.height;
+
+  // Edge colours of the part of the photo that touches the frame (cover crop of the export-size window); memoised,
+  // so preview redraws and the export read the same colours
+  const edgeColors = useMemo(() => {
+    if (!edgeSample || frameType !== "gradient") return null;
+    const win = frameLayout(out.width, out.height, { frameType, borderWidth, borderRadius }).photo;
+    const c = frameCoverCrop(edgeSample.width, edgeSample.height, win.w, win.h);
+    return extractEdgeColors(edgeSample, { x: c.sx, y: c.sy, w: c.sw, h: c.sh });
+  }, [edgeSample, frameType, out.width, out.height, borderWidth, borderRadius]);
 
   // Önizleme: export'la aynı drawFrame, ekranın gösterebildiği piksel kadar (previewRenderSize)
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -131,17 +151,17 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       ctx.clearRect(0, 0, W, H);
-      drawFrame(ctx, src, W, H, state.frameConfig, adaptiveGradient, frameStampText());
+      drawFrame(ctx, src, W, H, state.frameConfig, edgeColors, frameStampText());
     });
     return () => cancelAnimationFrame(raf);
-  }, [hasPhoto, srcVersion, box, out.width, out.height, state.frameConfig, adaptiveGradient]);
+  }, [hasPhoto, srcVersion, box, out.width, out.height, state.frameConfig, edgeColors]);
 
   // Export: seçilen standart boyutta, aynı drawFrame; sRGB, kodlama export sayfasında
   const renderExportCanvas = async (): Promise<HTMLCanvasElement> => {
     if (!photoPath) throw new Error("No photo to export");
     const { canvas, ctx } = createExportCanvas(out.width, out.height);
     const img = await loadImage(photoPath);
-    drawFrame(ctx, img, out.width, out.height, state.frameConfig, adaptiveGradient, frameStampText());
+    drawFrame(ctx, img, out.width, out.height, state.frameConfig, edgeColors, frameStampText());
     return canvas;
   };
 

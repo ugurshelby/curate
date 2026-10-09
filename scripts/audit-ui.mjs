@@ -34,7 +34,7 @@ async function fresh(w, h) {
   await page.setRequestInterception(true);
   // Taklit: cihaz önce eşli değil (GET 401 pin_required), PUT (PIN) eşler, sonra GET 200
   let paired = false;
-  const status = { enabled: true, remainingDay: 19, remainingMonth: 149, counter: 'redis' };
+  const status = { enabled: true, remainingDay: 19, remainingMonth: 149, remainingTry: 287, counter: 'redis' };
   page.on('request', async (req) => {
     if (!req.url().includes('/api/ai')) return req.continue();
     if (req.method() === 'GET') {

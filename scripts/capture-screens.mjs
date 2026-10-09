@@ -24,7 +24,7 @@ async function fresh() {
   page.on('request', async (req) => {
     if (!req.url().includes('/api/ai')) return req.continue();
     if (req.method() === 'GET') {
-      return req.respond({ status: 200, contentType: 'application/json', body: JSON.stringify({ enabled: true, remainingDay: 19, remainingMonth: 149, counter: 'redis' }) });
+      return req.respond({ status: 200, contentType: 'application/json', body: JSON.stringify({ enabled: true, remainingDay: 19, remainingMonth: 149, remainingTry: 287, counter: 'redis' }) });
     }
     await wait(800);
     return req.respond({ status: 200, contentType: 'image/jpeg', body: resultJpeg, headers: { 'x-curate-remaining-day': '18', 'x-curate-remaining-month': '148' } });

@@ -1,7 +1,7 @@
 "use client";
 
 import { tr } from "@/lib/i18n/tr";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { EXPORT_COLORS } from "@/lib/ui/colors";
 import { Sparkles, Smartphone, ImagePlus, RotateCcw } from "lucide-react";
 import { ResettableSlider } from "./ResettableSlider";
@@ -11,10 +11,18 @@ import { StudioShell, StageNote } from "./StudioShell";
 import { AddMenu } from "./AddMenu";
 import { usePanPinch, PanPinchDelta } from "./usePanPinch";
 import { ReferencePicker } from "./ReferencePicker";
+import { EdgeGradientCanvas } from "./EdgeGradientCanvas";
 import {
   PLATFORM_SPECS,
-  extractAdaptiveGradient,
-  AdaptiveGradientResult,
+  extractEdgeColors,
+  sampleSize,
+  buildEdgeGradient,
+  chooseGradientAxis,
+  paintEdgeGradient,
+  simpleGradientSpec,
+  type EdgeColors,
+  STORY_SAFE_TOP,
+  STORY_SAFE_BOTTOM,
   useStudio,
   StudioItem,
   StoryCellTransform,
@@ -83,7 +91,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [isReferenceOpen, setIsReferenceOpen] = useState<boolean>(false);
-  const [adaptiveGradient, setAdaptiveGradient] = useState<AdaptiveGradientResult | null>(null);
+  const [edgeColors, setEdgeColors] = useState<EdgeColors | null>(null);
   const [notice, setNotice] = useState<string>("");
   const [live, setLive] = useState<LiveGesture | null>(null);
 
@@ -93,7 +101,7 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
   const cellRefs = useRef<(HTMLDivElement | null)[]>([]);
   const stageRef = useRef<HTMLDivElement | null>(null);
 
-  // Görseller değiştikçe Akıllı Gradyan türet (ilk fotoğraftan)
+  // Smart edge gradient (D33): colours come from the first photo's edges and centre
   const heroSrc = storyPhotos[0] ? storyPhotos[0].proxyUrl || storyPhotos[0].originalUrl : null;
   useEffect(() => {
     if (!heroSrc) return;
@@ -101,13 +109,15 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
     loadImage(heroSrc)
       .then((img) => {
         if (cancelled) return;
+        if (!img.naturalWidth || !img.naturalHeight) return;
+        const s = sampleSize(img.naturalWidth, img.naturalHeight);
         const c = document.createElement("canvas");
-        c.width = img.naturalWidth;
-        c.height = img.naturalHeight;
-        const ctx = c.getContext("2d");
+        c.width = s.width;
+        c.height = s.height;
+        const ctx = c.getContext("2d", { willReadFrequently: true });
         if (!ctx) return;
-        ctx.drawImage(img, 0, 0);
-        setAdaptiveGradient(extractAdaptiveGradient(ctx.getImageData(0, 0, c.width, c.height)));
+        ctx.drawImage(img, 0, 0, s.width, s.height);
+        setEdgeColors(extractEdgeColors(ctx.getImageData(0, 0, s.width, s.height)));
       })
       .catch(() => {});
     return () => {
@@ -246,11 +256,17 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
   }, [actions]);
 
   // Zemin (önizleme) — export aynı renkleri tuvale çizer
-  const gradientTop = adaptiveGradient ? adaptiveGradient.colorTop : EXPORT_COLORS.storyCharcoal;
-  const gradientBottom = adaptiveGradient ? adaptiveGradient.colorBottom : EXPORT_COLORS.storyBlack;
+  // Free space is above and below the cells (safe bands) and a thin strip at the sides, so the gradient runs vertically
+  const gradientSpec = useMemo(
+    () =>
+      edgeColors
+        ? buildEdgeGradient(edgeColors, chooseGradientAxis(edgeColors, { x: 56, y: STORY_SAFE_TOP + STORY_SAFE_BOTTOM }))
+        : simpleGradientSpec(EXPORT_COLORS.storyCharcoal, EXPORT_COLORS.storyBlack),
+    [edgeColors],
+  );
   const backgroundStyle: React.CSSProperties =
     backgroundMode === "adaptive-gradient"
-      ? { background: `linear-gradient(180deg, ${gradientTop} 0%, ${gradientBottom} 100%)` }
+      ? {}
       : { backgroundColor: backgroundMode === "white" ? EXPORT_COLORS.storyWhite : backgroundMode === "charcoal" ? EXPORT_COLORS.storyCharcoal : EXPORT_COLORS.storyBlack };
 
   const isDarkBg = backgroundMode !== "white";
@@ -280,14 +296,11 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
     const { canvas, ctx } = createExportCanvas(W, H);
 
     if (backgroundMode === "adaptive-gradient") {
-      const grad = ctx.createLinearGradient(0, 0, 0, H);
-      grad.addColorStop(0, gradientTop);
-      grad.addColorStop(1, gradientBottom);
-      ctx.fillStyle = grad;
+      paintEdgeGradient(ctx, W, H, gradientSpec);
     } else {
       ctx.fillStyle = backgroundMode === "white" ? EXPORT_COLORS.storyWhite : backgroundMode === "charcoal" ? EXPORT_COLORS.storyCharcoal : EXPORT_COLORS.storyBlack;
+      ctx.fillRect(0, 0, W, H);
     }
-    ctx.fillRect(0, 0, W, H);
 
     const exportCells = computeStoryCells(count, spacing, W, H);
     for (let i = 0; i < exportCells.length; i++) {
@@ -318,6 +331,8 @@ export function StoryStudio({ onBack }: StoryStudioProps) {
         boxShadow: "0 0 0 6px rgb(var(--base)), 0 0 0 9px rgb(var(--surface-2))",
       }}
     >
+      {backgroundMode === "adaptive-gradient" && <EdgeGradientCanvas spec={gradientSpec} />}
+
       {/* Dynamic Island: üst güvenli alanın içinde süs */}
       <div className="absolute top-[1.2%] left-1/2 -translate-x-1/2 z-30 w-[28%] h-[2.6%] rounded-full bg-base pointer-events-none" />
 

@@ -4,7 +4,8 @@
  * a 1080 px short edge and scale with the output, so every size looks the same.
  */
 
-import type { AdaptiveGradientResult, FrameConfig } from '../core/types';
+import type { FrameConfig } from '../core/types';
+import { buildEdgeGradient, chooseGradientAxis, paintEdgeGradient, type EdgeColors } from './edge-gradient';
 import { EXPORT_COLORS, STAMP_FONT_FAMILY } from '../ui/colors';
 
 /** Border/corner slider units → output pixels at a 1080 px short edge (kept from the original export) */
@@ -88,20 +89,19 @@ export function drawFrame(
   W: number,
   H: number,
   cfg: FrameConfig,
-  gradient: AdaptiveGradientResult | null,
+  gradient: EdgeColors | null,
   stamp: string,
 ): FrameLayout {
   const L = frameLayout(W, H, cfg);
 
   if (cfg.frameType === 'gradient' && gradient) {
-    const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, gradient.colorTop);
-    g.addColorStop(1, gradient.colorBottom);
-    ctx.fillStyle = g;
+    // smart edge gradient (D33): runs along the direction with more free border space, else along the stronger edge contrast
+    const margins = { x: L.photo.x * 2, y: L.photo.y + (H - L.photo.y - L.photo.h) };
+    paintEdgeGradient(ctx, W, H, buildEdgeGradient(gradient, chooseGradientAxis(gradient, margins)));
   } else {
     ctx.fillStyle = cfg.frameType === 'polaroid' ? EXPORT_COLORS.framePolaroid : EXPORT_COLORS.frameMatte;
+    ctx.fillRect(0, 0, W, H);
   }
-  ctx.fillRect(0, 0, W, H);
 
   const { x, y, w, h, r } = L.photo;
   const srcW = img ? (img as HTMLImageElement).naturalWidth || img.width : 0;

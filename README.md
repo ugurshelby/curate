@@ -24,11 +24,11 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 - **Güvenli Alan:** Hücreler Story'nin üst (ilerleme çubuğu, hesap satırı) ve alt (mesaj çubuğu) bantlarının dışında kalır; export aynı geometriyi kullanır (bant yüksekliği 250 px, sahip onaylı; telefonda karşılaştırılmadı).
 - **Hücre Başına Kadraj:** Sürükleyerek konumlandırma, iki parmakla yakınlaştırma (kenarda rubber-band), seçili hücrede "Değiştir" ve "Sıfırla". Konum ve yakınlaştırma export'a birebir yansır.
 - **Boşluk:** Tek bir slider ile fotoğrafların hem kendi aralarındaki hem telefon kenarlarındaki boşluklarını yönetme.
-- **Akıllı Gradyan:** Fotoğrafların kenar piksellerinden otomatik türetilen organik arka plan gradyanı; siyah, beyaz ve antrasit zemin seçenekleri.
+- **Akıllı Gradyan:** Zemin fotoğrafın kenar renklerinden kurulur (kenar şeritlerinin ve merkezin baskın rengi): ör. sol kenar mavi, orta beyaz, sağ kenar kırmızı ise zemin soldan sağa mavi → beyaz → kırmızı, yumuşak ve bantsız. Siyah, beyaz ve antrasit zemin seçenekleri de var.
 - **İki Dokunuşla Takas:** Bir hücreyi seçip başka bir hücreye dokunmak yerlerini değiştirir.
 
 ### 3. Çerçeve
-- Tekil görsel için `Polaroid`, `Matte` ve `Akıllı Gradyan` çerçeveleri.
+- Tekil görsel için `Polaroid`, `Matte` ve `Akıllı Gradyan` çerçeveleri (gradyan, fotoğrafın çerçeveyle buluştuğu kenarların renginden).
 - Genişlik ve köşe yuvarlaklığı slider'ları.
 - Günün tarihini taşıyan analog turuncu dijital tarih damgası toggle'ı.
 - 10 standart oran (4:5, 1:1, 9:16, 3:4, 2:3, 5:4, 4:3, 3:2, 16:9, 1.91:1); "4K" ile kısa kenar 2160 (16:9 → 3840×2160). Önizleme ve export aynı çizim fonksiyonu (`lib/engine/frame-render.ts`).
@@ -47,6 +47,7 @@ Apple Human Interface Guidelines (Spatial hiyerarşi), Raycast (ultra hızlı ak
 - **AI Preset:** Preset satırındaki "AI Preset" kartı 4 stil sunar (Doğal Portre, Altın Saat, Sinematik Gece, Temiz Gündüz). Fotoğrafın küçük bir kopyası (≤ 768 px) kendi proxy'miz üzerinden Google'a gider; geri yalnız ışık ve renk planı (JSON) gelir, görsel üretilmez. Plan cihazda uygulanır (bölgesel gradyan/elips/çokgen maskeler, sınırlı değerler, vinyet yok), "Miktar" ile ölçeklenir, fotoğrafla birlikte cihazda saklanır.
 - **Büyüt:** Düzenlenmiş hâli kaynağa bağlı yeni bir fotoğraf olarak ekleyip (rozet "Büyütülmüş", ayarları sıfır) Upscale'i onunla açar. Türetilmiş fotoğrafta "Kaynağa dön" kaynağı ayarlarıyla açar. Kaynak başına en çok 2 türetilmiş tutulur; üçüncüde en eskisi silinir ve kısa mesaj çıkar.
 - **AI ile onar:** Alt çubuktaki eylem dört işlem sunar (Büyüt, Gürültü temizle, Kenar ve renk kayması düzelt, Patlak alanı ve pusu kurtar), her biri tahmini süre ve ~₺ ile. Aktif fotoğrafın kendi pikselleri kendi proxy'miz (`/api/ai`) üzerinden Google Vertex'e gider ("Bu işlem için fotoğraf Google'a gönderilir"). Sonuç önce tam ekran önce/sonra sayfasında gösterilir; "Kullan" denmeden kütüphaneye girmez ("AI sonucu" rozetli türetilmiş fotoğraf). Erişim 4 haneli PIN ile: yeni bir cihazda bir kez girilir (4. hanede kendiliğinden gönderilir), cihaz 365 gün hatırlanır, alttaki "Bu cihazı unut" ile silinir; PIN değişince tüm cihazlar yeniden PIN ister. PIN, yanlış PIN sınırları, günlük/aylık kota ve `AI_ENABLED` ile kapatma sunucuda; sırlar yalnız Vercel ortam değişkeninde (`.env.example`). Aynı PIN 2026-10-08'den beri tüm uygulamayı açar (D27): çerezsiz her sayfa `/kilit` ekranına gider; doğru PIN cihazı 365 gün (kayan) hatırlar. Uygulamanın geri kalanı tamamen istemci taraflıdır.
+- **AI bütçesi:** AI sayfalarında "Kalan AI bütçesi: ₺X" görünür. Free Trial kredisi bitene kadar (18 Aralık 2026) toplam ₺6000 / günlük ₺300, sonra aylık ₺200; her çağrının tahmini maliyeti (×1,25) Google'a gitmeden ayrılır, tavan aşılırsa çağrı yapılmaz. Sınırlar ve ortam değişkeni adları `.env.example`'da.
 - **Düzeltme:** üstte "Otomatik" (fotoğrafın istatistiklerine bakar, gereken satırları açar; AI değil), altında altı satır: Noise Azalt, Kenar Netliği, Kenar Renk Düzelt, Gölge Aç, Parlak Alan Kurtar, Pus Gider. Her satırda aç/kapa ve tek şiddet kaydırıcısı. Yalnız iyileştirir, ayrıntı üretmez; basılı tut: düzeltmesiz. Ağır hesap worker'da; önizleme ve export aynı fonksiyon.
 
 ## 🚀 Dışa Aktarma

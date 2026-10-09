@@ -119,8 +119,31 @@ export const AI_RETRY_WAIT_MS = 2_000;
  * Sahip kararı 2026-10-08 (D28): sahibin kullanımında kota kısıtı yok. Bu sayılar yalnız kaçak döngüye karşı
  * güvenlik ağıdır; Vercel'de AI_DAILY_LIMIT / AI_MONTHLY_LIMIT tanımlıysa onlar geçerlidir.
  */
-export const AI_DEFAULT_DAILY_LIMIT = 500;
-export const AI_DEFAULT_MONTHLY_LIMIT = 5000;
+export const AI_DEFAULT_DAILY_LIMIT = 80;
+export const AI_DEFAULT_MONTHLY_LIMIT = 1000;
+
+// --- Money budget (owner decision D35, 2026-10-08) ---
+/**
+ * The Free Trial credit is account-wide, so the cap is enforced here with counters. Until the window ends the total
+ * (cumulative) and the daily cap apply; after it, the calendar-month cap and the daily cap. Env overrides (Vercel):
+ * AI_BUDGET_TRY_TOTAL, AI_BUDGET_TRY_DAILY, AI_BUDGET_WINDOW_END (YYYY-MM-DD, last day of the window, Istanbul),
+ * AI_BUDGET_TRY_MONTHLY_AFTER. Missing or broken values fall back to these defaults, never to "unlimited".
+ */
+export const AI_BUDGET_DEFAULTS = {
+  totalTry: 6000,
+  dailyTry: 300,
+  windowEnd: '2026-12-17',
+  monthlyAfterTry: 200,
+} as const;
+/**
+ * The counters are charged this much above the per-call estimate (costTry) until the owner confirms real costs in
+ * Billing → Reports. The estimates themselves stay unchanged.
+ */
+export const AI_BUDGET_SAFETY = 1.25;
+/** Counters hold kuruş (integer): 1 ₺ = 100 */
+export const AI_BUDGET_UNIT = 100;
+/** Only one paid request at a time; a second one within this window is refused */
+export const AI_BUSY_WINDOW_S = 10;
 // --- PIN ile cihaz eşleme (Faz P1, sahip kararı 2026-10-07) ---
 /** PIN tam olarak 4 rakam; değeri yalnız sunucu ortam değişkeninde (CURATE_AI_PASSWORD) */
 export const AI_PIN_LENGTH = 4;
@@ -192,15 +215,20 @@ export function buildVertexBody(task: AiTask, jpegBase64: string, width: number,
 /** Görev kodu: görsel ÜRETMEZ, yalnız JSON plan döner; Curate planı yerelde uygular */
 export const AI_PLAN_TASK = 'P';
 /**
- * Görsel anlayan metin modelleri, sırayla denenir: 404 (model yok/emekli) ücretsizdir ve sıradakine geçilir.
- * Kimlikler kapsayıcıda yoklanamadı (anahtar yok) [doğrulanmadı]; sunucu log'u hangisinin çalıştığını yazar.
+ * Image-reading text models for AI Preset, tried in order (owner decision D34, 2026-10-08; ids come from the project's
+ * Model Garden). The chain moves on at 400, 404, 429 and 5xx, and when the answer fails validation; a rejected
+ * request is not billed. `gemini-3-flash` does not exist (404 NOT_FOUND, checked 2026-10-08) and must not return.
  */
-export const AI_PLAN_MODELS = ['gemini-3-flash', 'gemini-2.5-flash', 'gemini-3.1-flash-image'] as const;
+export const AI_PLAN_MODELS = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash'] as const;
 /** Gönderilen önizleme: uzun kenar ≤ 768, JPEG 0,8 (≈ 60–120 KB) */
 export const AI_PLAN_INPUT_LONG_EDGE = 768;
 export const AI_PLAN_INPUT_JPEG_QUALITY = 0.8;
-/** Yaklaşık süre ve maliyet: metin yanıtı, görsel üretimi yok. Ölçülmedi [doğrulanmadı] */
-export const AI_PLAN_EST_SECONDS = 8;
+/**
+ * Approximate time and cost: text answer, no image generation. Time measured 2026-10-08 (3.5-flash 26 s, 2.5-flash 27 s,
+ * 3.5-flash-lite 4 s; Vertex "thinking" tokens dominate). The cost is an unverified estimate; do not change it until
+ * the owner compares it with Billing → Reports.
+ */
+export const AI_PLAN_EST_SECONDS = 26;
 export const AI_PLAN_COST_TRY = 0.3;
 /** Sunucu model yanıtında bundan uzun metni okumaz */
 export const AI_PLAN_MAX_TEXT = 20_000;
@@ -256,7 +284,8 @@ export const AI_PLAN_RESPONSE_SCHEMA = {
   type: 'OBJECT',
   required: ['version', 'scene', 'global', 'regions'],
   properties: {
-    version: { type: 'INTEGER', enum: [1] },
+    // no `enum` here: Vertex accepts enum only on STRING properties (400 otherwise, checked 2026-10-08); validatePlan enforces version 1
+    version: { type: 'INTEGER' },
     scene: {
       type: 'OBJECT',
       properties: {
@@ -319,6 +348,7 @@ export const AI_HEADER_TASK = 'x-curate-task';
 export const AI_HEADER_STYLE = 'x-curate-style';
 export const AI_HEADER_REMAINING_DAY = 'x-curate-remaining-day';
 export const AI_HEADER_REMAINING_MONTH = 'x-curate-remaining-month';
+export const AI_HEADER_REMAINING_TRY = 'x-curate-remaining-try';
 export const AI_ENDPOINT = '/api/ai';
 
 /** Hata kodları ve sade Türkçe mesajlar (sunucu ve istemci aynı metni kullanır) */
@@ -338,9 +368,16 @@ export const AI_ERRORS = {
   bad_image: 'Fotoğraf okunamadı.',
   quota_day: 'Bugünkü AI hakkı doldu.',
   quota_month: 'Bu ayki AI hakkı doldu.',
+  budget_day: 'AI bütçesi doldu: günlük.',
+  budget_total: 'AI bütçesi doldu: toplam.',
+  budget_month: 'AI bütçesi doldu: aylık.',
+  busy: 'Önceki AI isteği sürüyor. Birkaç saniye bekle.',
   timeout: 'Süre aşıldı. Tekrar dene.',
   model_busy: 'Model şu an yoğun. Biraz sonra tekrar dene.',
   model_error: 'Model hata verdi.',
+  model_missing: 'AI modeli bulunamadı.',
+  model_rejected: 'Model isteği kabul etmedi.',
+  model_auth: 'AI anahtarı Google tarafından reddedildi.',
   no_image: 'Model görsel döndürmedi.',
   bad_plan: 'Plan okunamadı. Tekrar dene ya da hazır bir preset seç.',
   canceled: 'İptal edildi; ücret yansımış olabilir.',

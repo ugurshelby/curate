@@ -10,14 +10,14 @@ Next.js 14.2 (App Router, tek sayfa `app/page.tsx` + tek sunucu rotası `app/api
 Modül geçişi tek sayfada bileşen durumuyla yapılır (`app/page.tsx`); rota yok. Durum: `lib/core/state-machine.ts` (başsız store) + `useStudio` (`useSyncExternalStore`).
 
 ## 2. Render hattı: taban + görünüm
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-09
 
 | Modül | Önizleme | Export | Ortak fonksiyon |
 |---|---|---|---|
 | Carousel | `CarouselPreviewRenderer` (canvas, 1080×1350 veya 1080×1920; kaydırıcı sürüklenirken yarı boyut) | `drawCarouselFrame` aynı seçeneklerle, tam boyut | `lib/engine/carousel-render.ts`: adım 1 `renderCarouselBase` (zemin + kırp/sığdır + seri uyumu), adım 2 `applyCarouselLook` (preset). Parite: `tests/carousel-parity.test.ts` (0 bayt fark) |
 | Düzenle | Aynı renderer, görünüm adımında AI Preset planı (`aiPlan`, preset yerine; `lib/engine/ai-plan.ts`, maskeler 4 px ızgarada), taban adımında kırp geometrisi (`crop`) ve Düzeltme (`corrections`, worker'da: `workerBridge.applyCorrections`, sonuç `setBase` ile önbelleğe), uzun kenar 1350 | Aynı adımlar, kırpımın kendi boyutu (≤ 4096); Düzeltme worker'da, 2,5 MP üstünde paylı parçalarla | `lib/engine/edit-geometry.ts` `drawEditGeometry`, `lib/engine/corrections.ts` `applyCorrections`. Parite: `tests/carousel-parity.test.ts` (worker yolu dahil 0 fark) |
-| Story | DOM (hücre başına `<img>` + CSS dönüşüm) | Canvas 1080×1920 | Geometri ortak: `computeStoryCells`, `computeCellDraw` (`lib/engine/story-layout.ts`). Piksel paritesi yok, geometri paritesi var |
-| Çerçeve | Canvas, `drawFrame` (gösterilen boyutta) | Canvas, `drawFrame` (seçilen `FRAME_SIZES` boyutu) | Tek çizim fonksiyonu `lib/engine/frame-render.ts`; çerçeve ölçüleri kısa kenara göre ölçeklenir; renkler `lib/ui/colors.ts` |
+| Story | DOM (hücre başına `<img>` + CSS dönüşüm) | Canvas 1080×1920 | Geometri ortak: `computeStoryCells`, `computeCellDraw` (`lib/engine/story-layout.ts`). Piksel paritesi yok, geometri paritesi var. "Gradyan" zemin Çerçeve ile aynı `paintEdgeGradient` (önizlemede `EdgeGradientCanvas` 540×960, export 1080×1920), renkler ilk fotoğrafın kenarlarından |
+| Çerçeve | Canvas, `drawFrame` (gösterilen boyutta) | Canvas, `drawFrame` (seçilen `FRAME_SIZES` boyutu) | Tek çizim fonksiyonu `lib/engine/frame-render.ts`; çerçeve ölçüleri kısa kenara göre ölçeklenir; renkler `lib/ui/colors.ts`. "Gradyan" zemin: `lib/engine/edge-gradient.ts` (D33), kenar renkleri fotoğrafın çerçeveyle buluşan kısmından, `paintEdgeGradient` ile boyanır |
 | Büyüt | CSS (yalnız önizleme, "Lanczos" diye etiketlenmez) | Lanczos-3 (2 geçiş), worker'da | `lib/engine/upscale-lanczos.ts` |
 
 **Preset motoru (v2, 2026-10-08):** `lib/engine/presets.ts` — beyaz dengesi kazancı + pozlama + ton eğrisi (uçları sabit, yumuşak omuz) kanal başına 256 girişli tabloda; ardından cilt korumalı canlılık/doygunluk, sınırlı iç ton kaydırma, (yalnız izinli preset'lerde) hale ve gren. Tek "Miktar" tüm değerleri 0'dan ölçekler.
@@ -72,14 +72,15 @@ Son doğrulama: 2026-10-08
 - `<html lang="tr">`, `viewport-fit=cover`, güvenli alan değişkenleri (`--safe-area-top/bottom`), `theme-color` `#000000`.
 
 ## 6. AI proxy ve kota
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-09
 
 - Tek sunucu rotası: `app/api/ai/route.ts` (Node runtime, `maxDuration` 120 sn). Mantık `lib/ai/server.ts`; yapılandırma (model, istem, boyut, ₺) yalnız `lib/ai/config.ts`; sayaç `lib/ai/quota.ts`; istemci `lib/ai/client.ts`.
 - `GET` durum/kalan hak, `PUT` PIN ile eşleme (uygulama oturum çerezi; `AI_ENABLED=false` iken de çalışır, yanıt `{enabled:false}`), `POST` görev, `DELETE` cihazı unut (oturum biter, kilit ekranı). Başka siteden istek (`Sec-Fetch-Site`) 403.
 - Giden: aktif fotoğrafın kendi pikselleri, uzun kenar ≤ 2048, JPEG 0,92; sunucu 4 MB üstünü reddeder. Dönen sonuç JPEG, ≤ 4,3 MB.
-- AI Preset (görev `P`, D28): `x-curate-style` başlığı + ≤ 768 px JPEG; model yalnız JSON döner (`responseMimeType` + `responseSchema`), `validatePlan` ile sunucuda ve istemcide sınırlanır; model adayları sırayla denenir, 404 sıradakine geçer (`AI_PLAN_MODELS`). Yanıt `{plan, model}`.
-- Kota (D28: sahibin kullanımına kısıt yok): kod varsayılanı günde 500, ayda 5000, yalnız kaçak döngü tavanı; `AI_DAILY_LIMIT` / `AI_MONTHLY_LIMIT` Vercel'de tanımlıysa onlar geçerli. Model çağrısından önce atomik ayrılır. Yanlış PIN sınırları: IP 5/gün, genel 10/gün, 30/ay.
-- Sırlar (yalnız ad): `VERTEX_API_KEY`, `CURATE_AI_PASSWORD`, `AI_ENABLED`, `AI_DAILY_LIMIT`, `AI_MONTHLY_LIMIT`, `UPSTASH_REDIS_REST_URL/TOKEN` veya `KV_REST_API_URL/TOKEN`. Hepsi yalnız Vercel sunucu ortamında.
+- AI Preset (görev `P`, D28, D34): `x-curate-style` başlığı + ≤ 768 px JPEG; model yalnız JSON döner (`responseMimeType` + `responseSchema`; şemada `enum` yalnız STRING alanda), `validatePlan` ile sunucuda ve istemcide sınırlanır. Adaylar sırayla (`AI_PLAN_MODELS`: `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-2.5-flash`): 400, 404, 429, 5xx ve geçersiz yanıtta sıradakine geçilir, 401/403'te zincir durur. Zincir bitince hata türü: geçersiz plan > yoğun > sunucu > reddedildi > bulunamadı (`bad_plan`, `model_busy`, `model_error`, `model_rejected`, `model_missing`; anahtar için `model_auth`). Günlük: görev, model, HTTP durumu, tür, süre, Google `error.status` ve ilk 200 karakter mesaj. Ölçülen süre (2026-10-08, tek çağrı): 3.5-flash 26 sn, 3.5-flash-lite 4 sn, 2.5-flash 27 sn. Yanıt `{plan, model}`.
+- Çağrı sayısı sınırı (ikincil güvenlik): varsayılan günde 80, ayda 1000; `AI_DAILY_LIMIT` / `AI_MONTHLY_LIMIT` Vercel'de tanımlıysa onlar geçerli. Model çağrısından önce atomik ayrılır. Yanlış PIN sınırları: IP 5/gün, genel 10/gün, 30/ay.
+- Para bütçesi (D35, `lib/ai/budget.ts`): üç Upstash sayacı kuruş cinsinden (`curate:ai:try:day:<gün>` 2 gün TTL, `curate:ai:try:total` süresiz, `curate:ai:try:month:<ay>` 32 gün TTL; gün ve ay Europe/Istanbul). Pencere sonuna (`AI_BUDGET_WINDOW_END`, varsayılan 2026-12-17) kadar günlük + toplam tavan, sonra günlük + aylık tavan denetlenir; üçü de yazılır. Her Google çağrısından önce `costTry × 1,25` ayrılır (INCRBY), tavan aşılırsa geri alınır ve 429 döner; Google 4xx verirse iade edilir (DECRBY), 5xx/zaman aşımı/iptal ücretli kalır. Zincirde her aday ayrı çağrıdır. Varsayılanlar: toplam ₺6000, günlük ₺300, aylık (pencere sonrası) ₺200; env bozuksa varsayılan. Aynı anda tek ücretli istek: `curate:ai:busy` (10 sn TTL, bitince serbest). `GET` yanıtı ve başarılı `POST` başlığı (`x-curate-remaining-try`) kalan ₺'yi taşır. Redis yoksa sayaçlar sunucu belleğinde (kalıcı değil).
+- Sırlar (yalnız ad): `VERTEX_API_KEY`, `CURATE_AI_PASSWORD`, `AI_ENABLED`, `AI_DAILY_LIMIT`, `AI_MONTHLY_LIMIT`, `AI_BUDGET_TRY_TOTAL`, `AI_BUDGET_TRY_DAILY`, `AI_BUDGET_WINDOW_END`, `AI_BUDGET_TRY_MONTHLY_AFTER`, `UPSTASH_REDIS_REST_URL/TOKEN` veya `KV_REST_API_URL/TOKEN`. Hepsi yalnız Vercel sunucu ortamında.
 
 ## 6b. Tüm uygulama kapısı (D27)
 Son doğrulama: 2026-10-08

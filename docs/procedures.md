@@ -52,6 +52,7 @@ Son doğrulama: 2026-10-08
   ```
   - AI sayfası: PIN girişi `#ai-pin`, sayfa `[data-ai-sheet]` (iç kaydırma olmadan sığar); kontrol sayfası `[data-review-header]`, `[data-review-stage]`, `[data-review-bar]`. Ölçmeden önce animasyonları bitir (`document.getAnimations().forEach(a => a.finish())`). Yatay kaydırıcı içindeki öğeler (preset satırı, filmstrip) `offscreen` dışında tutulur.
   - Ekran görüntüsü: `node scripts/capture-screens.mjs <etiket>` → `screenshots/<etiket>/` (git izlemez).
+  - Akıllı gradyan (D33): `AUDIT_PIN=<test PIN> node scripts/check-gradient.mjs` (aynı test değerli sunucu) Çerçeve 9:16 / 4:5 / 16:9 ve Story'yi sentetik fotoğrafla dışa aktarır, boyutu ve kenar piksellerini yazar; ekran görüntüleri `screenshots/gradient/` (git izlemez). Yoklama sayfası için `scripts/probe-fake-camera.mjs`.
 - **Değiştirebilir:** CSS sınıfları, yerleşim dolgusu, duyarlı sarmalayıcılar.
 - **Yalnız raporla:** tarayıcı yoksa her görsel madde "doğrulanmadı".
 - **Belgeler:** reference §6, log.

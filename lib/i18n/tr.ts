@@ -129,6 +129,8 @@ export const tr = {
     canceled: 'İptal edildi.',
     resultUnreadable: 'Sonuç açılamadı.',
     prepareFailed: 'Fotoğraf hazırlanamadı.',
+    /** Remaining AI money under the tightest cap (D35), whole liras */
+    budgetLeft: (tryLeft: number) => `Kalan AI bütçesi: ₺${Math.floor(tryLeft).toLocaleString('tr-TR')}`,
   },
 
   aiPreset: {

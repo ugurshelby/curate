@@ -8,6 +8,7 @@ import {
   AI_ERRORS,
   AI_HEADER_REMAINING_DAY,
   AI_HEADER_REMAINING_MONTH,
+  AI_HEADER_REMAINING_TRY,
   AI_HEADER_TASK,
   AI_INPUT_JPEG_QUALITY,
   AI_LEGACY_PASSWORD_KEY,
@@ -32,8 +33,9 @@ export function clearLegacyAiPassword(): void {
 }
 
 export type AiFailure = { ok: false; code: AiErrorCode; message: string };
-export type AiStatusResult = { ok: true; remainingDay: number; remainingMonth: number } | AiFailure;
-export type AiRepairResult = { ok: true; blob: Blob; remainingDay: number | null; remainingMonth: number | null } | AiFailure;
+/** remainingTry: money left under the tightest budget cap in ₺ (D35); null when the server did not say */
+export type AiStatusResult = { ok: true; remainingDay: number; remainingMonth: number; remainingTry: number | null } | AiFailure;
+export type AiRepairResult = { ok: true; blob: Blob; remainingDay: number | null; remainingMonth: number | null; remainingTry: number | null } | AiFailure;
 
 function fail(code: AiErrorCode): AiFailure {
   return { ok: false, code, message: AI_ERRORS[code] };
@@ -71,8 +73,13 @@ function numHeader(res: Response, name: string): number | null {
 
 async function statusFrom(res: Response): Promise<AiStatusResult> {
   if (!res.ok) return failureFromResponse(res);
-  const json = (await res.json()) as { remainingDay: number; remainingMonth: number };
-  return { ok: true, remainingDay: json.remainingDay, remainingMonth: json.remainingMonth };
+  const json = (await res.json()) as { remainingDay: number; remainingMonth: number; remainingTry?: number };
+  return {
+    ok: true,
+    remainingDay: json.remainingDay,
+    remainingMonth: json.remainingMonth,
+    remainingTry: typeof json.remainingTry === 'number' ? json.remainingTry : null,
+  };
 }
 
 /** Cihaz eşli mi ve kalan hak (model çağrısı yok, para harcamaz) */
@@ -137,6 +144,7 @@ export async function requestAiRepair(
       blob,
       remainingDay: numHeader(res, AI_HEADER_REMAINING_DAY),
       remainingMonth: numHeader(res, AI_HEADER_REMAINING_MONTH),
+      remainingTry: numHeader(res, AI_HEADER_REMAINING_TRY),
     };
   } catch (err) {
     if (signal?.aborted || (err instanceof Error && err.name === 'AbortError')) return fail('canceled');
@@ -162,7 +170,9 @@ export async function prepareAiInput(img: CanvasImageSource & { naturalWidth: nu
 
 // --- AI Preset: Işık ve Renk Planı (D28) ---
 
-export type AiPlanResult = { ok: true; record: AiPlanRecord; remainingDay: number | null; remainingMonth: number | null } | AiFailure;
+export type AiPlanResult =
+  | { ok: true; record: AiPlanRecord; remainingDay: number | null; remainingMonth: number | null; remainingTry: number | null }
+  | AiFailure;
 
 /**
  * Sends a small preview of the original photo (long edge ≤ 768, JPEG 0.8) and gets back a JSON plan only.
@@ -206,6 +216,7 @@ export async function requestAiPlan(
       record: { style, plan: v.plan, safeScale, createdAt: Date.now() },
       remainingDay: numHeader(res, AI_HEADER_REMAINING_DAY),
       remainingMonth: numHeader(res, AI_HEADER_REMAINING_MONTH),
+      remainingTry: numHeader(res, AI_HEADER_REMAINING_TRY),
     };
   } catch (err) {
     if (signal?.aborted || (err instanceof Error && err.name === 'AbortError')) return fail('canceled');

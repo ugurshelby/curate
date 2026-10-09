@@ -343,7 +343,7 @@ describe('AI proxy: access and limits', () => {
     const down = async (): Promise<number> => {
       throw new Error('down');
     };
-    const broken: CounterStore = { kind: 'redis', get: down, incr: down, decr: down };
+    const broken: CounterStore = { kind: 'redis', get: down, incr: down, decr: down, incrBy: down, decrBy: down };
     const { deps } = makeDeps({ counter: broken });
     for (const res of [
       await handleAiStatus(status(), deps),
@@ -388,15 +388,31 @@ describe('AI proxy: access and limits', () => {
     expect((await r.json()).error).toBe('quota_month');
   });
 
-  it('quota is reserved atomically: parallel requests never exceed it', async () => {
+  it('quota is reserved before the model call: one after another never exceeds it, the refused ones add nothing', async () => {
     const { deps } = makeDeps({ env: { AI_DAILY_LIMIT: '3' } });
     const body = await jpeg(40, 30);
-    const results = await Promise.all(Array.from({ length: 8 }, () => handleAiPost(post(body), deps)));
+    const results: Response[] = [];
+    for (let i = 0; i < 8; i++) results.push(await handleAiPost(post(body), deps));
     expect(results.filter((r) => r.status === 200)).toHaveLength(3);
     expect(results.filter((r) => r.status === 429)).toHaveLength(5);
     expect(deps.fetchFn).toHaveBeenCalledTimes(3);
-    // Reddedilen ayırmalar geri alındı: kalan 0
+    // refused reservations were given back: remaining 0, not negative
     expect(await (await handleAiStatus(status(), deps)).json()).toMatchObject({ remainingDay: 0 });
+  });
+
+  it('parallel requests: only one paid request at a time, the others get "busy" and nothing is charged for them (D35)', async () => {
+    const { deps } = makeDeps();
+    const body = await jpeg(40, 30);
+    const results = await Promise.all(Array.from({ length: 6 }, () => handleAiPost(post(body), deps)));
+    expect(results.filter((r) => r.status === 200)).toHaveLength(1);
+    const busy = results.filter((r) => r.status === 429);
+    expect(busy).toHaveLength(5);
+    expect((await busy[0].json()).error).toBe('busy');
+    expect(deps.fetchFn).toHaveBeenCalledTimes(1);
+    const st = await (await handleAiStatus(status(), deps)).json();
+    expect(st.remainingDay).toBe(AI_DEFAULT_DAILY_LIMIT - 1);
+    // the lock is released when the request ends: the next one goes through
+    expect((await handleAiPost(post(body), deps)).status).toBe(200);
   });
 });
 

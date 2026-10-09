@@ -40,12 +40,12 @@ Son doğrulama: 2026-10-08
 - En büyük dosyalar: `EditStudio.tsx` 870, `CarouselStudio.tsx` 567, `StoryStudio.tsx` 545, `lib/core/state-machine.ts` 485, `lib/ai/server.ts` 481 satır. [ÖLÇÜLDÜ] `wc -l`.
 
 ## 4. Veri ve altyapı
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-09
 
 | Konu | Durum | Etiket |
 |---|---|---|
 | Veritabanı, şema | Yok | [ÖLÇÜLDÜ] |
-| Dış API | Google Vertex `generateContent` yalnız `/api/ai` üzerinden; Upstash Redis REST (kota) | [ÖLÇÜLDÜ] kod |
+| Dış API | Google Vertex `generateContent` yalnız `/api/ai` üzerinden; Upstash Redis REST (çağrı sayısı ve para sayaçları). AI Preset modelleri: `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-2.5-flash` (`gemini-3-flash` yok: 404) | [ÖLÇÜLDÜ] kod; modeller gerçek çağrıyla 2026-10-08 |
 | Kimlik | Tüm uygulama (D27): 4 haneli PIN (`CURATE_AI_PASSWORD`, sunucu) → `/kilit` → imzalı HttpOnly çerez `curate_session` (Path=/, 365 gün kayan, SameSite=Lax, Secure); `middleware.ts` her sayfayı kontrol eder; manifest/simgeler/`_next` açık, referans görseller kapalı | [ÖLÇÜLDÜ] testler + yerel production (curl: çerezsiz `/` → 307 `/kilit`; çerezli 200; `next=https://…` → `/`) + Chromium (PIN ekranı, yanlış PIN, doğru PIN). Telefonda [DOĞRULANMADI] |
 | Tarayıcı depolama | localStorage `curate.prefs.v1` (tercihler); IndexedDB `curate-library` (fotoğraf hafızası, varsayılan açık, 40 fotoğraf / 400 MB). Eski `curate.ai.password` açılışta silinir | [ÖLÇÜLDÜ] `tests/device-sync.test.ts`, Chromium'da ekle → yenile → geri geldi (2026-10-08) |
 | Ortam değişkenleri (ad) | `VERTEX_API_KEY`, `CURATE_AI_PASSWORD`, `AI_ENABLED`, `AI_DAILY_LIMIT`, `AI_MONTHLY_LIMIT`, `UPSTASH_REDIS_REST_URL/TOKEN` veya `KV_REST_API_URL/TOKEN` (`.env.example`) | [ÖLÇÜLDÜ] |
@@ -55,25 +55,25 @@ Son doğrulama: 2026-10-08
 | PWA | Manifest bağlı (`lang: tr`, standalone), PNG 192/512/maskeli + apple-touch-icon; Chromium kurulabilirlik hatası 0; service worker yok | [ÖLÇÜLDÜ] `tests/pwa.test.ts`, CDP 2026-10-08; telefonda kurulum [DOĞRULANMADI] |
 
 ## 5. Güvenlik, sırlar, maliyet
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-09
 
 - Repo herkese açık (GitHub API `visibility: public`). [ÖLÇÜLDÜ]
 - İzlenen dosyalarda sır şekilli dize (Google anahtarı, özel anahtar, GitHub/Slack/AWS token, JWT kalıpları): 0 dosya. [ÖLÇÜLDÜ] `git grep` 2026-10-08.
 - İzlenen kişisel görünümlü dosyalar: yalnız 13 referans görsel (`public/reference-images/*.jfif`, sahip kararıyla). [ÖLÇÜLDÜ]
 - Sırlar yalnız Vercel sunucu ortamında; `NEXT_PUBLIC_*` sır yok. 4 haneli PIN `check:secrets` ile değerle taranamaz; güvencesi tasarım: yalnız `lib/ai/server.ts` karşılaştırır. [ÖLÇÜLDÜ]
 - Güvenlik başlıkları: `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `Referrer-Policy: same-origin`, `nosniff`. [ÖLÇÜLDÜ] `next.config.mjs`
-- Kötüye kullanım sınırları: kota (D28, sahibe kısıt yok) kod varsayılanı günde 500 / ayda 5000, yalnız kaçak döngü tavanı (atomik; Vercel env varsa o geçerli); yanlış PIN IP 5/gün, genel 10/gün, 30/ay; `AI_ENABLED=false` hepsini kapatır (Preview'da kapalı). Sayaç dağıtık yükte [DOĞRULANMADI].
-- Maliyet tahmini (`lib/ai/config.ts`): A ~₺8, B ~₺5, C ~₺5, D ~₺7; üçüncü taraf fiyatı [DOĞRULANMADI]. En kötü durum varsayılanlarla ayda 150 çağrı.
+- Kötüye kullanım ve harcama sınırları: para bütçesi (D35) toplam ₺6000 (18 Aralık 2026'ya kadar), günlük ₺300, sonra aylık ₺200; çağrı sayısı ikincil günde 80 / ayda 1000 (atomik; Vercel env varsa o geçerli); aynı anda tek ücretli istek; yanlış PIN IP 5/gün, genel 10/gün, 30/ay; `AI_ENABLED=false` hepsini kapatır (Preview'da kapalı). Sayaç dağıtık yükte [DOĞRULANMADI].
+- Maliyet tahmini (`lib/ai/config.ts`): A ~₺8, B ~₺5, C ~₺5, D ~₺7, AI Preset ~₺0,3; üçüncü taraf fiyatı [DOĞRULANMADI]. Sayaçlar bunun ×1,25'ini ayırır. En kötü durum: günlük ₺300 / toplam ₺6000 tavanı.
 - EXIF: export tuvalden yeniden kodlanır; `sanitizeJpegBuffer` APP1/APP2 yüklerini sıfırlar, bozuk segmentte atmadan durur. [ÖLÇÜLDÜ] `tests/robustness.test.ts`
 
 ## 6. Kalite kapıları
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-09
 
 | Kapı | Nerede | Durum |
 |---|---|---|
 | Tip denetimi | `npx tsc --noEmit` | geçiyor |
 | Lint | `npm run lint` | geçiyor |
-| Test | `npm test` (Vitest) | 23 dosya / 306 test (2026-10-08, `--maxWorkers=2`). Bu Windows makinesinde varsayılan paralel koşuda `tests/corrections.test.ts` "fast enough … desktop CPU" (1500 ms) 1,7–2,8 s ile düşüyor, tek başına 0,9–1,0 s; GitHub CI'da yeşil |
+| Test | `npm test` (Vitest) | 25 dosya / 347 test (2026-10-09, `--maxWorkers=2 --minWorkers=1`; yeni: `edge-gradient`, `ai-budget`). Bu Windows makinesinde varsayılan paralel koşuda `tests/corrections.test.ts` "fast enough … desktop CPU" (1500 ms) 1,7–2,8 s ile düşüyor, tek başına 0,9–1,0 s; GitHub CI'da yeşil |
 | Build | `npm run build` | geçiyor |
 | Sır taraması | `npm run check:secrets` | 0 bulgu |
 | Renk belirteçleri | `tests/color-tokens.test.ts` | geçiyor |
@@ -123,6 +123,6 @@ Son doğrulama: 2026-10-08
 4. Preset kalibrasyonu ölçülebilir sınırlara ve 13 referansa göre yapıldı; sahibin kendi kaynak belgeleri (spec §5) hâlâ yok.
 
 ## 11. Sahibe açık sorular
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-09
 
 Güncel liste `docs/STATE.md` → "Sahibe sorular". Spec §10'da açık kalanlar: s.1 (preset aileleri onayı), s.6 (TikTok 1080×1920 telefonda), s.10 (AI gerçek süre/maliyet/dağıtık sayaç), s.13 (yoklama sonuçlarıyla yol haritası).

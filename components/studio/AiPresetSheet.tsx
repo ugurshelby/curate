@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Sparkles, X } from "lucide-react";
 import { tr } from "@/lib/i18n/tr";
-import { requestAiPlan, type AiFailure } from "@/lib/ai/client";
+import { fetchAiStatus, requestAiPlan, type AiFailure } from "@/lib/ai/client";
 import { AI_PLAN_COST_TRY, AI_PLAN_EST_SECONDS, AI_PLAN_STYLE_IDS, type AiPlanStyle } from "@/lib/ai/config";
 import { LOCK_PATH } from "@/lib/access/session";
 import type { AiPlanRecord } from "@/lib";
@@ -27,11 +27,21 @@ export function AiPresetSheet({ open, onClose, getImage, current, onResult, onUs
   const [running, setRunning] = useState<AiPlanStyle | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<AiFailure | null>(null);
+  const [budget, setBudget] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const busyRef = useRef(false);
 
   useEffect(() => {
-    if (open) setError(null);
+    if (!open) return;
+    setError(null);
+    // reading the status costs nothing; an unpaired device simply shows no budget line
+    let cancelled = false;
+    fetchAiStatus().then((r) => {
+      if (!cancelled && r.ok) setBudget(r.remainingTry);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   useEffect(() => {
@@ -59,8 +69,10 @@ export function AiPresetSheet({ open, onClose, getImage, current, onResult, onUs
         return;
       }
       const r = await requestAiPlan(style, img, ac.signal);
-      if (r.ok) onResult(r.record);
-      else setError(r);
+      if (r.ok) {
+        if (r.remainingTry !== null) setBudget(r.remainingTry);
+        onResult(r.record);
+      } else setError(r);
     } finally {
       busyRef.current = false;
       abortRef.current = null;
@@ -158,6 +170,11 @@ export function AiPresetSheet({ open, onClose, getImage, current, onResult, onUs
           </div>
         )}
 
+        {budget !== null && (
+          <p className="text-xs text-ink-2 num-metric" data-ai-budget>
+            {tr.ai.budgetLeft(budget)}
+          </p>
+        )}
         <p className="text-xs text-ink-3">{tr.aiPreset.privacy}</p>
       </div>
     </div>

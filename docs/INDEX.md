@@ -47,13 +47,14 @@ Son doğrulama: 2026-10-08
 | `components/studio/usePanPinch.ts` | Ortak sürükle/yakınlaştır jesti (Story, Düzenle Kırp) |
 | `components/studio/Switch.tsx` | Aç/kapa anahtarı (44 px) |
 | `components/studio/DeviceSync.tsx` | Cihaz eşitleyicisini başlatır (layout); `useDeviceStorage` ana sayfa anahtarı için |
+| `components/studio/EdgeGradientCanvas.tsx` | Story zemin önizlemesi: `paintEdgeGradient` ile boyanan canvas |
 | `components/studio/NoticeToast.tsx`, `PerfHud.tsx`, `ResettableSlider.tsx`, `InstagramOverlay.tsx`, `TikTokOverlay.tsx` | Bildirim, `?perf=1` ölçüm, kaydırıcı, platform katmanları |
 | `lib/index.ts` | Ortak dışa aktarım |
 | `lib/core/` | `types`, `state-machine` (store), `use-studio`, `worker-bridge`, `reference-images`, `prefs` (localStorage tercihler), `library-cache` (IndexedDB fotoğraf hafızası), `device-sync` (store ↔ cihaz eşitleyici) |
-| `lib/engine/` | `carousel-render` (önizleme=export), `corrections` (Düzeltme: 6 satır + Otomatik, parçalı), `presets` (kütüphane v2, 16 preset), `scene` (Akıllı Otomatik), `frame-render` (Çerçeve, önizleme=export), `ai-plan` (AI Preset planı: doğrulayıcı, maskeler, uygulama), `harmonize`, `edit-geometry`, `story-layout`, `upscale-lanczos`, `upscale-slider`, `adaptive-gradient`, `proxy` |
+| `lib/engine/` | `carousel-render` (önizleme=export), `corrections` (Düzeltme: 6 satır + Otomatik, parçalı), `presets` (kütüphane v2, 16 preset), `scene` (Akıllı Otomatik), `frame-render` (Çerçeve, önizleme=export), `ai-plan` (AI Preset planı: doğrulayıcı, maskeler, uygulama), `harmonize`, `edit-geometry`, `story-layout`, `upscale-lanczos`, `upscale-slider`, `edge-gradient` (akıllı gradyan: kenar renkleri, OKLab, dither; Çerçeve ve Story), `proxy` |
 | `lib/export/` | `platform-specs` (hedefler ve Çerçeve boyutları `FRAME_SIZES` veri olarak), `export-plan` (kalite basamağı, dosya adı), `exif-sanitizer`, `zip-packager` |
 | `middleware.ts`, `lib/access/` | Tüm uygulama PIN kapısı (D27): `session` (imza, karar, Edge+Node), `client` (kilit ekranı isteği); ekran `app/kilit/page.tsx` |
-| `lib/ai/` | `config` (model/istem/₺ tek yer), `server`, `quota`, `client`, `diff-check` |
+| `lib/ai/` | `config` (model/istem/₺ tek yer), `server` (AI Preset model zinciri, bütçe, kilit), `quota` (sayaçlar), `budget` (para tavanı, D35), `client`, `diff-check` |
 | `app/probe/`, `lib/probe/` | Geçici donanım yoklaması `/probe` (Faz Y): `schema` (probe/v1, karar ve özet), `frame-stats`, `run-web` (7 adım), `export`; metin `lib/i18n/tr.ts` → `trProbe` |
 | `probe-apk/` | Ayrı Expo paketi "Curate Probe" (Faz Y): `App.tsx`, `src/run-native.ts`, `src/probe-schema.ts` (web kopyası), yerel Kotlin modülü `modules/curate-probe`; kök kapıların dışında |
 | `lib/ui/colors.ts` | Export/canvas içerik renkleri ve tarih damgası yazı tipi (arayüz paleti değil) |
@@ -61,7 +62,7 @@ Son doğrulama: 2026-10-08
 | `lib/workers/image-processor.worker.ts` | Worker (Büyüt export'u) |
 | `public/` | `manifest.json`, `icon.svg`, PNG simgeler (`icon-192`, `icon-512`, `icon-maskable-512`, `apple-touch-icon`), `reference-images/` (13 görsel) |
 | `tests/` | Vitest testleri (parite, export planı, geometri, AI sunucu/istemci, renk belirteçleri, `ui-rules` tasarım kuralları, `access` kapı, sağlamlık…) |
-| `scripts/` | `audit-ui.mjs` (Prosedür 2), `capture-screens.mjs` (390 ekran görüntüsü), `check-bundle-secrets.mjs`, `make-icons.mjs` (PWA simgeleri), `probe-fake-camera.mjs` (yoklama akışı, sahte kamera), `lib/unlock.mjs` (denetimde kapıyı test PIN'iyle açar) |
+| `scripts/` | `audit-ui.mjs` (Prosedür 2), `capture-screens.mjs` (390 ekran görüntüsü), `check-bundle-secrets.mjs`, `make-icons.mjs` (PWA simgeleri), `probe-fake-camera.mjs` (yoklama akışı, sahte kamera), `check-gradient.mjs` (akıllı gradyan ölçümü: Çerçeve + Story, ekran görüntüsü ve export pikseli), `lib/unlock.mjs` (denetimde kapıyı test PIN'iyle açar) |
 
 ## Komutlar
 | Komut | Ne |

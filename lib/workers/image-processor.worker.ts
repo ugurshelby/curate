@@ -7,7 +7,7 @@
 import { upscaleLanczos3 } from '../engine/upscale-lanczos';
 import { applyPresetToImageData, CURATE_PRESETS } from '../engine/presets';
 import { extractColorMetrics, applyHarmonizeSync } from '../engine/harmonize';
-import { extractAdaptiveGradient } from '../engine/adaptive-gradient';
+import { extractEdgeColors } from '../engine/edge-gradient';
 import { ColorMetrics, PresetProfile } from '../core/types';
 import { applyCorrections, CorrectionParams } from '../engine/corrections';
 
@@ -130,7 +130,7 @@ if (typeof self !== 'undefined') {
 
         case 'ADAPTIVE_GRADIENT': {
           if (!imageData) throw new Error('Missing imageData');
-          const gradient = extractAdaptiveGradient(imageData);
+          const gradient = extractEdgeColors(imageData);
           const response: WorkerTaskResponse = {
             taskId,
             success: true,

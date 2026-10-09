@@ -78,16 +78,6 @@ export interface ActivePreset {
   intensity: number; // 0.0 to 1.0 (lerp weight)
 }
 
-export interface AdaptiveGradientResult {
-  colorTop: string;
-  colorBottom: string;
-  colorLeft: string;
-  colorRight: string;
-  dominantColors: string[];
-  cssLinear: string;
-  cssRadial: string;
-}
-
 
 /** Çerçeve çıktı oranı (veri: FRAME_SIZES, lib/export/platform-specs.ts) */
 export type FrameSizeId = '4_5' | '1_1' | '9_16' | '3_4' | '2_3' | '5_4' | '4_3' | '3_2' | '16_9' | '191_1';

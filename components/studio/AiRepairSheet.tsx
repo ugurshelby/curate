@@ -41,7 +41,7 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
   const [step, setStep] = useState<Step>("checking");
   const [pin, setPin] = useState("");
   const [error, setError] = useState<{ code: AiErrorCode; message: string } | null>(null);
-  const [remaining, setRemaining] = useState<{ day: number; month: number } | null>(null);
+  const [budget, setBudget] = useState<number | null>(null);
   const [running, setRunning] = useState<{ task: AiTask; startedAt: number } | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const busyRef = useRef(false);
@@ -58,7 +58,7 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
     fetchAiStatus().then((r) => {
       if (cancelled) return;
       if (r.ok) {
-        setRemaining({ day: r.remainingDay, month: r.remainingMonth });
+        setBudget(r.remainingTry);
         setStep("pick");
       } else if (r.code === "pin_required") {
         setStep("pin");
@@ -91,7 +91,7 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
     setPin("");
     if (r.ok) {
       setError(null);
-      setRemaining({ day: r.remainingDay, month: r.remainingMonth });
+      setBudget(r.remainingTry);
       setStep("pick");
     } else {
       setError(r);
@@ -133,9 +133,7 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
       }
       const r = await requestAiRepair(task, input, controller.signal);
       if (r.ok) {
-        if (r.remainingDay !== null && r.remainingMonth !== null) {
-          setRemaining({ day: r.remainingDay, month: r.remainingMonth });
-        }
+        if (r.remainingTry !== null) setBudget(r.remainingTry);
         // Kontrol sayfası açılana kadar beklenir; açılamazsa sayfa boş ve kapatılamaz kalmaz
         if (await onResult(task, r.blob)) return;
         setError({ code: "no_image", message: tr.ai.resultUnreadable });
@@ -258,10 +256,10 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
               })}
             </div>
             {/* Kalan hak yalnız eşli cihazda okunur; "unut" de yalnız orada anlamlı */}
-            {remaining && (
+            {budget !== null && (
               <div className="flex items-center justify-between gap-3">
-                <p className="text-xs text-ink-2 num-metric">
-                  Bugün kalan: {remaining.day} · Bu ay: {remaining.month}
+                <p className="text-xs text-ink-2 num-metric" data-ai-budget>
+                  {tr.ai.budgetLeft(budget)}
                 </p>
                 <button
                   type="button"

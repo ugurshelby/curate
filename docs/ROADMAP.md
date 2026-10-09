@@ -3,7 +3,7 @@
 Kaynak: sahibin 2026-10-08 görev belgesi. Sıra değişmez; bir faz bitmeden sonrakine geçilmez (KIRMIZI noktalar hariç: soru `docs/STATE.md`'ye yazılır, diğer işe geçilir). Durum: `docs/STATE.md`.
 
 ## Tamamlananlar (git log ile doğrulandı)
-M1 mobil yerleşim · M2 render hattı ve önizleme/export paritesi · S Story/TikTok/platform export · D1 Düzenle (Preset, Kırp, Büyüt) · D1b türetilmiş fotoğraf · AI1 "AI ile onar" (Vertex proxy, Upstash kota) · C renk belirteçleri (iOS mavisi) · P1 AI için 4 haneli PIN · H1 sağlamlık düzeltmeleri.
+M1 mobil yerleşim · M2 render hattı ve önizleme/export paritesi · S Story/TikTok/platform export · D1 Düzenle (Preset, Kırp, Büyüt) · D1b türetilmiş fotoğraf · AI1 "AI ile onar" (Vertex proxy, Upstash kota) · C renk belirteçleri (iOS mavisi) · P1 AI için 4 haneli PIN · H1 sağlamlık düzeltmeleri · Düzeltme turu 1 (AI Preset model zinciri D34, akıllı gradyan D33, AI para tavanı D35).
 
 ## Fazlar
 

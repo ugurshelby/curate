@@ -11,6 +11,10 @@ export interface CounterStore {
   incr(key: string, ttlSeconds: number): Promise<number>;
   /** Bir azaltır (ayırmayı geri alma); yeni değeri döner */
   decr(key: string): Promise<number>;
+  /** Tam sayı miktar ekler (bütçe sayaçları kuruş cinsinden); ttl null ise anahtar süresiz kalır; yeni değeri döner */
+  incrBy(key: string, amount: number, ttlSeconds: number | null): Promise<number>;
+  /** Tam sayı miktar çıkarır (ayırmayı geri alma); yeni değeri döner */
+  decrBy(key: string, amount: number): Promise<number>;
 }
 
 export class MemoryCounterStore implements CounterStore {
@@ -40,9 +44,19 @@ export class MemoryCounterStore implements CounterStore {
   }
 
   async decr(key: string): Promise<number> {
+    return this.decrBy(key, 1);
+  }
+
+  async incrBy(key: string, amount: number, ttlSeconds: number | null): Promise<number> {
+    const value = this.read(key) + amount;
+    this.map.set(key, { value, expiresAt: ttlSeconds === null ? Infinity : this.now() + ttlSeconds * 1000 });
+    return value;
+  }
+
+  async decrBy(key: string, amount: number): Promise<number> {
     const e = this.map.get(key);
     if (!e || e.expiresAt <= this.now()) return 0;
-    e.value -= 1;
+    e.value -= amount;
     return e.value;
   }
 }
@@ -89,6 +103,18 @@ export class UpstashCounterStore implements CounterStore {
     const [v] = await this.pipeline([['DECR', key]]);
     return Number(v) || 0;
   }
+
+  async incrBy(key: string, amount: number, ttlSeconds: number | null): Promise<number> {
+    const commands: (string | number)[][] = [['INCRBY', key, amount]];
+    if (ttlSeconds !== null) commands.push(['EXPIRE', key, ttlSeconds]);
+    const [v] = await this.pipeline(commands);
+    return Number(v) || 0;
+  }
+
+  async decrBy(key: string, amount: number): Promise<number> {
+    const [v] = await this.pipeline([['DECRBY', key, amount]]);
+    return Number(v) || 0;
+  }
 }
 
 type EnvLike = Record<string, string | undefined>;
@@ -132,6 +158,12 @@ export const quotaKeys = {
   pinFailIp: (tag: string, ip: string, now: Date) => `curate:ai:pinfail:${tag}:ip:${ip}:${istanbulDay(now)}`,
   pinFailDay: (tag: string, now: Date) => `curate:ai:pinfail:${tag}:day:${istanbulDay(now)}`,
   pinFailMonth: (tag: string, now: Date) => `curate:ai:pinfail:${tag}:month:${istanbulMonth(now)}`,
+  /** Money counters in kuruş (D35): per Istanbul day, cumulative window (never reset), calendar month */
+  budgetDay: (now: Date) => `curate:ai:try:day:${istanbulDay(now)}`,
+  budgetTotal: () => 'curate:ai:try:total',
+  budgetMonth: (now: Date) => `curate:ai:try:month:${istanbulMonth(now)}`,
+  /** Parallel-request guard (10 s) */
+  busy: () => 'curate:ai:busy',
 };
 
 export const DAY_TTL_S = 2 * 24 * 3600;

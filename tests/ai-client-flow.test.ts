@@ -68,7 +68,10 @@ describe('AI client requests', () => {
 
   it('status check reads pairing and quota without a model call', async () => {
     const f = vi.fn(async () => new Response(JSON.stringify({ remainingDay: 5, remainingMonth: 50 }), { status: 200 }));
-    expect(await fetchAiStatus(f as unknown as typeof fetch)).toEqual({ ok: true, remainingDay: 5, remainingMonth: 50 });
+    expect(await fetchAiStatus(f as unknown as typeof fetch)).toEqual({ ok: true, remainingDay: 5, remainingMonth: 50, remainingTry: null });
+    // the money left (D35) comes through when the server reports it
+    const withBudget = vi.fn(async () => new Response(JSON.stringify({ remainingDay: 5, remainingMonth: 50, remainingTry: 287.5 }), { status: 200 }));
+    expect(await fetchAiStatus(withBudget as unknown as typeof fetch)).toMatchObject({ ok: true, remainingTry: 287.5 });
     expect((f.mock.calls[0] as unknown as [string, RequestInit])[1].method).toBe('GET');
     const unpaired = vi.fn(async () => new Response('{"error":"pin_required"}', { status: 401 }));
     expect(await fetchAiStatus(unpaired as unknown as typeof fetch)).toMatchObject({ ok: false, code: 'pin_required' });
@@ -76,7 +79,7 @@ describe('AI client requests', () => {
 
   it('unlock sends the PIN once as JSON via PUT; forget uses DELETE', async () => {
     const f = vi.fn(async () => new Response(JSON.stringify({ remainingDay: 20, remainingMonth: 150 }), { status: 200 }));
-    expect(await unlockAi('0000', f as unknown as typeof fetch)).toEqual({ ok: true, remainingDay: 20, remainingMonth: 150 });
+    expect(await unlockAi('0000', f as unknown as typeof fetch)).toEqual({ ok: true, remainingDay: 20, remainingMonth: 150, remainingTry: null });
     const [, init] = f.mock.calls[0] as unknown as [string, RequestInit];
     expect(init.method).toBe('PUT');
     expect(JSON.parse(init.body as string)).toEqual({ pin: '0000' });

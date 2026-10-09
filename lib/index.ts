@@ -12,7 +12,7 @@ export * from './core/idle';
 export * from './engine/proxy';
 export * from './engine/harmonize';
 export * from './engine/presets';
-export * from './engine/adaptive-gradient';
+export * from './engine/edge-gradient';
 export * from './engine/upscale-lanczos';
 export * from './engine/upscale-slider';
 export * from './engine/carousel-render';

@@ -8,8 +8,8 @@ import { upscaleLanczos3 } from '../engine/upscale-lanczos';
 import { applyCorrections as applyCorrectionsSync, CorrectionParams } from '../engine/corrections';
 import { applyPresetToImageData, CURATE_PRESETS } from '../engine/presets';
 import { extractColorMetrics, applyHarmonizeSync } from '../engine/harmonize';
-import { extractAdaptiveGradient } from '../engine/adaptive-gradient';
-import { ColorMetrics, AdaptiveGradientResult } from './types';
+import { extractEdgeColors, type EdgeColors } from '../engine/edge-gradient';
+import { ColorMetrics } from './types';
 import {
   WorkerTaskRequest,
   WorkerTaskResponse,
@@ -189,11 +189,11 @@ export class WorkerBridge {
     );
   }
 
-  public async extractGradient(imageData: ImageData): Promise<AdaptiveGradientResult> {
+  public async extractGradient(imageData: ImageData): Promise<EdgeColors> {
     return this.postOrFallback(
       'ADAPTIVE_GRADIENT',
       { imageData },
-      () => extractAdaptiveGradient(imageData)
+      () => extractEdgeColors(imageData)
     );
   }
 }
