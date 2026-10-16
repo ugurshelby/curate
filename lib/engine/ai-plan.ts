@@ -349,7 +349,7 @@ export const MASK_GRID = 4;
  * Applies the plan in place (preview and export call this with the same inputs; only the size differs).
  * strength scales every value (the preset's single "Miktar" slider × the plan's stored safety scale).
  */
-export function applyAiPlan(img: ImageData, plan: AiLightPlan, strength: number, map: PlanMapping): ImageData {
+export function applyAiPlan(img: ImageData, plan: AiLightPlan, strength: number, map?: PlanMapping): ImageData {
   const k = clamp(strength, 0, 1);
   if (k <= 0) return img;
   const steps: Step[] = [];
@@ -362,6 +362,7 @@ export function applyAiPlan(img: ImageData, plan: AiLightPlan, strength: number,
   if (!steps.length) return img;
 
   const { width: W, height: H, data } = img;
+  const m = map ?? { a: 1 / W, b: 0, c: 0, d: 0, e: 1 / H, f: 0 };
   // Masks are smooth: evaluate them on a coarse grid (every MASK_GRID px) and interpolate bilinearly.
   // Same grid rule at every size, so preview and export of the same size match exactly.
   const G = MASK_GRID;
@@ -374,7 +375,7 @@ export function applyAiPlan(img: ImageData, plan: AiLightPlan, strength: number,
       const yc = gy * G + 0.5;
       for (let gx = 0; gx < gw; gx++) {
         const xc = gx * G + 0.5;
-        grid[gy * gw + gx] = shapeWeight(st.shape, map.a * xc + map.b * yc + map.c, map.d * xc + map.e * yc + map.f);
+        grid[gy * gw + gx] = shapeWeight(st.shape, m.a * xc + m.b * yc + m.c, m.d * xc + m.e * yc + m.f);
       }
     }
     return grid;

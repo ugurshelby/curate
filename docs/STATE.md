@@ -19,14 +19,15 @@ Tek durum dosyası. Her anlamlı adımdan sonra aynı commit'te güncellenir. Ye
 | D1 | Düzeltme turu 1 (2026-10-08/09) | kod bitti, telefonda bekliyor | AI Preset model zinciri ve şema (D34), akıllı gradyan Çerçeve + Story (D33), AI para tavanı ve kalan bütçe satırı (D35). Rapor: `docs/reports/2026-10-09-duzeltme-1.md` |
 | Y | Yoklama (geçici, ayrı görev 2026-10-08) | kod bitti, telefonda bekliyor | `/probe` + `probe-apk/`; `docs/probe/README.md`. Sahip iki JSON'u getirecek |
 | K | AI Kalibrasyon & Değerlendirme Pipeline | bitti | `tests/run-pipeline.mjs`, `tests/pipeline/`, 17 test görseli uçtan uca koşturuldu; `tests/report.html` üretildi (Fidelity: 9.3/10, Niyet: 8.4/10, Lider: Curate-Harmonizer) |
-| R | Radikal Sadeleştirme & Odak Daraltma (3 Modül) | bitti (onay bekleniyor) | Carousel ve Story modülleri, Presetler ve Crop komple silindi. 3 Temel Modül (Düzenle [AI Onar + Direktif], Büyüt [Standart + AI], Çerçeve [Polaroid varyasyonları, renkli mat, gradyan, toplu işlem]) kuruldu. 319/319 test yeşil, build ve secrets temiz. |
-| M | İki Aşamalı AI Pipeline & Kategori Seçim Kalibrasyonu | bitti | Matematiksel Teknik Şema + Multimodal Yorumlayıcı Model (Vision Interpreter) + Output Plan Optimizer mimarisi kuruldu. 5 Temel Hazır Şablon tanımlandı. 17 görselde 3 yaklaşım (51 çıktı) benchmark edildi. `tests/multistage-report.html` (173.8 KB) üretildi. |
+| R | Radikal Sadeleştirme & Odak Daraltma (3 Modül) | bitti | Carousel ve Story modülleri, Presetler ve Crop yerine 3 Temel Modül (Düzenle [AI Onar + Direktif], Büyüt [Standart + Detay], Çerçeve [Polaroid varyasyonları, renkli mat, gradyan, toplu işlem]) kuruldu. 325/325 test yeşil, build ve secrets temiz. |
+| M | İki Aşamalı AI Pipeline & Kategori Seçim Kalibrasyonu | bitti | Matematiksel Teknik Şema + Multimodal Yorumlayıcı Model (Vision Interpreter) + Output Plan Optimizer mimarisi kuruldu. 5 Temel Hazır Şablon tanımlandı. Üretim koduna (`EditStudio`, `lib/engine/intelligent-repair.ts`, `lib/ai/`) ve benchmark testlerine tam entegre edildi. |
 
 ## Sıradaki adım
-Sahibin `tests/multistage-report.html` raporundaki kategori bazlı karar kartlarını inceleyip model tercihlerini belirlemesi ve commit/push onayı vermesi.
+Sahibin telefonda 3 temel modülü (Düzenle, Büyüt, Çerçeve) test etmesi; AI Onar çağrılarının Vertex üzerinde denenmesi.
 
-## Son commit
-Düzeltme turu 1: bkz. `git log` (`fix(ai)`, `feat(frame)`, `feat(ai)` önekleri).
+## Son durum
+- 24 test dosyası, 325 birim ve parite testi yeşil.
+- `tsc --noEmit`, `npm run lint`, `npm run check:secrets` (0 bulgu), `npm test` sıfır hatayla geçti.
 
 ## Sahibe sorular (açık)
 - Yoklama sonuçları geldiğinde yol haritası: sonuçlar Curate'e mi, ayrı bir kamera uygulamasına mı gidecek (spec §7 madde 5 kamera/çekim asistanını kapsam dışı sayar; spec §10 s.13).

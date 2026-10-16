@@ -45,6 +45,10 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     }
   }, [selectedItem, scaleFactor, actions]);
 
+  useEffect(() => {
+    setAiPreviewUrl(null);
+  }, [selectedItem?.id, photoPath]);
+
   const addSingleFile = (files: File[]) => {
     const file = files[0];
     if (!file) return;
@@ -160,6 +164,20 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
       ref={containerRef}
       data-stage
       tabIndex={0}
+      role="slider"
+      aria-label={tr.upscale.divider}
+      aria-valuenow={splitPos}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          setSplitPos((p) => Math.max(0, p - 5));
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault();
+          setSplitPos((p) => Math.min(100, p + 5));
+        }
+      }}
       className="relative w-full h-full flex items-center justify-center overflow-hidden outline-none cursor-ew-resize select-none"
     >
       {hasPhoto && photoPath ? (

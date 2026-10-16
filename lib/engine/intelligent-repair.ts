@@ -1,11 +1,65 @@
-import type { AiLightPlan } from './ai-plan';
+import { applyAiPlan, type AiLightPlan } from './ai-plan';
 import type { ImageTechnicalSchema } from './image-schema';
+import type { AiRepairSchema, AiRepairStyle } from '../ai/config';
 
 /**
- * Curate Studio — İki Aşamalı Akıllı Onarım Motoru (Production)
- * 1. Aşama: Semantik Görsel Yorumlama (Görsel Işık Yönü & Özne Analizi)
- * 2. Aşama: Output Plan Optimizer (Bölgesel Maskeli AiLightPlan Üretimi)
+ * Curate Studio — Düzenle → AI Onar.
+ * Primary path: technical schema + template/directive + photo preview go to the interpreter model through our proxy,
+ * which answers with a JSON light/colour plan only (D28); Curate applies it locally.
+ * This file holds the device-side parts: template keys, directive matching, the local fallback plan used when the
+ * model cannot be reached, and the strip-wise applier.
  */
+
+export type RepairTemplateKey = ImageTechnicalSchema['suggestedTemplateKey'];
+export const REPAIR_TEMPLATE_KEYS: RepairTemplateKey[] = ['blownLight', 'illuminateSubject', 'dehaze', 'neutralizeColor', 'nightClarity'];
+
+export function isRepairTemplateKey(v: unknown): v is RepairTemplateKey {
+  return typeof v === 'string' && (REPAIR_TEMPLATE_KEYS as string[]).includes(v);
+}
+
+/** Template → model style; a free-text directive without a template uses `repair_auto` */
+export const REPAIR_STYLE_BY_TEMPLATE: Record<RepairTemplateKey, AiRepairStyle> = {
+  blownLight: 'repair_blown_light',
+  illuminateSubject: 'repair_illuminate_subject',
+  dehaze: 'repair_dehaze',
+  neutralizeColor: 'repair_neutralize_color',
+  nightClarity: 'repair_night_clarity',
+};
+
+/** Turkish (and a few English) words the owner uses for each problem; first match in this order wins */
+const DIRECTIVE_KEYWORDS: [RepairTemplateKey, RegExp][] = [
+  ['blownLight', /patla|bembeyaz|parlak|gökyüz|gokyuz|pencere|blown|overexpos/i],
+  ['nightClarity', /gece|karanlık ortam|düşük ışık|dusuk isik|night/i],
+  ['illuminateSubject', /karanlık|karanlik|gölge|golge|ters ışık|ters isik|özne|ozne|yüz|yuz|backlit|dark/i],
+  ['neutralizeColor', /sarı|sari|mavi|yeşil|yesil|mor|renk kay|ton kay|beyaz dengesi|cast/i],
+  ['dehaze', /soluk|cansız|cansiz|pus|duman|sis|mat|donuk|renk|haze|flat|dull/i],
+];
+
+/** Best template for a free-text directive, or null when nothing matches */
+export function templateFromDirective(text: string | null | undefined): RepairTemplateKey | null {
+  const t = (text ?? '').toLocaleLowerCase('tr');
+  if (!t.trim()) return null;
+  for (const [key, re] of DIRECTIVE_KEYWORDS) if (re.test(t)) return key;
+  return null;
+}
+
+/** Template actually used: explicit tap → directive words → schema suggestion */
+export function resolveRepairTemplate(schema: ImageTechnicalSchema, templateKey?: string | null, directive?: string | null): RepairTemplateKey {
+  if (isRepairTemplateKey(templateKey)) return templateKey;
+  return templateFromDirective(directive) ?? schema.suggestedTemplateKey;
+}
+
+/** Numbers sent to the interpreter model (no dimensions, no pixels) */
+export function schemaForAi(s: ImageTechnicalSchema): AiRepairSchema {
+  return {
+    meanLuma: s.meanLuma,
+    blownRatio: s.blownRatio,
+    crushedRatio: s.crushedRatio,
+    avgSaturation: s.avgSaturation,
+    warmth: s.colorCast.warmth,
+    tint: s.colorCast.tint,
+  };
+}
 
 export interface RepairInterpretation {
   sceneType: 'portrait' | 'landscape' | 'interior' | 'night' | 'street';
@@ -15,7 +69,7 @@ export interface RepairInterpretation {
 }
 
 /**
- * 1. Aşama: Görsel Semantiğini ve Işık Yönünü Yorumlama
+ * Local fallback interpretation (no model): reads the schema and the resolved template.
  */
 export function interpretImageSemantics(
   schema: ImageTechnicalSchema,
@@ -23,34 +77,27 @@ export function interpretImageSemantics(
   customDirective?: string
 ): RepairInterpretation {
   const isPortrait = schema.aspectRatio < 0.85;
-  const isBlown = schema.blownRatio >= 0.012;
-  const isDark = schema.crushedRatio >= 0.05 || schema.meanLuma < 90;
-
-  const effectiveKey = templateKey || schema.suggestedTemplateKey;
+  const effectiveKey = resolveRepairTemplate(schema, templateKey, customDirective);
 
   let sceneType: RepairInterpretation['sceneType'] = isPortrait ? 'portrait' : 'landscape';
   let lightDir: RepairInterpretation['lightDirection'] = 'diffused';
-  let mainSubject = isPortrait ? 'Ana portre öznesi' : 'Manzara ve çevre kompozisyonu';
-  let summary = 'Genel sahne ışığı ve kontrast dengesi.';
+  const mainSubject = isPortrait ? 'Ana portre öznesi' : 'Manzara ve çevre kompozisyonu';
+  let summary: string;
 
-  if (effectiveKey === 'blownLight' || isBlown) {
+  if (effectiveKey === 'blownLight') {
     lightDir = 'top_window';
-    summary = 'Pencere veya gökyüzü bölgesinde ışık patlaması ve detay kaybı tespit edildi.';
-  } else if (effectiveKey === 'illuminateSubject' || isDark) {
+    summary = 'Pencere veya gökyüzü bölgesinde ışık patlaması ve detay kaybı.';
+  } else if (effectiveKey === 'illuminateSubject') {
     lightDir = 'backlit';
-    summary = 'Özne ters ışıkta ve gölgede kalmış; yüz ve özne öne çıkarılmayı bekliyor.';
-  } else if (effectiveKey === 'neutralizeColor' || Math.abs(schema.colorCast.warmth) > 0.15) {
-    summary = `Ortam ışığında renk sapması (sıcaklık: ${schema.colorCast.warmth.toFixed(2)}) ve kenar kararması tespit edildi.`;
+    summary = 'Özne ters ışıkta ve gölgede kalmış.';
+  } else if (effectiveKey === 'neutralizeColor') {
+    summary = `Ortam ışığında renk sapması (sıcaklık: ${schema.colorCast.warmth.toFixed(2)}).`;
   } else if (effectiveKey === 'nightClarity') {
     sceneType = 'night';
     lightDir = 'low_ambient';
-    summary = 'Düşük ışıklı gece sahnesinde gölge detayları ezilmiş.';
+    summary = 'Düşük ışıklı sahnede gölge detayları ezilmiş.';
   } else {
-    summary = 'Düşük dinamik aralık ve solgun renk doygunluğu tespit edildi.';
-  }
-
-  if (customDirective && customDirective.trim().length > 0) {
-    summary = `${summary} Özel kullanıcı direktifi: "${customDirective.trim()}".`;
+    summary = 'Düşük dinamik aralık ve solgun renk doygunluğu.';
   }
 
   return {
@@ -62,14 +109,15 @@ export function interpretImageSemantics(
 }
 
 /**
- * 2. Aşama: Yorumlayıcı Analizine Göre Bölgesel Maskeli AiLightPlan Üretimi
+ * Local fallback plan from the resolved template (same JSON shape the model returns, so the same validator/applier runs).
  */
 export function generateIntelligentRepairPlan(
   schema: ImageTechnicalSchema,
   interpretation: RepairInterpretation,
-  templateKey?: string
+  templateKey?: string,
+  directive?: string
 ): AiLightPlan {
-  const effectiveKey = templateKey || schema.suggestedTemplateKey;
+  const effectiveKey = resolveRepairTemplate(schema, templateKey, directive);
   const plan: AiLightPlan = {
     version: 1,
     scene: {
@@ -169,4 +217,27 @@ export function generateIntelligentRepairPlan(
   }
 
   return plan;
+}
+
+/** Rows per strip; a multiple of MASK_GRID (4) so masks line up exactly with a whole-image pass */
+export const PLAN_STRIP_ROWS = 256;
+
+interface StripContext {
+  getImageData(sx: number, sy: number, sw: number, sh: number): ImageData;
+  putImageData(img: ImageData, dx: number, dy: number): void;
+}
+
+/**
+ * Applies a plan to a W×H canvas in horizontal strips: identical pixels to one whole-image pass, but the peak extra
+ * memory is one strip instead of a full-size ImageData (a 50 MP photo would need ~200 MB at once).
+ */
+export function applyPlanInStrips(ctx: StripContext, W: number, H: number, plan: AiLightPlan, strength: number, rows: number = PLAN_STRIP_ROWS): void {
+  const step = Math.max(4, Math.floor(rows / 4) * 4);
+  for (let y0 = 0; y0 < H; y0 += step) {
+    const h = Math.min(step, H - y0);
+    const strip = ctx.getImageData(0, y0, W, h);
+    // whole-photo mapping (u = x/W, v = y/H) shifted by the strip's top row
+    applyAiPlan(strip, plan, strength, { a: 1 / W, b: 0, c: 0, d: 0, e: 1 / H, f: y0 / H });
+    ctx.putImageData(strip, 0, y0);
+  }
 }

@@ -8,12 +8,19 @@ import {
   createStudioItem,
   createExportCanvas,
   type AiLightPlan,
-  applyAiPlan,
-  planMapping,
   extractImageTechnicalSchema,
   type ImageTechnicalSchema,
   interpretImageSemantics,
   generateIntelligentRepairPlan,
+  resolveRepairTemplate,
+  isRepairTemplateKey,
+  REPAIR_STYLE_BY_TEMPLATE,
+  templateFromDirective,
+  schemaForAi,
+  applyPlanInStrips,
+  requestAiPlan,
+  type AiPlanStyle,
+  type AiRepairContext,
 } from "@/lib";
 import { tr } from "@/lib/i18n/tr";
 import { StudioShell, StageNote } from "./StudioShell";
@@ -42,7 +49,7 @@ export function EditStudio({ onBack }: EditStudioProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isHoldingOriginal, setIsHoldingOriginal] = useState(false);
   const [processedUrl, setProcessedUrl] = useState<string | null>(null);
-  const [, setCurrentPlan] = useState<AiLightPlan | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<AiLightPlan | null>(null);
   const [schema, setSchema] = useState<ImageTechnicalSchema | null>(null);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isReferenceOpen, setIsReferenceOpen] = useState(false);
@@ -89,7 +96,7 @@ export function EditStudio({ onBack }: EditStudioProps) {
 
   // İki Aşamalı Akıllı AI Onarım Pipeline
   const handleApplyAiRepair = async (templateKey?: string, customPrompt?: string) => {
-    const textToUse = customPrompt || promptText;
+    const textToUse = customPrompt !== undefined ? customPrompt : promptText;
     if (!photoPath || isProcessing) return;
 
     setIsProcessing(true);
@@ -104,31 +111,50 @@ export function EditStudio({ onBack }: EditStudioProps) {
         img.src = photoPath;
       });
 
-      // 1. Teknik Şema (Mevcut değilse hesapla)
+      // 1. Aşama: Matematiksel Teknik Şema (Mevcut değilse hesapla)
       const currentSchema = schema || extractImageTechnicalSchema(img);
       if (!schema) setSchema(currentSchema);
 
-      // 2. Aşama: Görsel Yorumlayıcı Model (Interpreter)
-      const interpretation = interpretImageSemantics(currentSchema, templateKey, textToUse);
+      const effectiveTemplate = resolveRepairTemplate(currentSchema, templateKey, textToUse);
+      const style: AiPlanStyle =
+        templateKey && isRepairTemplateKey(templateKey)
+          ? REPAIR_STYLE_BY_TEMPLATE[templateKey]
+          : (templateFromDirective(textToUse)
+              ? REPAIR_STYLE_BY_TEMPLATE[templateFromDirective(textToUse)!]
+              : (textToUse?.trim() ? "repair_auto" : REPAIR_STYLE_BY_TEMPLATE[effectiveTemplate]));
 
       setStatusMessage(tr.edit.stage2Optimize);
 
-      // 3. Aşama: Output Plan Optimizer
-      const plan = generateIntelligentRepairPlan(currentSchema, interpretation, templateKey);
+      // 2. Aşama: Görsel Yorumlayıcı Model (Interpreter) — Önce Vertex AI Proxy
+      let plan: AiLightPlan | null = null;
+      try {
+        const aiContext: AiRepairContext = {
+          directive: textToUse?.trim() || undefined,
+          schema: schemaForAi(currentSchema),
+        };
+        const aiRes = await requestAiPlan(style, img, undefined, fetch, aiContext);
+        if (aiRes.ok && aiRes.record?.plan) {
+          plan = aiRes.record.plan;
+        }
+      } catch {
+        // Model bağlantısı yoksa veya başarısız olursa sezgisel yedek motora geç
+      }
 
-      // 4. Aşama: Curate Yerel Piksel Motoru ile Kayıpsız Uygulama
+      // Model yoksa veya çevrimdışıysa akıllı yerel optimizasyon fallback'i
+      if (!plan) {
+        const interpretation = interpretImageSemantics(currentSchema, templateKey, textToUse);
+        plan = generateIntelligentRepairPlan(currentSchema, interpretation, templateKey, textToUse);
+      }
+
+      // 3. Aşama: Curate Yerel Piksel Motoru ile Kayıpsız Uygulama (Strip processing)
       const canvas = document.createElement("canvas");
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext("2d");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
       if (!ctx) throw new Error("Canvas context");
 
       ctx.drawImage(img, 0, 0);
-      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const mapping = planMapping({ crop: null, srcW: canvas.width, srcH: canvas.height }, canvas.width, canvas.height);
-
-      applyAiPlan(imgData, plan, 1.0, mapping);
-      ctx.putImageData(imgData, 0, 0);
+      applyPlanInStrips(ctx, canvas.width, canvas.height, plan, 1.0);
 
       const resultDataUrl = canvas.toDataURL("image/jpeg", 0.95);
       setProcessedUrl(resultDataUrl);
@@ -142,21 +168,27 @@ export function EditStudio({ onBack }: EditStudioProps) {
   };
 
   const renderExportCanvas = useCallback(async (): Promise<HTMLCanvasElement> => {
-    const activeUrl = processedUrl || photoPath;
-    if (!activeUrl) throw new Error("No photo to export");
+    if (!photoPath) throw new Error("No photo to export");
 
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    if (!photoPath.startsWith("data:") && !photoPath.startsWith("blob:")) {
+      img.crossOrigin = "anonymous";
+    }
     await new Promise((res, rej) => {
       img.onload = () => res(null);
       img.onerror = rej;
-      img.src = activeUrl;
+      img.src = photoPath;
     });
 
     const { canvas, ctx } = createExportCanvas(img.naturalWidth, img.naturalHeight);
     ctx.drawImage(img, 0, 0);
+
+    if (currentPlan) {
+      applyPlanInStrips(ctx, canvas.width, canvas.height, currentPlan, 1.0);
+    }
+
     return canvas;
-  }, [processedUrl, photoPath]);
+  }, [currentPlan, photoPath]);
 
   const stage = (
     <div

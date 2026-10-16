@@ -331,6 +331,24 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
           >
             {tr.frame.gradients.sunset}
           </button>
+          <button
+            type="button"
+            onClick={() => actions.setFrameConfig({ frameType: "gradient", gradientMode: "deep" })}
+            className={`touch-target press min-h-[44px] px-2 rounded-lg text-xs font-medium border ${
+              frameType === "gradient" && gradientMode === "deep" ? "bg-accent-fill text-on-accent border-accent-fill" : "bg-surface-2 text-ink-2 border-separator"
+            }`}
+          >
+            {tr.frame.gradients.deep}
+          </button>
+          <button
+            type="button"
+            onClick={() => actions.setFrameConfig({ frameType: "gradient", gradientMode: "subtle" })}
+            className={`touch-target press min-h-[44px] px-2 rounded-lg text-xs font-medium border ${
+              frameType === "gradient" && gradientMode === "subtle" ? "bg-accent-fill text-on-accent border-accent-fill" : "bg-surface-2 text-ink-2 border-separator"
+            }`}
+          >
+            {tr.frame.gradients.subtle}
+          </button>
         </div>
 
         {frameType === "matte" && (
@@ -353,7 +371,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
                   <span className="w-4 h-4 rounded-full" style={{ backgroundColor: p.color }} />
                 </button>
               ))}
-              <label className="cursor-pointer ml-auto flex items-center gap-1 text-xs text-ink-2 touch-target min-h-[44px]">
+              <label className="relative cursor-pointer ml-auto flex items-center gap-1 text-xs text-ink-2 touch-target min-h-[44px]">
                 <Palette className="w-4 h-4 text-accent" />
                 <input
                   type="color"

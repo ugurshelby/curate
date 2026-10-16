@@ -19,7 +19,10 @@ import {
   AI_PLAN_INPUT_JPEG_QUALITY,
   AI_PLAN_INPUT_LONG_EDGE,
   AI_PLAN_TASK,
+  AI_HEADER_CONTEXT,
+  encodeRepairContext,
   type AiPlanStyle,
+  type AiRepairContext,
 } from './config';
 import { planSafeScale, validatePlan, type AiPlanRecord } from '../engine/ai-plan';
 
@@ -183,6 +186,7 @@ export async function requestAiPlan(
   img: CanvasImageSource & { naturalWidth: number; naturalHeight: number },
   signal?: AbortSignal,
   fetchFn: typeof fetch = fetch,
+  context?: AiRepairContext | null,
 ): Promise<AiPlanResult> {
   const s = Math.min(1, AI_PLAN_INPUT_LONG_EDGE / Math.max(img.naturalWidth, img.naturalHeight));
   const width = Math.max(1, Math.round(img.naturalWidth * s));
@@ -197,11 +201,14 @@ export async function requestAiPlan(
   ctx.drawImage(img, 0, 0, width, height);
   const jpeg = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', AI_PLAN_INPUT_JPEG_QUALITY));
   if (!jpeg) return fail('bad_image');
+  const headers: Record<string, string> = { [AI_HEADER_TASK]: AI_PLAN_TASK, [AI_HEADER_STYLE]: style, 'Content-Type': 'image/jpeg' };
+  const encoded = context ? encodeRepairContext(context) : null;
+  if (encoded) headers[AI_HEADER_CONTEXT] = encoded;
   try {
     const res = await fetchFn(AI_ENDPOINT, {
       method: 'POST',
       credentials: 'same-origin',
-      headers: { [AI_HEADER_TASK]: AI_PLAN_TASK, [AI_HEADER_STYLE]: style, 'Content-Type': 'image/jpeg' },
+      headers,
       body: jpeg,
       signal,
       cache: 'no-store',

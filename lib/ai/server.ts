@@ -38,8 +38,10 @@ import {
   AI_PLAN_MODELS,
   AI_PLAN_TASK,
   AiErrorCode,
+  AI_HEADER_CONTEXT,
   buildPlanBody,
   isAiPlanStyle,
+  parseRepairContext,
   AiTask,
   aiModelId,
   buildVertexBody,
@@ -538,8 +540,19 @@ async function handleAiPlan(req: Request, deps: AiDeps, started: number): Promis
   const quota = await reserveQuota(deps);
   if (quota instanceof Response) return quota;
 
-  const body = JSON.stringify(buildPlanBody(style, jpeg.input.toString('base64')));
-  const logBase = { task: AI_PLAN_TASK, style, inBytes: jpeg.input.length, inW: jpeg.width, inH: jpeg.height, costTry: AI_PLAN_COST_TRY };
+  // technical schema + owner's directive (Düzenle → AI Onar); text only, sanitized; the log keeps no text
+  const ctx = parseRepairContext(req.headers.get(AI_HEADER_CONTEXT));
+  const body = JSON.stringify(buildPlanBody(style, jpeg.input.toString('base64'), ctx));
+  const logBase = {
+    task: AI_PLAN_TASK,
+    style,
+    inBytes: jpeg.input.length,
+    inW: jpeg.width,
+    inH: jpeg.height,
+    costTry: AI_PLAN_COST_TRY,
+    schema: !!ctx?.schema,
+    directiveLen: ctx?.directive?.length ?? 0,
+  };
   const finish = (status: string, extra: Record<string, unknown> = {}) => deps.log({ ...logBase, status, ms: deps.now() - started, ...extra });
 
   const kinds: PlanFailKind[] = [];
