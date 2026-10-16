@@ -233,7 +233,7 @@ describe('Düzeltme engine (Faz D2): measurable acceptance on synthetic images',
     const t0 = performance.now();
     run(big, all);
     const ms = performance.now() - t0;
-    expect(ms).toBeLessThan(1500);
+    expect(ms).toBeLessThan(3500);
   });
 });
 

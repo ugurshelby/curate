@@ -24,6 +24,20 @@ export const EXPORT_COLORS = {
   storyBlack: '#000000',
 } as const;
 
+export const FRAME_MATTE_PRESETS = {
+  white: '#ffffff',
+  cream: '#f5efe6',
+  charcoal: '#222224',
+  black: '#000000',
+  warmGray: '#8e8e93',
+} as const;
+
+export const FRAME_GRADIENTS = {
+  sunset: ['#ff8a65', '#ff7043', '#7e57c2'] as const,
+  deep: ['#1e293b', '#0f172a'] as const,
+  subtle: ['#e2e8f0', '#cbd5e1'] as const,
+} as const;
+
 /**
  * Analog tarih damgasının yazı tipi: fotoğrafın (export içeriğinin) parçası, arayüz metni değil.
  * Arayüzde monospace yasak (tests/ui-rules.test.ts); bu dosya tek istisna yeridir.

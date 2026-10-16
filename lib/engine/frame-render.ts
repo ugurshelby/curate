@@ -6,9 +6,9 @@
 
 import type { FrameConfig } from '../core/types';
 import { buildEdgeGradient, chooseGradientAxis, paintEdgeGradient, type EdgeColors } from './edge-gradient';
-import { EXPORT_COLORS, STAMP_FONT_FAMILY } from '../ui/colors';
+import { EXPORT_COLORS, FRAME_GRADIENTS, STAMP_FONT_FAMILY } from '../ui/colors';
 
-/** Border/corner slider units → output pixels at a 1080 px short edge (kept from the original export) */
+/** Border/corner slider units → output pixels at a 1080 px short edge */
 export const FRAME_UNIT = 2.2;
 /** Polaroid bottom border is this many times the side border */
 export const POLAROID_BOTTOM = 2.2;
@@ -20,21 +20,46 @@ export interface FrameLayout {
   stamp: { x: number; y: number; size: number };
 }
 
+/**
+ * Calculates canvas pixel size for preview based on container bounds and DPR
+ */
+export function previewRenderSize(outW: number, outH: number, boxW: number, boxH: number, dpr: number = 1): { width: number; height: number } {
+  if (boxW <= 0 || boxH <= 0) return { width: 320, height: 320 };
+  const ratio = outW / outH;
+  let w = boxW;
+  let h = boxW / ratio;
+  if (h > boxH) {
+    h = boxH;
+    w = boxH * ratio;
+  }
+  return {
+    width: Math.max(1, Math.round(w * dpr)),
+    height: Math.max(1, Math.round(h * dpr)),
+  };
+}
+
 export function frameLayout(W: number, H: number, cfg: Pick<FrameConfig, 'frameType' | 'borderWidth' | 'borderRadius'>): FrameLayout {
   const unit = (FRAME_UNIT * Math.min(W, H)) / 1080;
   const pad = Math.round(cfg.borderWidth * unit);
-  const padBottom = cfg.frameType === 'polaroid' ? Math.round(cfg.borderWidth * POLAROID_BOTTOM * unit) : pad;
+  
+  let bottomMultiplier = 1.0;
+  if (cfg.frameType === 'polaroid') bottomMultiplier = POLAROID_BOTTOM;
+  else if (cfg.frameType === 'polaroid_wide') bottomMultiplier = 2.8;
+  else if (cfg.frameType === 'polaroid_square') bottomMultiplier = 1.6;
+
+  const padBottom = bottomMultiplier > 1.0 ? Math.round(cfg.borderWidth * bottomMultiplier * unit) : pad;
   const w = Math.max(1, W - pad * 2);
   const h = Math.max(1, H - pad - padBottom);
   const r = Math.max(Math.round(4 * (unit / FRAME_UNIT)), Math.round(cfg.borderRadius * unit));
   const scale = Math.min(W, H) / 1080;
+  const isPolaroid = cfg.frameType.startsWith('polaroid');
+
   return {
     unit,
     photo: { x: pad, y: pad, w, h, r: Math.min(r, Math.floor(Math.min(w, h) / 2)) },
     stamp: {
       x: W - pad - Math.round(16 * scale),
-      y: cfg.frameType === 'polaroid' ? H - Math.round(padBottom / 2) : H - Math.round(24 * scale),
-      // image content, not UI text: scales with the output so preview and export match
+      y: isPolaroid ? H - Math.round(padBottom / 2) : H - Math.round(24 * scale),
       size: Math.max(1, Math.round(26 * scale)),
     },
   };
@@ -81,7 +106,7 @@ export function frameCoverCrop(srcW: number, srcH: number, w: number, h: number)
 
 /**
  * Draws the whole frame (background, photo, matte line, stamp) at W×H.
- * Preview calls it at the shown size, export at the chosen standard size.
+ * Preview calls it at the chosen size, export at the chosen standard size.
  */
 export function drawFrame(
   ctx: CanvasRenderingContext2D,
@@ -93,13 +118,42 @@ export function drawFrame(
   stamp: string,
 ): FrameLayout {
   const L = frameLayout(W, H, cfg);
+  const isPolaroid = cfg.frameType.startsWith('polaroid');
 
-  if (cfg.frameType === 'gradient' && gradient) {
-    // smart edge gradient (D33): runs along the direction with more free border space, else along the stronger edge contrast
-    const margins = { x: L.photo.x * 2, y: L.photo.y + (H - L.photo.y - L.photo.h) };
-    paintEdgeGradient(ctx, W, H, buildEdgeGradient(gradient, chooseGradientAxis(gradient, margins)));
+  if (cfg.frameType === 'gradient') {
+    if (cfg.gradientMode === 'sunset') {
+      const grad = ctx.createLinearGradient(0, 0, W, H);
+      grad.addColorStop(0, FRAME_GRADIENTS.sunset[0]);
+      grad.addColorStop(0.5, FRAME_GRADIENTS.sunset[1]);
+      grad.addColorStop(1, FRAME_GRADIENTS.sunset[2]);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+    } else if (cfg.gradientMode === 'deep') {
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, FRAME_GRADIENTS.deep[0]);
+      grad.addColorStop(1, FRAME_GRADIENTS.deep[1]);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+    } else if (cfg.gradientMode === 'subtle') {
+      const grad = ctx.createLinearGradient(0, 0, W, H);
+      grad.addColorStop(0, FRAME_GRADIENTS.subtle[0]);
+      grad.addColorStop(1, FRAME_GRADIENTS.subtle[1]);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+    } else if (gradient) {
+      // Smart adaptive edge gradient (D33)
+      const margins = { x: L.photo.x * 2, y: L.photo.y + (H - L.photo.y - L.photo.h) };
+      paintEdgeGradient(ctx, W, H, buildEdgeGradient(gradient, chooseGradientAxis(gradient, margins)));
+    } else {
+      ctx.fillStyle = EXPORT_COLORS.frameMatte;
+      ctx.fillRect(0, 0, W, H);
+    }
+  } else if (isPolaroid) {
+    ctx.fillStyle = EXPORT_COLORS.framePolaroid;
+    ctx.fillRect(0, 0, W, H);
   } else {
-    ctx.fillStyle = cfg.frameType === 'polaroid' ? EXPORT_COLORS.framePolaroid : EXPORT_COLORS.frameMatte;
+    // Matte frame (custom color or default)
+    ctx.fillStyle = cfg.matteColor || EXPORT_COLORS.frameMatte;
     ctx.fillRect(0, 0, W, H);
   }
 
@@ -127,7 +181,7 @@ export function drawFrame(
   if (cfg.showTimestamp && img) {
     ctx.save();
     ctx.font = `bold ${L.stamp.size}px ${STAMP_FONT_FAMILY}`;
-    ctx.fillStyle = cfg.frameType === 'polaroid' ? EXPORT_COLORS.stampOnLight : EXPORT_COLORS.stampOnDark;
+    ctx.fillStyle = isPolaroid ? EXPORT_COLORS.stampOnLight : EXPORT_COLORS.stampOnDark;
     ctx.shadowColor = EXPORT_COLORS.stampShadow;
     ctx.shadowBlur = Math.max(2, Math.round((8 * Math.min(W, H)) / 1080));
     ctx.textAlign = 'right';

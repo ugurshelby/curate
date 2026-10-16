@@ -24,7 +24,7 @@ describe('WorkerBridge: a crashed worker never leaves a task pending', () => {
     };
     const bridge = new WorkerBridge(() => worker as never);
     const a = bridge.upscaleLanczos(fakeImageData(2, 2), 2);
-    const b = bridge.extractMetrics(fakeImageData(2, 2));
+    const b = bridge.extractGradient(fakeImageData(2, 2));
     expect(worker.postMessage).toHaveBeenCalledTimes(2);
 
     worker.onerror!(new Event('error'));
@@ -41,7 +41,7 @@ describe('WorkerBridge: a crashed worker never leaves a task pending', () => {
   it('unreadable message also settles the pending tasks', async () => {
     const worker = { postMessage: vi.fn(), terminate: vi.fn(), onmessage: null, onerror: null, onmessageerror: null as (() => void) | null };
     const bridge = new WorkerBridge(() => worker as never);
-    const p = bridge.extractMetrics(fakeImageData(2, 2));
+    const p = bridge.extractGradient(fakeImageData(2, 2));
     worker.onmessageerror!();
     await expect(p).rejects.toThrow('İşlem sonucu okunamadı');
   });

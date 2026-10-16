@@ -9,7 +9,6 @@ import {
   clampEditCrop,
   EDIT_MAX_ZOOM,
 } from '../lib/engine/edit-geometry';
-import { drawCarouselFrame, CarouselPreviewRenderer, CarouselRenderOptions } from '../lib/engine/carousel-render';
 import { upscaleFactorAllowed, UPSCALE_MAX_LONG_EDGE } from '../lib/engine/upscale-lanczos';
 import { PLATFORM_SPECS } from '../lib/export/platform-specs';
 import { planExportDownload, mimeForFormat } from '../lib/export/export-plan';
@@ -116,45 +115,6 @@ describe('Düzenle crop math: rotation, fine angle, flip', () => {
     for (let y = 0; y < 20; y++) {
       for (let x = 0; x < 40; x++) expect(px(flipped, x, y)).toEqual(px(plain, 39 - x, y));
     }
-  });
-});
-
-describe('Düzenle preview/export parity at export size (spec §4.5 E5, M2 rules)', () => {
-  const photo = makePhoto(1500, 1000);
-  const cases: [string, EditCrop, string | null][] = [
-    ['4:5 + 90° + angle 7° + flip + zoom/pan + amber_grain', crop({ aspect: '4:5', rotation: 90, angle: 7, flipH: true, zoom: 1.6, panX: 0.5, panY: -0.3 }), 'amber_grain'],
-    ['free 1.9 + angle −10° + night_cinematic', crop({ aspect: 'free', freeRatio: 1.9, angle: -10, zoom: 1.2, panX: -1, panY: 1 }), 'night_cinematic'],
-    ['original, no preset', crop({}), null],
-  ];
-
-  for (const [name, c, presetId] of cases) {
-    it(`preview renderer equals export pixel for pixel: ${name}`, () => {
-      const out = editOutputSize(photo.width, photo.height, c);
-      const opts: CarouselRenderOptions = { fitMode: 'fill', crop: c, presetId, presetIntensity: 0.8, outputWidth: out.width };
-
-      const exported = new FakeContext(out.width, out.height);
-      drawCarouselFrame(asCtx(exported), asImg(photo), out.width, out.height, opts);
-
-      const preview = new FakeContext(out.width, out.height);
-      const renderer = new CarouselPreviewRenderer();
-      renderer.render(asCtx(preview), asImg(photo), 'p', out.width, out.height, { ...opts, presetId: 'monochrome_noir' });
-      renderer.render(asCtx(preview), asImg(photo), 'p', out.width, out.height, opts);
-
-      expect(countDiff(preview.buf, exported.buf)).toBe(0);
-    });
-  }
-
-  it('a crop change invalidates the cached base', () => {
-    const a = crop({ aspect: '1:1' });
-    const b = crop({ aspect: '1:1', panX: 1 });
-    const out = editOutputSize(photo.width, photo.height, a);
-    const renderer = new CarouselPreviewRenderer();
-    const ctx = new FakeContext(out.width, out.height);
-    renderer.render(asCtx(ctx), asImg(photo), 'p', out.width, out.height, { fitMode: 'fill', crop: a });
-    renderer.render(asCtx(ctx), asImg(photo), 'p', out.width, out.height, { fitMode: 'fill', crop: b });
-    const exp = new FakeContext(out.width, out.height);
-    drawCarouselFrame(asCtx(exp), asImg(photo), out.width, out.height, { fitMode: 'fill', crop: b });
-    expect(countDiff(ctx.buf, exp.buf)).toBe(0);
   });
 });
 

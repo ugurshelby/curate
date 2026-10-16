@@ -11,8 +11,8 @@ export type ModuleId = 'carousel' | 'story' | 'frame' | 'upscale' | 'edit';
 export const tr = {
   app: {
     name: 'Curate',
-    tagline: 'Fotoğraflarını tek dokunuşla düzenle.',
-    description: 'Fotoğraflarını tek dokunuşla düzenle, Instagram ve TikTok için hazırla.',
+    tagline: 'Fotoğraflarını onar, büyüt ve çerçevele.',
+    description: 'Bozuk veya düşük kaliteli fotoğraflarını onar, netleştir ve çerçevele.',
   },
 
   common: {
@@ -64,11 +64,11 @@ export const tr = {
   },
 
   modules: {
-    carousel: { title: 'Carousel', subtitle: 'Sıralı seri, tek tıkla aynı renk', tags: ['Instagram', 'TikTok'] },
-    story: { title: 'Story', subtitle: 'Fotoğraflar kendiliğinden yerleşir', tags: ['2–6 fotoğraf'] },
-    edit: { title: 'Düzenle', subtitle: 'Onar, kırp, preset uygula', tags: ['Tek fotoğraf', 'AI'] },
-    frame: { title: 'Çerçeve', subtitle: 'Polaroid, mat ya da renkli zemin', tags: ['Tek fotoğraf'] },
-    upscale: { title: 'Büyüt', subtitle: 'Baskı ve paylaşım için 2× ya da 4×', tags: ['Tek fotoğraf'] },
+    edit: { title: 'Düzenle', subtitle: 'Yapay zeka ile kusur onarımı ve renk kalibrasyonu', tags: ['AI Onar', 'Direktif'] },
+    upscale: { title: 'Büyüt', subtitle: 'Matematiksel veya AI ile 2× ya da 4× netleştirme', tags: ['Hızlı', 'AI Doku'] },
+    frame: { title: 'Çerçeve', subtitle: 'Polaroid, mat renk veya gradyan çerçeveleme', tags: ['Toplu İşlem', 'Polaroid', '4K'] },
+    carousel: { title: 'Carousel', subtitle: 'Kaldırıldı', tags: [] },
+    story: { title: 'Story', subtitle: 'Kaldırıldı', tags: [] },
   } as Record<ModuleId, { title: string; subtitle: string; tags: string[] }>,
 
   lock: {
@@ -198,6 +198,32 @@ export const tr = {
     straighten: 'Düzelt (ufuk)',
     enlarge: 'Büyüt',
     tooLargeToEnlarge: 'Büyütmek için çok büyük',
+    title: 'Düzenle (AI Onar)',
+    promptTitle: 'AI Onarım Direktifi',
+    promptPlaceholder: 'Örn: Işık çok patlamış, cam bembeyaz; renkler soluk ve cansız, özne karanlıkta kalmış...',
+    holdToCompare: 'Basılı tutarak kıyasla',
+    beforeLabel: 'Orijinal (Öncesi)',
+    afterLabel: 'AI Onarılmış (Sonrası)',
+    applyButton: 'Onarımı Başlat',
+    analyzing: 'Yapay zeka analizi uygulanıyor...',
+    scanning: 'Görsel taranıyor ve analiz ediliyor...',
+    reset: 'Sıfırla',
+    quickDirectives: 'Hızlı Direktifler:',
+    download: 'İndir',
+    readyExport: 'Onarım Hazır (Kayıpsız Çıktı)',
+    waitingDirective: 'Görsel Yüklendi · Direktif Bekleniyor',
+    successMsg: 'AI onarım tamamlandı. Basılı tutarak kıyaslayabilirsiniz.',
+    errorMsg: 'Onarım sırasında hata oluştu.',
+    stage1Interpret: '1. Aşama: Sahne semantiği ve ışık yönü yorumlanıyor…',
+    stage2Optimize: '2. Aşama: Bölgesel ışık ve renk planı optimize ediliyor…',
+    directives: {
+      blownLight: { title: 'Patlak Işığı Topla', text: 'Bu görselde ışık çok patlamış, camdan dışarısı bembeyaz ve detaylar kaybolmuş. Aşırı parlaklığı toparla, pencere detaylarını ve dengeli ışığı geri getir.' },
+      dehaze: { title: 'Pus Gider & Canlandır', text: 'Renkler neredeyse yok, çok soluk ve cansız. Pusu gider, canlılığı ve dinamik kontrastı artır.' },
+      illuminateSubject: { title: 'Özneyi Aydınlat', text: 'Özne çok geri planda ve karanlıkta kalmış. Arka planı koruyarak ana özneyi ve yüzü aydınlat, öne çıkar.' },
+      denoiseSharp: { title: 'Netlik & Gren Düzelt', text: 'Görsel çok grenli ve detaylar bulanık kalmış. Kumlanmayı temizle ve keskinliği artır.' },
+      neutralizeColor: { title: 'Renk Kaymasını Nötrle', text: 'Görselin kenarları kararmış ve genelinde sarı-yeşil renk bozulması var. Beyaz dengesini ve kenarları düzelt.' },
+      nightClarity: { title: 'Gece & Gölge Detay', text: 'Karanlıkta kalan gölge detaylarını aç, sokak ve neon ışıklarının patlamasını engelle.' },
+    },
   },
 
   presets: {
@@ -245,11 +271,38 @@ export const tr = {
 
   frame: {
     empty: 'Çerçeve için henüz fotoğraf yok',
+    loadPhoto: 'Çerçevelemek için fotoğraf yükleyin',
+    moduleTitle: 'Çerçeve Modülü',
     width: 'Genişlik',
-    corner: 'Köşe',
-    type: 'Çerçeve tipi',
-    stamp: 'Tarih damgası',
-    types: { polaroid: 'Polaroid', matte: 'Mat', gradient: 'Gradyan' },
+    corner: 'Köşe Yuvarlaklığı',
+    spacing: 'Kenar Boşluğu',
+    type: 'Çerçeve Stili',
+    stamp: 'Tarih Damgası',
+    types: {
+      polaroid: 'Polaroid',
+      polaroid_wide: 'Polaroid Geniş',
+      polaroid_square: 'Polaroid Kare',
+      matte: 'Mat',
+      gradient: 'Gradyan',
+    },
+    gradients: {
+      adaptive: 'Akıllı Gradyan',
+      sunset: 'Günbatımı',
+      deep: 'Derin Gece',
+      subtle: 'Pastel / Yumuşak',
+    },
+    matteColors: {
+      white: 'Beyaz',
+      cream: 'Krem',
+      black: 'Siyah',
+      charcoal: 'Antrasit',
+      custom: 'Özel',
+    },
+    batchTitle: (n: number) => `${n} Fotoğraf (Toplu Mod)`,
+    singleTitle: 'Tekil Çerçeve',
+    batchHint: 'Tüm fotoğraflara aynı çerçeve stili uygulanacak.',
+    batchExport: (n: number) => `Tümünü İndir (${n} Fotoğraf, ZIP)`,
+    singleExport: 'Çerçeveli Görseli İndir',
     size: 'Boyut',
     resolution: 'Çözünürlük',
     resolutions: { standard: 'Standart', high: '4K' },
@@ -284,14 +337,27 @@ export const tr = {
 
   upscale: {
     empty: 'Büyütülecek fotoğraf henüz seçilmedi',
+    loadPhoto: 'Büyütmek için fotoğraf yükleyin',
+    moduleTitle: 'Büyüt Modülü',
+    engineTitle: 'Büyütme Motoru',
+    standardTitle: 'Standart Büyütme',
+    standardDesc: 'Hızlı & Kayıpsız',
+    aiTitle: 'AI ile Büyüt',
+    aiDesc: 'Yapay Zeka & Doku Üretimi',
+    scaleFactor: 'Ölçek',
+    processing: 'İşleniyor...',
+    previewNote: (factor: number) => `Önizleme (${factor}×)`,
+    originalNote: 'Orijinal Görsel',
+    upscaledNote: 'Büyütülmüş Önizleme',
     divider: 'Öncesi / sonrası ayırıcı',
     factorLabel: 'Büyütme',
     factorAria: 'Büyütme oranı',
     output: (w: number, h: number) => `Çıktı ${w} × ${h}`,
     limit: (some: boolean, edge: number, mp: number) =>
       `${some ? '4×: ' : ''}Bu boyut için çok büyük (en çok ${edge} px kenar, ${mp} MP)`,
-    previewNote: (factor: number) => `Önizleme (${factor}×)`,
-    originalNote: 'Orijinal',
+    downloadLossless: 'Kayıpsız İndir',
+    standardTag: 'Standart Büyütme',
+    aiTag: 'AI Tabanlı Büyütme',
   },
 
   /** Advanced / info texts: may name the technique (CDS §7) */

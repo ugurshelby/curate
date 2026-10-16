@@ -6,10 +6,7 @@
 
 import { upscaleLanczos3 } from '../engine/upscale-lanczos';
 import { applyCorrections as applyCorrectionsSync, CorrectionParams } from '../engine/corrections';
-import { applyPresetToImageData, CURATE_PRESETS } from '../engine/presets';
-import { extractColorMetrics, applyHarmonizeSync } from '../engine/harmonize';
 import { extractEdgeColors, type EdgeColors } from '../engine/edge-gradient';
-import { ColorMetrics } from './types';
 import {
   WorkerTaskRequest,
   WorkerTaskResponse,
@@ -24,7 +21,6 @@ type WorkerLike = Pick<Worker, 'postMessage' | 'terminate'> & {
 
 function defaultWorkerFactory(): WorkerLike | null {
   if (typeof window === 'undefined' || typeof Worker === 'undefined') return null;
-  // Modern Webpack/Next.js worker instantiation
   return new Worker(new URL('../workers/image-processor.worker.ts', import.meta.url)) as unknown as WorkerLike;
 }
 
@@ -42,10 +38,6 @@ export class WorkerBridge {
     this.initWorker();
   }
 
-  /**
-   * Worker çöktü (ör. büyük Upscale'de bellek): bekleyen her görev reddedilir (sonsuza kadar
-   * "işleniyor"da kalmaz), worker kapatılır; sonraki görevler ana thread yedeğiyle çalışır.
-   */
   private failAll(reason: string) {
     const pending = [...this.pendingTasks.values()];
     this.pendingTasks.clear();
@@ -64,8 +56,7 @@ export class WorkerBridge {
       if (!this.worker) return;
 
       this.worker.onmessage = (event: MessageEvent<WorkerTaskResponse>) => {
-        const { taskId, success, error, resultImageData, colorMetrics, adaptiveGradient } =
-          event.data;
+        const { taskId, success, error, resultImageData, adaptiveGradient } = event.data;
 
         const pending = this.pendingTasks.get(taskId);
         if (!pending) return;
@@ -76,7 +67,6 @@ export class WorkerBridge {
           pending.reject(new Error(error || 'Worker task failed'));
         } else {
           if (resultImageData) pending.resolve(resultImageData);
-          else if (colorMetrics) pending.resolve(colorMetrics);
           else if (adaptiveGradient) pending.resolve(adaptiveGradient);
           else pending.resolve(null);
         }
@@ -102,7 +92,6 @@ export class WorkerBridge {
     fallbackFn: () => T
   ): Promise<T> {
     if (!this.worker) {
-      // Direct in-thread execution fallback
       try {
         return Promise.resolve(fallbackFn());
       } catch (err) {
@@ -123,20 +112,17 @@ export class WorkerBridge {
 
       try {
         if (payload.imageData) {
-          // Transfer buffer for maximum zero-copy performance
           this.worker!.postMessage(request, [payload.imageData.data.buffer]);
         } else {
           this.worker!.postMessage(request);
         }
-      } catch (err) {
-        // Fallback on serialization failure
+      } catch {
         this.pendingTasks.delete(taskId);
         resolve(fallbackFn());
       }
     });
   }
 
-  /** Düzeltme (D2): heavy local filters off the main thread; same function as the export path */
   public async applyCorrections(imageData: ImageData, corrections: CorrectionParams, correctionScale: number): Promise<ImageData> {
     return this.postOrFallback<ImageData>(
       'APPLY_CORRECTIONS',
@@ -150,42 +136,6 @@ export class WorkerBridge {
       'UPSCALE_LANCZOS',
       { imageData, scaleFactor },
       () => upscaleLanczos3(imageData, scaleFactor)
-    );
-  }
-
-  public async applyPreset(
-    imageData: ImageData,
-    presetId: string,
-    intensity: number = 1.0
-  ): Promise<ImageData> {
-    return this.postOrFallback(
-      'APPLY_PRESET',
-      { imageData, presetId, presetIntensity: intensity },
-      () => {
-        const preset = CURATE_PRESETS.find((p) => p.id === presetId);
-        if (!preset) throw new Error(`Unknown preset: ${presetId}`);
-        return applyPresetToImageData(imageData, preset, intensity);
-      }
-    );
-  }
-
-  public async harmonizeSync(
-    imageData: ImageData,
-    refMetrics: ColorMetrics,
-    strength: number = 0.20
-  ): Promise<ImageData> {
-    return this.postOrFallback(
-      'HARMONIZE_SYNC',
-      { imageData, refMetrics, harmonizeStrength: strength },
-      () => applyHarmonizeSync(imageData, refMetrics, strength)
-    );
-  }
-
-  public async extractMetrics(imageData: ImageData): Promise<ColorMetrics> {
-    return this.postOrFallback(
-      'EXTRACT_METRICS',
-      { imageData },
-      () => extractColorMetrics(imageData)
     );
   }
 

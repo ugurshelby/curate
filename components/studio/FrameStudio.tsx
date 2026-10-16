@@ -1,13 +1,7 @@
 "use client";
 
-import { tr } from "@/lib/i18n/tr";
-import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Calendar, Crop } from "lucide-react";
-import { ResettableSlider } from "./ResettableSlider";
-import { QuickExportSheet } from "./QuickExportSheet";
-import { StudioShell, StageNote } from "./StudioShell";
-import { AddMenu } from "./AddMenu";
-import { ReferencePicker } from "./ReferencePicker";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { Crop, Sparkles, ChevronLeft, ChevronRight, Layers, Calendar, Palette } from "lucide-react";
 import {
   extractEdgeColors,
   sampleSize,
@@ -23,8 +17,14 @@ import {
   frameStampText,
   previewRenderSize,
 } from "@/lib";
+import { tr } from "@/lib/i18n/tr";
+import { FRAME_MATTE_PRESETS } from "@/lib/ui/colors";
+import { StudioShell, StageNote } from "./StudioShell";
+import { AddMenu } from "./AddMenu";
+import { ReferencePicker } from "./ReferencePicker";
+import { QuickExportSheet } from "./QuickExportSheet";
+import { ResettableSlider } from "./ResettableSlider";
 
-/** Önizleme kaynağının uzun kenarı (export her zaman tam çözünürlükten çizer) */
 const PREVIEW_SOURCE_MAX = 1600;
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -37,6 +37,13 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+const MATTE_OPTIONS = [
+  { label: tr.frame.matteColors.white, color: FRAME_MATTE_PRESETS.white },
+  { label: tr.frame.matteColors.cream, color: FRAME_MATTE_PRESETS.cream },
+  { label: tr.frame.matteColors.black, color: FRAME_MATTE_PRESETS.black },
+  { label: tr.frame.matteColors.charcoal, color: FRAME_MATTE_PRESETS.charcoal },
+];
+
 interface FrameStudioProps {
   onBack: () => void;
 }
@@ -45,28 +52,20 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
   const { state, actions } = useStudio();
   const { hasPhoto, selectedItem: activeItem, photoUrl: photoPath } = getStudioSelection(state.items, state.selectedItemId);
 
-  const { frameType, borderWidth, borderRadius, showTimestamp, size, resolution } = state.frameConfig;
-  // small copy of the photo for edge-colour sampling (D33); re-sampled per crop, never re-decoded
+  const { frameType, matteColor, gradientMode, borderWidth, borderRadius, showTimestamp, size, resolution } = state.frameConfig;
   const [edgeSample, setEdgeSample] = useState<ImageData | null>(null);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [isReferenceOpen, setIsReferenceOpen] = useState<boolean>(false);
+  const [customColor, setCustomColor] = useState<string>(matteColor || FRAME_MATTE_PRESETS.white);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Fotoğraf Yükleme — Otomatik Proxy Pipeline ile
-  // Çerçeve tek görsel çalışır: eklenen görsel kütüphaneye girer ve seçilir
-  const addSingleFile = (files: File[]) => {
-    const file = files[0];
-    if (!file) return;
-    const newItem = createStudioItem(file, state.items.length);
-    actions.addItems([newItem]);
-    actions.selectItem(newItem.id);
-  };
-
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    addSingleFile([file]);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const newItems = Array.from(files).map((file, idx) => createStudioItem(file, state.items.length + idx));
+    actions.addItems(newItems);
+    actions.selectItem(newItems[0].id);
     e.target.value = "";
   };
 
@@ -74,9 +73,9 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
     if (window.confirm(tr.common.clearAllConfirm)) actions.clearItems();
   };
 
-  // Kaynak: önizleme için küçültülmüş kopya (uzun kenar ≤ 1600) ve gradyan; export tam çözünürlükten çizer
   const previewSrcRef = useRef<HTMLCanvasElement | null>(null);
   const [srcVersion, setSrcVersion] = useState(0);
+
   useEffect(() => {
     previewSrcRef.current = null;
     setSrcVersion((v) => v + 1);
@@ -95,6 +94,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
       if (!ctx) return;
       ctx.drawImage(img, 0, 0, c.width, c.height);
       previewSrcRef.current = c;
+
       const s = sampleSize(img.naturalWidth, img.naturalHeight);
       const sc = document.createElement("canvas");
       sc.width = s.width;
@@ -114,19 +114,17 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
   const out = frameOutputSize(size, resolution);
   const ratio = out.width / out.height;
 
-  // Edge colours of the part of the photo that touches the frame (cover crop of the export-size window); memoised,
-  // so preview redraws and the export read the same colours
   const edgeColors = useMemo(() => {
-    if (!edgeSample || frameType !== "gradient") return null;
+    if (!edgeSample || frameType !== "gradient" || gradientMode !== "adaptive") return null;
     const win = frameLayout(out.width, out.height, { frameType, borderWidth, borderRadius }).photo;
     const c = frameCoverCrop(edgeSample.width, edgeSample.height, win.w, win.h);
     return extractEdgeColors(edgeSample, { x: c.sx, y: c.sy, w: c.sw, h: c.sh });
-  }, [edgeSample, frameType, out.width, out.height, borderWidth, borderRadius]);
+  }, [edgeSample, frameType, gradientMode, out.width, out.height, borderWidth, borderRadius]);
 
-  // Önizleme: export'la aynı drawFrame, ekranın gösterebildiği piksel kadar (previewRenderSize)
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
+
   useEffect(() => {
     const el = stageRef.current;
     if (!el) return;
@@ -156,13 +154,45 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
     return () => cancelAnimationFrame(raf);
   }, [hasPhoto, srcVersion, box, out.width, out.height, state.frameConfig, edgeColors]);
 
-  // Export: seçilen standart boyutta, aynı drawFrame; sRGB, kodlama export sayfasında
-  const renderExportCanvas = async (): Promise<HTMLCanvasElement> => {
-    if (!photoPath) throw new Error("No photo to export");
+  const renderSingleExportCanvas = useCallback(async (path: string): Promise<HTMLCanvasElement> => {
     const { canvas, ctx } = createExportCanvas(out.width, out.height);
-    const img = await loadImage(photoPath);
-    drawFrame(ctx, img, out.width, out.height, state.frameConfig, edgeColors, frameStampText());
+    const img = await loadImage(path);
+
+    let imgEdgeColors = null;
+    if (frameType === "gradient" && gradientMode === "adaptive") {
+      const s = sampleSize(img.naturalWidth, img.naturalHeight);
+      const sc = document.createElement("canvas");
+      sc.width = s.width;
+      sc.height = s.height;
+      const sctx = sc.getContext("2d", { willReadFrequently: true });
+      if (sctx) {
+        sctx.drawImage(img, 0, 0, s.width, s.height);
+        const samp = sctx.getImageData(0, 0, s.width, s.height);
+        const win = frameLayout(out.width, out.height, { frameType, borderWidth, borderRadius }).photo;
+        const c = frameCoverCrop(samp.width, samp.height, win.w, win.h);
+        imgEdgeColors = extractEdgeColors(samp, { x: c.sx, y: c.sy, w: c.sw, h: c.sh });
+      }
+    }
+
+    drawFrame(ctx, img, out.width, out.height, state.frameConfig, imgEdgeColors, frameStampText());
     return canvas;
+  }, [out.width, out.height, frameType, gradientMode, borderWidth, borderRadius, state.frameConfig]);
+
+  const itemsToExport = useMemo(() => {
+    if (state.items.length === 0) return [];
+    return state.items.map((item, idx) => ({
+      id: item.id,
+      order: idx,
+      renderCanvas: () => renderSingleExportCanvas(item.originalUrl || item.proxyUrl),
+    }));
+  }, [state.items, renderSingleExportCanvas]);
+
+  const currentIndex = state.items.findIndex((it) => it.id === activeItem?.id);
+  const handlePrev = () => {
+    if (currentIndex > 0) actions.selectItem(state.items[currentIndex - 1].id);
+  };
+  const handleNext = () => {
+    if (currentIndex < state.items.length - 1) actions.selectItem(state.items[currentIndex + 1].id);
   };
 
   const stage = (
@@ -173,11 +203,33 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
       style={{ aspectRatio: `${ratio}`, width: `min(100cqw, calc(100cqh * ${ratio}))` }}
     >
       {hasPhoto && photoPath ? (
-        <canvas ref={canvasRef} className="w-full h-full" />
+        <>
+          <canvas ref={canvasRef} className="w-full h-full" />
+          {state.items.length > 1 && (
+            <div className="absolute inset-x-2 top-1/2 -translate-y-1/2 flex justify-between pointer-events-none">
+              <button
+                type="button"
+                onClick={handlePrev}
+                disabled={currentIndex <= 0}
+                className="pointer-events-auto touch-target min-h-[44px] min-w-[44px] rounded-full bg-black/60 text-white backdrop-blur flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={currentIndex >= state.items.length - 1}
+                className="pointer-events-auto touch-target min-h-[44px] min-w-[44px] rounded-full bg-black/60 text-white backdrop-blur flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="w-full h-full rounded-xl border border-separator bg-base flex flex-col items-center justify-center p-4 text-center text-ink-3 gap-1">
           <Crop className="w-8 h-8 text-disabled-ink" />
-          <span className="text-sm">{tr.frame.empty}</span>
+          <span className="text-sm">{tr.frame.loadPhoto}</span>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -191,7 +243,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
   );
 
   const panel = (
-    <div className="flex flex-col gap-3 p-3">
+    <div className="flex flex-col gap-3 p-3 max-h-[38dvh] overflow-y-auto hide-scrollbar">
       <div className="flex items-center gap-2">
         <div role="radiogroup" aria-label={tr.frame.size} className="flex-1 min-w-0 flex gap-1.5 overflow-x-auto hide-scrollbar">
           {FRAME_SIZES.map((s) => (
@@ -200,9 +252,8 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
               type="button"
               role="radio"
               aria-checked={size === s.id}
-              aria-label={`${tr.frame.sizeNames[s.id]} ${s.ratio}`}
               onClick={() => actions.setFrameConfig({ size: s.id })}
-              className={`press shrink-0 h-11 min-w-[56px] px-3 rounded-xl text-sm font-semibold border num-metric ${
+              className={`touch-target press shrink-0 min-h-[44px] min-w-[52px] px-2.5 rounded-xl text-xs font-semibold border num-metric ${
                 size === s.id ? "bg-accent-fill text-on-accent border-accent-fill" : "bg-surface-2 text-ink-2 border-separator"
               }`}
             >
@@ -213,34 +264,132 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
         <button
           type="button"
           aria-pressed={resolution === "high"}
-          aria-label={`${tr.frame.resolution}: ${tr.frame.resolutions.high}`}
           onClick={() => actions.setFrameConfig({ resolution: resolution === "high" ? "standard" : "high" })}
-          className={`press shrink-0 h-11 min-w-[56px] px-3 rounded-xl text-sm font-semibold border ${
+          className={`touch-target press shrink-0 min-h-[44px] px-3 rounded-xl text-xs font-semibold border ${
             resolution === "high" ? "border-accent bg-accent/15 text-accent" : "border-separator text-ink-3"
           }`}
         >
           {tr.frame.resolutions.high}
         </button>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-      <ResettableSlider
-        label={tr.frame.width}
-        value={borderWidth}
-        min={12}
-        max={56}
-        defaultValue={24}
-        unit="px"
-        onChange={(val) => actions.setFrameConfig({ borderWidth: val })}
-      />
-      <ResettableSlider
-        label={tr.frame.corner}
-        value={borderRadius}
-        min={0}
-        max={32}
-        defaultValue={12}
-        unit="px"
-        onChange={(val) => actions.setFrameConfig({ borderRadius: val })}
-      />
+
+      <div className="flex flex-col gap-2 bg-surface-2/60 border border-separator rounded-2xl p-2.5">
+        <div className="text-caption text-ink-3 uppercase font-semibold px-1">{tr.frame.type}</div>
+        <div className="grid grid-cols-3 gap-1.5">
+          <button
+            type="button"
+            onClick={() => actions.setFrameConfig({ frameType: "polaroid" })}
+            className={`touch-target press min-h-[44px] px-2 rounded-lg text-xs font-medium border ${
+              frameType === "polaroid" ? "bg-accent-fill text-on-accent border-accent-fill" : "bg-surface-2 text-ink-2 border-separator"
+            }`}
+          >
+            {tr.frame.types.polaroid}
+          </button>
+          <button
+            type="button"
+            onClick={() => actions.setFrameConfig({ frameType: "polaroid_square" })}
+            className={`touch-target press min-h-[44px] px-2 rounded-lg text-xs font-medium border ${
+              frameType === "polaroid_square" ? "bg-accent-fill text-on-accent border-accent-fill" : "bg-surface-2 text-ink-2 border-separator"
+            }`}
+          >
+            {tr.frame.types.polaroid_square}
+          </button>
+          <button
+            type="button"
+            onClick={() => actions.setFrameConfig({ frameType: "polaroid_wide" })}
+            className={`touch-target press min-h-[44px] px-2 rounded-lg text-xs font-medium border ${
+              frameType === "polaroid_wide" ? "bg-accent-fill text-on-accent border-accent-fill" : "bg-surface-2 text-ink-2 border-separator"
+            }`}
+          >
+            {tr.frame.types.polaroid_wide}
+          </button>
+          <button
+            type="button"
+            onClick={() => actions.setFrameConfig({ frameType: "matte" })}
+            className={`touch-target press min-h-[44px] px-2 rounded-lg text-xs font-medium border ${
+              frameType === "matte" ? "bg-accent-fill text-on-accent border-accent-fill" : "bg-surface-2 text-ink-2 border-separator"
+            }`}
+          >
+            {tr.frame.types.matte}
+          </button>
+          <button
+            type="button"
+            onClick={() => actions.setFrameConfig({ frameType: "gradient", gradientMode: "adaptive" })}
+            className={`touch-target press min-h-[44px] px-2 rounded-lg text-xs font-medium border flex items-center justify-center gap-1 ${
+              frameType === "gradient" && gradientMode === "adaptive" ? "bg-accent-fill text-on-accent border-accent-fill" : "bg-surface-2 text-ink-2 border-separator"
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            {tr.frame.gradients.adaptive}
+          </button>
+          <button
+            type="button"
+            onClick={() => actions.setFrameConfig({ frameType: "gradient", gradientMode: "sunset" })}
+            className={`touch-target press min-h-[44px] px-2 rounded-lg text-xs font-medium border ${
+              frameType === "gradient" && gradientMode === "sunset" ? "bg-accent-fill text-on-accent border-accent-fill" : "bg-surface-2 text-ink-2 border-separator"
+            }`}
+          >
+            {tr.frame.gradients.sunset}
+          </button>
+        </div>
+
+        {frameType === "matte" && (
+          <div className="flex items-center gap-2 mt-1 pt-2 border-t border-separator">
+            <span className="text-caption text-ink-3">{tr.frame.types.matte}:</span>
+            <div className="flex items-center gap-1.5 flex-1">
+              {MATTE_OPTIONS.map((p) => (
+                <button
+                  key={p.label}
+                  type="button"
+                  title={p.label}
+                  onClick={() => {
+                    setCustomColor(p.color);
+                    actions.setFrameConfig({ matteColor: p.color });
+                  }}
+                  className={`touch-target w-8 h-8 min-h-[44px] rounded-full border-2 transition-transform flex items-center justify-center ${
+                    (matteColor || FRAME_MATTE_PRESETS.white) === p.color ? "scale-110 border-accent" : "border-separator"
+                  }`}
+                >
+                  <span className="w-4 h-4 rounded-full" style={{ backgroundColor: p.color }} />
+                </button>
+              ))}
+              <label className="cursor-pointer ml-auto flex items-center gap-1 text-xs text-ink-2 touch-target min-h-[44px]">
+                <Palette className="w-4 h-4 text-accent" />
+                <input
+                  type="color"
+                  value={customColor}
+                  onChange={(e) => {
+                    setCustomColor(e.target.value);
+                    actions.setFrameConfig({ matteColor: e.target.value });
+                  }}
+                  className="w-5 h-5 opacity-0 absolute pointer-events-none"
+                />
+                <span>{tr.frame.matteColors.custom}</span>
+              </label>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <ResettableSlider
+          label={tr.frame.spacing}
+          value={borderWidth}
+          min={10}
+          max={64}
+          defaultValue={24}
+          unit="px"
+          onChange={(val) => actions.setFrameConfig({ borderWidth: val })}
+        />
+        <ResettableSlider
+          label={tr.frame.corner}
+          value={borderRadius}
+          min={0}
+          max={48}
+          defaultValue={12}
+          unit="px"
+          onChange={(val) => actions.setFrameConfig({ borderRadius: val })}
+        />
       </div>
     </div>
   );
@@ -252,50 +401,45 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
         onReference={() => setIsReferenceOpen(true)}
         onClear={state.items.length > 0 ? handleClear : undefined}
       />
-      <div role="radiogroup" aria-label={tr.frame.type} className="flex-1 min-w-0 flex p-0.5 rounded-xl bg-surface-2 border border-separator">
-        {(["polaroid", "matte", "gradient"] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            role="radio"
-            aria-checked={frameType === t}
-            onClick={() => actions.setFrameConfig({ frameType: t })}
-            className={`press flex-1 h-11 px-1 rounded-[10px] text-xs font-semibold ${
-              frameType === t ? "bg-accent-fill text-on-accent" : "text-ink-2"
-            }`}
-          >
-            {tr.frame.types[t]}
-          </button>
-        ))}
+      <div className="flex-1 min-w-0 flex items-center justify-between px-3 text-xs text-ink-2 bg-surface-2 rounded-xl h-11 border border-separator">
+        <div className="flex items-center gap-1.5">
+          <Layers className="w-4 h-4 text-accent" />
+          <span>{state.items.length > 1 ? tr.frame.batchTitle(state.items.length) : tr.frame.singleTitle}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => actions.setFrameConfig({ showTimestamp: !showTimestamp })}
+          aria-pressed={showTimestamp}
+          className={`touch-target press min-h-[44px] px-2.5 py-1 rounded-lg text-xs font-semibold border flex items-center gap-1 ${
+            showTimestamp ? "border-accent bg-accent/15 text-accent" : "border-separator text-ink-3"
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5" />
+          {tr.frame.stamp}
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={() => actions.setFrameConfig({ showTimestamp: !showTimestamp })}
-        aria-pressed={showTimestamp}
-        aria-label={tr.frame.stamp}
-        className={`touch-target press rounded-xl border ${
-          showTimestamp ? "border-accent bg-accent/15 text-accent" : "border-separator text-ink-3"
-        }`}
-      >
-        <Calendar className="w-5 h-5" />
-      </button>
     </div>
   );
 
   return (
     <StudioShell
-      title={tr.modules.frame.title}
+      title={tr.frame.moduleTitle}
       onBack={onBack}
       onExport={() => setIsExportOpen(true)}
       exportDisabled={!hasPhoto}
       stage={stage}
-      stageToolbar={<StageNote>{`${tr.frame.sizeNames[size]} · ${out.width} × ${out.height}`}</StageNote>}
+      stageToolbar={
+        <StageNote>
+          {`${state.items.length > 1 ? `[${currentIndex + 1}/${state.items.length}] ` : ""}${out.width} × ${out.height}`}
+        </StageNote>
+      }
       panel={panel}
       bar={bar}
     >
       <input
         ref={fileInputRef}
         type="file"
+        multiple
         accept="image/*"
         className="hidden"
         onChange={handlePhotoUpload}
@@ -304,18 +448,21 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
       <ReferencePicker
         open={isReferenceOpen}
         onClose={() => setIsReferenceOpen(false)}
-        onConfirm={addSingleFile}
-        maxSelect={1}
+        onConfirm={(files) => {
+          const newItems = files.map((file, idx) => createStudioItem(file, state.items.length + idx));
+          actions.addItems(newItems);
+          actions.selectItem(newItems[0].id);
+        }}
+        maxSelect={13}
       />
 
-      {/* Dışa Aktarma Çekmecesi */}
       <QuickExportSheet
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         platform="ig_post_4_5"
-        filePrefix="frame"
-        sizeLabel={`${out.width} × ${out.height} (${FRAME_SIZES.find((s) => s.id === size)?.ratio ?? ""})`}
-        itemsToExport={hasPhoto ? [{ id: "frame_1", order: 0, renderCanvas: renderExportCanvas }] : []}
+        filePrefix="curate_frame"
+        sizeLabel={`${out.width} × ${out.height}`}
+        itemsToExport={itemsToExport}
       />
     </StudioShell>
   );

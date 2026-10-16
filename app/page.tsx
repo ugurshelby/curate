@@ -14,8 +14,6 @@ import {
   Images,
   Trash2,
 } from "lucide-react";
-import { CarouselStudio } from "@/components/studio/CarouselStudio";
-import { StoryStudio } from "@/components/studio/StoryStudio";
 import { FrameStudio } from "@/components/studio/FrameStudio";
 import { UpscaleStudio } from "@/components/studio/UpscaleStudio";
 import { EditStudio } from "@/components/studio/EditStudio";
@@ -27,11 +25,9 @@ import { Switch } from "@/components/studio/Switch";
 import { formatBytes } from "@/lib";
 
 const MODULE_ORDER: { id: StudioModule; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: "carousel", icon: Layers },
-  { id: "story", icon: Smartphone },
   { id: "edit", icon: Wand2 },
-  { id: "frame", icon: Frame },
   { id: "upscale", icon: ZoomIn },
+  { id: "frame", icon: Frame },
 ];
 
 /**
@@ -68,8 +64,6 @@ export default function CurateStudioMain() {
     withViewTransition(() => setActiveModule(null));
   };
 
-  if (activeModule === "carousel") return <CarouselStudio onBack={closeModule} />;
-  if (activeModule === "story") return <StoryStudio onBack={closeModule} />;
   if (activeModule === "frame") return <FrameStudio onBack={closeModule} />;
   if (activeModule === "upscale") return <UpscaleStudio onBack={closeModule} />;
   if (activeModule === "edit") return <EditStudio onBack={closeModule} onOpenModule={openModule} />;
@@ -80,7 +74,7 @@ export default function CurateStudioMain() {
     const newItems: StudioItem[] = validFiles.map((file, idx) => createStudioItem(file, state.items.length + idx));
     actions.addItems(newItems);
     actions.selectItem(newItems[0].id);
-    openModule("carousel");
+    openModule("edit");
   };
 
   // Reference images join the library; no module opens (secondary, test action)

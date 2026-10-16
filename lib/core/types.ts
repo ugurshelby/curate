@@ -3,7 +3,7 @@
  * Headless, client-side, non-destructive image pipeline definitions
  */
 
-export type StudioModule = 'carousel' | 'story' | 'frame' | 'upscale' | 'edit';
+export type StudioModule = 'edit' | 'upscale' | 'frame';
 
 export interface ImageDimensions {
   width: number;
@@ -84,8 +84,14 @@ export type FrameSizeId = '4_5' | '1_1' | '9_16' | '3_4' | '2_3' | '5_4' | '4_3'
 /** Çerçeve çözünürlüğü: kısa kenar 1080 (standart) ya da 2160 (4K) */
 export type FrameResolution = 'standard' | 'high';
 
+export type FrameType = 'polaroid' | 'polaroid_wide' | 'polaroid_square' | 'matte' | 'gradient';
+
 export interface FrameConfig {
-  frameType: 'polaroid' | 'matte' | 'gradient';
+  frameType: FrameType;
+  /** Mat çerçeve rengi (FRAME_MATTE_PRESETS veya özel renk kodu) */
+  matteColor?: string;
+  /** Gradyan tipi (akıllı kenar veya şık hazır gradyan) */
+  gradientMode?: 'adaptive' | 'subtle' | 'sunset' | 'deep';
   borderWidth: number;
   borderRadius: number;
   showTimestamp: boolean;
@@ -178,6 +184,7 @@ export interface StudioState {
   /** Düzenle modülü ayarları, fotoğraf kimliğine göre */
   edits: Record<string, EditParams>;
   upscaleConfig: {
+    mode?: 'standard' | 'ai';
     scaleFactor: 2 | 4;
   };
   isProcessing: boolean;

@@ -11,7 +11,6 @@ import {
   type AiLightPlan,
 } from '../lib/engine/ai-plan';
 import { DEFAULT_EDIT_CROP, cropGeometry } from '../lib/engine/edit-geometry';
-import { drawCarouselFrame, CarouselPreviewRenderer, type CarouselRenderOptions } from '../lib/engine/carousel-render';
 import { FakeContext, makeImageData, makePhoto, asCtx, asImg, countDiff } from './helpers/fake-canvas';
 import type { EditCrop } from '../lib/core/types';
 
@@ -208,34 +207,19 @@ describe('geometry: plan coordinates live on the original photo', () => {
     }
   });
 
-  it('preview equals export pixel for pixel with an AI plan (same look step)', () => {
-    const img = makePhoto(900, 700);
-    const OW = 480;
-    const OH = 480;
-    const crop = { ...DEFAULT_EDIT_CROP, aspect: '1:1' as const, zoom: 1.3, panX: 0.2 };
+  it('applyAiPlan applies deterministically and alters pixels according to plan', () => {
+    const d1 = flat(480, 480, 120);
+    const d2 = flat(480, 480, 120);
     const plan = base({
       global: { temperature: 0.1, contrast: 0.1 },
       regions: [
         { label: 'sky', shape: { type: 'linear', x0: 0.5, y0: 0, x1: 0.5, y1: 0.5, feather: 0.1 }, adjust: { exposure: -0.3, saturation: 0.1 } },
-        { label: 'subject', shape: { type: 'radial', cx: 0.6, cy: 0.6, rx: 0.2, ry: 0.25, feather: 0.3 }, adjust: { exposure: 0.3, shadows: 0.2 } },
       ],
     });
-    const opts: CarouselRenderOptions = {
-      fitMode: 'fill',
-      crop,
-      presetId: 'dogal',
-      presetIntensity: 0.8,
-      outputWidth: OW,
-      aiPlan: { plan, strength: 0.8, geometry: { crop, srcW: 900, srcH: 700 } },
-    };
-    const exp = new FakeContext(OW, OH);
-    drawCarouselFrame(asCtx(exp), asImg(img), OW, OH, opts);
-    const prev = new FakeContext(OW, OH);
-    new CarouselPreviewRenderer().render(asCtx(prev), asImg(img), 'photo', OW, OH, opts);
-    expect(countDiff(prev.buf, exp.buf)).toBe(0);
-    // and the plan actually changed something
-    const none = new FakeContext(OW, OH);
-    drawCarouselFrame(asCtx(none), asImg(img), OW, OH, { ...opts, aiPlan: null });
-    expect(countDiff(none.buf, exp.buf)).toBeGreaterThan(1000);
+    const map = planMapping({ crop: null, srcW: 480, srcH: 480 }, 480, 480);
+    applyAiPlan(d1, plan, 0.8, map);
+    applyAiPlan(d2, plan, 0.8, map);
+    expect(countDiff(d1.data, d2.data)).toBe(0);
+    expect(d1.data[0]).not.toBe(120);
   });
 });

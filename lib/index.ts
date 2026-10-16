@@ -10,17 +10,16 @@ export * from './core/reference-images';
 export * from './core/idle';
 
 export * from './engine/proxy';
-export * from './engine/harmonize';
 export * from './engine/presets';
 export * from './engine/edge-gradient';
 export * from './engine/upscale-lanczos';
 export * from './engine/upscale-slider';
-export * from './engine/carousel-render';
-export * from './engine/story-layout';
 export * from './engine/edit-geometry';
 export * from './engine/corrections';
 export * from './engine/frame-render';
 export * from './engine/ai-plan';
+export * from './engine/image-schema';
+export * from './engine/intelligent-repair';
 export * from './engine/scene';
 
 export * from './export/platform-specs';

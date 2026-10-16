@@ -11,6 +11,7 @@ import { StudioItem, StudioModule, StudioState, ActivePreset, ColorMetrics, Imag
 import { DEFAULT_EDIT_PARAMS } from '../engine/edit-geometry';
 import { DEFAULT_PRESET_ID } from '../engine/presets';
 import { revokeUrl, cleanupAllUrls, generateProxyImage, registerUrl } from '../engine/proxy';
+import { FRAME_MATTE_PRESETS } from '../ui/colors';
 
 const INITIAL_ITEMS: StudioItem[] = [];
 
@@ -58,11 +59,10 @@ export function acceptAiResult(
 }
 
 const INITIAL_STATE: StudioState = {
-  activeModule: 'carousel',
+  activeModule: 'edit',
   items: INITIAL_ITEMS,
   selectedItemId: null,
-  // Seri görünümü: varsayılan "Doğal" (sahip görev belgesi §8.4); kullanıcı Orijinal seçerse null
-  globalPreset: { id: DEFAULT_PRESET_ID, intensity: 1 },
+  globalPreset: null,
   heroColorMetrics: null,
   globalHarmonize: {
     referenceItemId: null,
@@ -75,6 +75,8 @@ const INITIAL_STATE: StudioState = {
   },
   frameConfig: {
     frameType: 'polaroid',
+    matteColor: FRAME_MATTE_PRESETS.white,
+    gradientMode: 'adaptive',
     borderWidth: 24,
     borderRadius: 12,
     showTimestamp: true,
@@ -88,6 +90,7 @@ const INITIAL_STATE: StudioState = {
   },
   edits: {},
   upscaleConfig: {
+    mode: 'standard',
     scaleFactor: 2,
   },
   isProcessing: false,
@@ -363,6 +366,18 @@ class StudioStateMachine {
   public setUpscaleScale(scaleFactor: 2 | 4) {
     this.setState((prev) => ({
       upscaleConfig: { ...prev.upscaleConfig, scaleFactor },
+    }));
+  }
+
+  public setUpscaleMode(mode: 'standard' | 'ai') {
+    this.setState((prev) => ({
+      upscaleConfig: { ...prev.upscaleConfig, mode },
+    }));
+  }
+
+  public setUpscaleConfig(cfg: Partial<StudioState['upscaleConfig']>) {
+    this.setState((prev) => ({
+      upscaleConfig: { ...prev.upscaleConfig, ...cfg },
     }));
   }
 

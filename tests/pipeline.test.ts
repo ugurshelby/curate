@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
 import { calculateAspectCrop, calculateLetterboxFit, PLATFORM_SPECS } from '../lib/export/platform-specs';
 import { upscaleLanczos3 } from '../lib/engine/upscale-lanczos';
-import { extractColorMetrics, applyHarmonizeSync } from '../lib/engine/harmonize';
 import { packageDumpZip } from '../lib/export/zip-packager';
 import { studioStore, createStudioItem } from '../lib/core/state-machine';
 import { CURATE_PRESETS, applyPresetToImageData } from '../lib/engine/presets';
@@ -101,48 +100,6 @@ describe('Core Pipeline & Export Math Verification', () => {
 
       expect(fileNames).toContain('dump_01.jpg');
       expect(fileNames).toContain('dump_02.png');
-    });
-  });
-
-  // 4. Harmonize Strength within 0.15 - 0.25
-  describe('Harmonize strength discipline (0.15 to 0.25)', () => {
-    it('maintains default strength at 0.20 in state machine and platform defaults', () => {
-      const state = studioStore.getState();
-      expect(state.globalHarmonize.strength).toBe(0.20);
-      expect(state.globalHarmonize.strength).toBeGreaterThanOrEqual(0.15);
-      expect(state.globalHarmonize.strength).toBeLessThanOrEqual(0.25);
-    });
-
-    it('applies harmonize cleanly at 0.15 and 0.25 strengths within valid byte range [0, 255]', () => {
-      const src = createSyntheticImageData(50, 50);
-      const ref = createSyntheticImageData(50, 50);
-
-      // Warm up reference
-      for (let i = 0; i < ref.data.length; i += 4) {
-        ref.data[i] = Math.min(255, ref.data[i] + 40);
-      }
-      const refMetrics = extractColorMetrics(ref);
-
-      // Test lower bound 0.15
-      const harmonized15 = applyHarmonizeSync(createSyntheticImageData(50, 50), refMetrics, 0.15);
-      for (let i = 0; i < harmonized15.data.length; i += 4) {
-        expect(harmonized15.data[i]).toBeGreaterThanOrEqual(0);
-        expect(harmonized15.data[i]).toBeLessThanOrEqual(255);
-        expect(harmonized15.data[i + 3]).toBe(255); // Alpha preserved
-      }
-
-      // Test upper bound 0.25
-      const harmonized25 = applyHarmonizeSync(createSyntheticImageData(50, 50), refMetrics, 0.25);
-      for (let i = 0; i < harmonized25.data.length; i += 4) {
-        expect(harmonized25.data[i]).toBeGreaterThanOrEqual(0);
-        expect(harmonized25.data[i]).toBeLessThanOrEqual(255);
-        expect(harmonized25.data[i + 3]).toBe(255); // Alpha preserved
-      }
-
-      // 0.25 should shift red more than 0.15
-      const metrics15 = extractColorMetrics(harmonized15);
-      const metrics25 = extractColorMetrics(harmonized25);
-      expect(metrics25.avgR).toBeGreaterThanOrEqual(metrics15.avgR);
     });
   });
 

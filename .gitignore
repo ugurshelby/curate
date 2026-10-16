@@ -49,3 +49,8 @@ capture-screenshots.mjs
 /probe-apk/android/
 /probe-apk/ios/
 .expo/
+
+# Test images and benchmark outputs (personal photos & local reports)
+/tests/test-images/
+/tests/output-images/
+/tests/*.html
