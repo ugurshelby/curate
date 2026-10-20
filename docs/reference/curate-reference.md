@@ -13,13 +13,13 @@ Tek kullanıcılı (Uğur) kişisel fotoğraf stüdyosu; telefonda web uygulamas
 Ortak ürün kuralları: önizleme = export (spec §3.3, uyumsuzluk P0); fotoğraf cihazda kalır, tek istisna Düzenle'deki AI (spec §3.5, §4.5 E12); hiçbir adımda kaydırıcı zorunlu değil (spec §3.1).
 
 ## 2. Ölçülmüş durum
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-20
 
 | Kontrol | Sonuç | Etiket |
 |---|---|---|
 | `npx tsc --noEmit` | çıkış 0 | [ÖLÇÜLDÜ] 2026-10-08 |
 | `npm run lint` | "No ESLint warnings or errors" | [ÖLÇÜLDÜ] 2026-10-08 |
-| `npm test` | 19 dosya, 253 test geçti (oturum başında 14 / 150) | [ÖLÇÜLDÜ] 2026-10-08 |
+| `npm test` | 22 dosya, 292 test geçti | [ÖLÇÜLDÜ] 2026-10-20 |
 | `npm run build` | çıkış 0; `/` ≈ 33 kB, `/api/ai` dinamik | [ÖLÇÜLDÜ] 2026-10-08 |
 | `npm run check:secrets` | 84 dosya (26 istemci), 0 gerçek değer arandı (`.env` yok), 0 bulgu | [ÖLÇÜLDÜ] 2026-10-08 |
 | Prosedür 2 (`scripts/audit-ui.mjs`, production build, Chromium 1194 emülasyon) | 52 ekran (360/390/430 + masaüstü ana sayfa; Düzeltme dahil) geçti, en düşük metin kontrastı 4,70 | [ÖLÇÜLDÜ] 2026-10-08 |
@@ -30,13 +30,13 @@ Son doğrulama: 2026-10-08
 Bilinen sınırlar (kod okuma): Story/Çerçeve/Büyüt önizlemesi export ile aynı geometriyi kullanır, aynı piksel fonksiyonunu değil; Story ve Çerçeve preset uygulamaz; Büyüt önizlemesi CSS filtresidir ("Lanczos" diye etiketlenmez). [ÖLÇÜLDÜ] kod.
 
 ## 3. Mimari
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-20
 
 Özet ve tablo `docs/ARCHITECTURE.md`'de; dosya haritası `docs/INDEX.md`'de. Burada yalnız olgular:
-- Tek sayfa (`app/page.tsx`) + tek sunucu rotası (`app/api/ai/route.ts`). `middleware` yok. [ÖLÇÜLDÜ] `git ls-files`.
+- İki sayfa (`app/page.tsx` ana sayfa, `app/kilit/page.tsx` PIN ekranı) + tek sunucu rotası (`app/api/ai/route.ts`) + `middleware.ts` (tüm uygulama PIN kapısı, D27). [ÖLÇÜLDÜ] `git ls-files` 2026-10-20.
 - Carousel ve Düzenle önizleme/export aynı iki adımı (`renderCarouselBase`, `applyCarouselLook`) aynı seçeneklerle çağırır; `tests/carousel-parity.test.ts` 1080×1350'de 0 bayt fark bulur. [ÖLÇÜLDÜ]
 - Worker yalnız Büyüt export'unda. [ÖLÇÜLDÜ] grep.
-- En büyük dosyalar: `EditStudio.tsx` 870, `CarouselStudio.tsx` 567, `StoryStudio.tsx` 545, `lib/core/state-machine.ts` 485, `lib/ai/server.ts` 481 satır. [ÖLÇÜLDÜ] `wc -l`.
+- En büyük dosyalar: `EditStudio.tsx` 1132, `lib/ai/server.ts` 615, `CarouselStudio.tsx` 564, `StoryStudio.tsx` 546, `lib/core/state-machine.ts` 507 satır. [ÖLÇÜLDÜ] `wc -l` 2026-10-20.
 
 ## 4. Veri ve altyapı
 Son doğrulama: 2026-10-08
@@ -54,25 +54,25 @@ Son doğrulama: 2026-10-08
 | PWA | Manifest bağlı (`lang: tr`, standalone), PNG 192/512/maskeli + apple-touch-icon; Chromium kurulabilirlik hatası 0; service worker yok | [ÖLÇÜLDÜ] `tests/pwa.test.ts`, CDP 2026-10-08; telefonda kurulum [DOĞRULANMADI] |
 
 ## 5. Güvenlik, sırlar, maliyet
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-20
 
 - Repo herkese açık (GitHub API `visibility: public`). [ÖLÇÜLDÜ]
 - İzlenen dosyalarda sır şekilli dize (Google anahtarı, özel anahtar, GitHub/Slack/AWS token, JWT kalıpları): 0 dosya. [ÖLÇÜLDÜ] `git grep` 2026-10-08.
 - İzlenen kişisel görünümlü dosyalar: yalnız 13 referans görsel (`public/reference-images/*.jfif`, sahip kararıyla). [ÖLÇÜLDÜ]
-- Sırlar yalnız Vercel sunucu ortamında; `NEXT_PUBLIC_*` sır yok. 4 haneli PIN `check:secrets` ile değerle taranamaz; güvencesi tasarım: yalnız `lib/ai/server.ts` karşılaştırır. [ÖLÇÜLDÜ]
+- Sırlar yalnız Vercel sunucu ortamında; `NEXT_PUBLIC_*` sır yok. 4 haneli PIN `check:secrets` ile değerle taranamaz; güvencesi tasarım: yalnız sunucu tarafı `lib/ai/server.ts` ve `lib/access/session.ts` (middleware) okur ve karşılaştırır. [ÖLÇÜLDÜ]
 - Güvenlik başlıkları: `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `Referrer-Policy: same-origin`, `nosniff`. [ÖLÇÜLDÜ] `next.config.mjs`
 - Kötüye kullanım sınırları: kota (D28, sahibe kısıt yok) kod varsayılanı günde 500 / ayda 5000, yalnız kaçak döngü tavanı (atomik; Vercel env varsa o geçerli); yanlış PIN IP 5/gün, genel 10/gün, 30/ay; `AI_ENABLED=false` hepsini kapatır (Preview'da kapalı). Sayaç dağıtık yükte [DOĞRULANMADI].
 - Maliyet tahmini (`lib/ai/config.ts`): A ~₺8, B ~₺5, C ~₺5, D ~₺7; üçüncü taraf fiyatı [DOĞRULANMADI]. En kötü durum varsayılanlarla ayda 150 çağrı.
 - EXIF: export tuvalden yeniden kodlanır; `sanitizeJpegBuffer` APP1/APP2 yüklerini sıfırlar, bozuk segmentte atmadan durur. [ÖLÇÜLDÜ] `tests/robustness.test.ts`
 
 ## 6. Kalite kapıları
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-20
 
 | Kapı | Nerede | Durum |
 |---|---|---|
 | Tip denetimi | `npx tsc --noEmit` | geçiyor |
 | Lint | `npm run lint` | geçiyor |
-| Test | `npm test` (Vitest) | 253/253 |
+| Test | `npm test` (Vitest) | 292/292 |
 | Build | `npm run build` | geçiyor |
 | Sır taraması | `npm run check:secrets` | 0 bulgu |
 | Renk belirteçleri | `tests/color-tokens.test.ts` | geçiyor |

@@ -1,0 +1,3 @@
+# Agent rules
+Read AGENTS.md at the repo root before doing anything. You are a WORKER. Follow its §11 Worker rules.
+Reply to the owner in Turkish.

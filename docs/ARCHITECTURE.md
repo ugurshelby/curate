@@ -3,11 +3,11 @@
 Kısa ve olgusal. Her bölümde "Son doğrulama". Ayrıntılı ölçüm geçmişi: `docs/reference/curate-reference.md`.
 
 ## 1. Yığın
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-20
 
-Next.js 14.2 (App Router, tek sayfa `app/page.tsx` + tek sunucu rotası `app/api/ai/route.ts`), React 18, TypeScript (strict), Tailwind 3.4, `jszip`, `lucide-react`. Test: Vitest. Tarayıcı denetimi: `puppeteer-core` + yerel Chromium (`scripts/audit-ui.mjs`, `scripts/capture-screens.mjs`). Canvas 2D; WebGL yok.
+Next.js 14.2 (App Router, ana sayfa `app/page.tsx`, PIN ekranı `app/kilit/page.tsx`, tek sunucu rotası `app/api/ai/route.ts`, PIN kapısı `middleware.ts`), React 18, TypeScript (strict), Tailwind 3.4, `jszip`, `lucide-react`. Test: Vitest. Tarayıcı denetimi: `puppeteer-core` + yerel Chromium (`scripts/audit-ui.mjs`, `scripts/capture-screens.mjs`). Canvas 2D; WebGL yok.
 
-Modül geçişi tek sayfada bileşen durumuyla yapılır (`app/page.tsx`); rota yok. Durum: `lib/core/state-machine.ts` (başsız store) + `useStudio` (`useSyncExternalStore`).
+Modül geçişi ana sayfada bileşen durumuyla yapılır (`app/page.tsx`); modüllerin ayrı rotası yok. Durum: `lib/core/state-machine.ts` (başsız store) + `useStudio` (`useSyncExternalStore`).
 
 ## 2. Render hattı: taban + görünüm
 Son doğrulama: 2026-10-08

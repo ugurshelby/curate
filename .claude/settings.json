@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(/.env)",
+      "Read(/.env.local)",
+      "Read(/.env.*.local)",
+      "Read(/.env.development)",
+      "Read(/.env.production)",
+      "Read(/.env.test)",
+      "Read(/.vercel/**)",
+      "Read(**/*.pem)"
+    ],
+    "allow": [
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm run lint)",
+      "Bash(npm test)",
+      "Bash(npx vitest run *)",
+      "Bash(npm run build)",
+      "Bash(npm run check:secrets)"
+    ]
+  }
+}

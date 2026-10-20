@@ -2,7 +2,7 @@
 
 Tek durum dosyası. Her anlamlı adımdan sonra aynı commit'te güncellenir. Yeni oturum: `AGENTS.md` → `docs/INDEX.md` → bu dosya → `git status` → `git log`.
 
-**Son güncelleme:** 2026-10-08 (oturum sonu)
+**Son güncelleme:** 2026-10-20 (ajan sistemi kurulumu)
 **Görev tanımı:** sahibin 2026-10-08 tarihli "Bağımsız Ajan Görevi" belgesi (anayasa → tasarım dili → arayüz → erişim/gizlilik → özellikler). Fazlar ve sıra: `docs/ROADMAP.md`.
 
 ## Fazlar
@@ -18,13 +18,16 @@ Tek durum dosyası. Her anlamlı adımdan sonra aynı commit'te güncellenir. Ye
 | 6 | İdame | sürekli | Prosedür 8 |
 
 ## Sıradaki adım
+2026-10-20: ajan sistemi kuruldu (D33, rapor `docs/reports/2026-10-20-agent-setup.md`); dal `claude/new-session-pwymco`, `main`'e birleştirme sahip onayında. Aktif plan yok (`docs/PLAN.md` boş).
 Sahip yanıtları (2026-10-08, D27–D32) uygulanıyor: LUT kaldırıldı ✓, skill atıfları silindi ✓, Çerçeve standart boyutları ✓, tüm uygulama PIN kapısı ✓, AI Preset ✓ (kota varsayılanı 500/gün, 5000/ay). Sırada: sahibin telefonda ilk deneme ve gerçek AI Preset çağrısı (model adı log'dan okunur); rutin bakım (Prosedür 8). İsteğe bağlı sonraki iş: "Bölgeleri göster" katmanı (özet §2.5, yapılmadı).
 
 ## Son commit
 `200a0ed` (AI Preset) + kapanış raporu `docs/reports/2026-10-08-sahip-yanitlari.md`.
 
 ## Sahibe sorular (açık)
-Yok. 2026-10-08'deki 6 sorunun yanıtı `docs/DECISIONS.md` D27–D32'de.
+- Silme izni: `docs/ROADMAP.md` (fazların hepsi bitti, durum bu dosyada), `logs/2026-10-01.md`, `logs/2026-10-02.md`, `logs/2026-10-03.md` (15 günden eski). Ortam silmeyi engelledi.
+- Kurulum dalının `main`'e birleştirilmesi.
+2026-10-08'deki 6 sorunun yanıtı `docs/DECISIONS.md` D27–D32'de.
 
 ## Bloke olanlar
 - Service worker: güncelleme stratejisi planı ve sahip onayı olmadan eklenmez.

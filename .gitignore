@@ -43,3 +43,6 @@ yarn-error.log*
 /screenshots/
 /.edge-temp/
 capture-screenshots.mjs
+
+# Claude Code local settings
+.claude/settings.local.json

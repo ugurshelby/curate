@@ -1,15 +1,21 @@
 # Proje Haritası (INDEX)
 
 Önce buraya bak. Kod değişince bu harita aynı commit'te güncellenir.
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-20
 
 ## Belgeler
 | Dosya | Ne için |
 |---|---|
-| `AGENTS.md` | Ajan anayasası (İngilizce): yetki sırası, kırmızı çizgiler, kapsam kilidi, UI kuralları özeti |
+| `AGENTS.md` | Kanonik ajan kuralları (İngilizce): proje, yetki sırası, kırmızı çizgiler, kapsam kilidi, UI kuralları, komutlar, yapı, işçi kuralları (§11) |
+| `CLAUDE.md` | `@AGENTS.md` içe aktarır + Claude rolleri (L3/L2/L1), dal kuralı, bağlam disiplini |
+| `GEMINI.md`, `.agents/rules/ui-ux-design-hierarchy.md`, `.cursor/rules/00-agents.mdc`, `.github/copilot-instructions.md` | Araç yönlendirici dosyaları: "AGENTS.md'yi oku, sen işçisin" |
+| `.claude/settings.json`, `.claude/agents/` | Claude Code izinleri (`.env` okuma yasağı, güvenli komutlar) ve alt ajanlar (`scout`, `architect`) |
 | `curate-spec-v1.md` | Sahibin ürün niyeti ve kararları (§4.4, §4.5), açık sorular (§10) |
 | `README.md` | Kısa ürün tanıtımı ve komutlar |
 | `docs/STATE.md` | Tek durum dosyası: faz, sıradaki adım, sahibe sorular |
+| `docs/PLAN.md` | Güncel uygulama planı (L3 yazar, L2 uygular); boşsa aktif plan yok |
+| `docs/OPEN.md` | L3 dışı ajanların takıldığı sorular (L3 yanıtlar) |
+| `docs/tasks/` | İşçi ajan görevleri (`00-template.md` şablon) |
 | `docs/ROADMAP.md` | Fazlar ve sıra |
 | `docs/PRODUCT.md` | Vizyon, hedef kullanıcı, modüller, kapsam |
 | `docs/ARCHITECTURE.md` | Render hattı, worker, depolama, PWA, AI proxy, yayın |
@@ -21,7 +27,6 @@ Son doğrulama: 2026-10-08
 | `design/CURATE_DESIGN_SYSTEM.md` | Curate tasarım dili (CDS) |
 | `design/tokens.curate.json` | Belirteçlerin JSON kopyası (kaynak `app/globals.css`) |
 | `design/skills/` | Sahibin eklediği tasarım skill'leri (apple-design, animate, improve-animations, redesign-existing-projects) |
-| `.agents/rules/ui-ux-design-hierarchy.md` | UI işinde okunacak kaynakların sırası |
 | `logs/YYYY-MM-DD.md` | Oturum günlükleri (yalnız ölçülmüş olgu; 15 gün) |
 
 ## Kod
