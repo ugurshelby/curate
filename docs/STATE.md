@@ -35,7 +35,7 @@ Sahibin telefonda 3 temel modülü (Düzenle, Büyüt, Çerçeve) test etmesi; A
 - AI Preset için `preferredRegion` (örn. `fra1`) ölçülemedi: işlev bölgesini değiştirmek yalnız dağıtımdan sonra, günlükteki `ms` ile karşılaştırılarak anlamlı; Upstash'in bölgesi bilinmiyor. İstenirse sahip onayıyla denenir.
 - `tests/corrections.test.ts` "fast enough … desktop CPU" bütçesi (1500 ms) bu Windows makinesinde paralel koşuda düşüyor (1,7–2,8 s; tek başına 0,9–1,0 s; CI yeşil). Bütçe değişmedi; isterseniz test daha az paralel koşturulabilir.
 
-2026-10-08'deki 6 sorunun yanıtı `docs/DECISIONS.md` D27–D32'de.
+2026-10-08'deki 6 sorunun yanıtı `docs/DECISIONS.md` D27–D32'de. Faz R'nin (Carousel/Story kaldırma) sahip onayı D37'de (2026-10-20).
 
 ## Bloke olanlar
 - Service worker: güncelleme stratejisi planı ve sahip onayı olmadan eklenmez.

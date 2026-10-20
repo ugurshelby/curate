@@ -1,7 +1,7 @@
 <!-- agent-setup v1 -->
 # CURATE STUDIO — AGENTS.md
 
-Curate is a browser photo studio for its single owner (Uğur), installed on his Android phone as a web app: repair/enhance/upscale a photo, add a frame, and build Instagram/TikTok dumps (Carousel, Story) with one-tap presets. Not a product for other users; mobile first (390×844 reference), desktop secondary.
+Curate is a browser photo studio for its single owner (Uğur), installed on his Android phone as a web app: three modules: repair/enhance a photo (Edit), upscale it (Upscale) and add a frame (Frame). Carousel and Story were removed in Faz R (D37). Not a product for other users; mobile first (390×844 reference), desktop secondary.
 Stack: Next.js 14 (App Router), React 18, TypeScript strict, Tailwind 3, Canvas 2D + Web Worker, Vitest 2, npm, Node 22 (CI). Deploy: Vercel from `main`. Server side: only the AI proxy (`app/api/ai/route.ts` → Google Vertex), the PIN gate (`middleware.ts`) and the Upstash quota counter.
 Session start: `AGENTS.md` → `docs/INDEX.md` → `docs/STATE.md` → `git status` → `git log`. Owner says only "devam" → continue from `docs/STATE.md`.
 
