@@ -198,7 +198,7 @@ Bunlar bilinçli olarak dışarıda bırakılıyor — "madem elimizdeyiz" diye 
 | **Faz D2 — Düzenle: Düzeltme sekmesi** | §4.5 E3, E10 | Sentetik görsellerle ölçülebilir kabul (spec dışı prompt `prompt-D2.md`), parite testi |
 | **Faz Y — Yoklama (geçici, 2026-10-08)** | Ürün özelliği yok: `/probe` web yoklaması ve `probe-apk/` native test APK'sı telefonun kamera/donanım tavanını ölçer, `probe/v1` JSON üretir (`docs/probe/README.md`) | Kök kapılar sıfır hata, `probe-apk` kök kapıları etkilemez; sahte kamerayla sayfa çökmeden geçerli JSON üretir; ağa veri gitmez. Telefonda doğrulama sahipte. Yol haritası kararı verilince iki araç silinir |
 | **Düzeltme turu 1 (2026-10-08)** | AI Preset model hatası (D34), akıllı gradyan (D33, K7), AI para tavanı (D35, K8) | Sahte yanıtla zincir/hata/bütçe testleri, kenar rengi gradyanı testleri; tarayıcıda Çerçeve ve Story ölçümü; telefonda doğrulama sahipte |
-| **2026-10-08 görev belgesi** | Faz 0–6: anayasa, tasarım dili v3, arayüz, erişim/kalıcılık/PWA, D2 + preset kütüphanesi + AI Preset | Sıra ve kabul: `docs/ROADMAP.md`; durum: `docs/STATE.md` |
+| **2026-10-08 görev belgesi** | Faz 0–6: anayasa, tasarım dili v3, arayüz, erişim/kalıcılık/PWA, D2 + preset kütüphanesi + AI Preset | Sıra, kabul ve durum: `docs/STATE.md` (`docs/ROADMAP.md` 2026-10-20'de silindi); durum: `docs/STATE.md` |
 | **Faz 5+ — Nice-to-have** | Otomatik preset önerisi, 9:16 dump kolajı iyileştirmeleri, vb. | Ayrı değerlendirilir, bu fazlar tamamlanmadan başlanmaz |
 
 **Kural:** Bir faz, önceki fazın kabul kriteri karşılanmadan başlamaz. Bu, "agent'a geniş inisiyatif ver ama küçük/sıralı görevler halinde" prensibinin somutlaşmış hali.

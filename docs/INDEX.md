@@ -1,16 +1,21 @@
 # Proje Haritası (INDEX)
 
 Önce buraya bak. Kod değişince bu harita aynı commit'te güncellenir.
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-20
 
 ## Belgeler
 | Dosya | Ne için |
 |---|---|
-| `AGENTS.md` | Ajan anayasası (İngilizce): yetki sırası, kırmızı çizgiler, kapsam kilidi, UI kuralları özeti |
+| `AGENTS.md` | Kanonik ajan kuralları (İngilizce): proje, yetki sırası, kırmızı çizgiler, kapsam kilidi, UI kuralları, komutlar, yapı, işçi kuralları (§11) |
+| `CLAUDE.md` | `@AGENTS.md` içe aktarır + Claude rolleri (L3/L2/L1), dal kuralı, bağlam disiplini |
+| `GEMINI.md`, `.agents/rules/ui-ux-design-hierarchy.md`, `.cursor/rules/00-agents.mdc`, `.github/copilot-instructions.md` | Araç yönlendirici dosyaları: "AGENTS.md'yi oku, sen işçisin" |
+| `.claude/settings.json`, `.claude/agents/` | Claude Code izinleri (`.env` okuma yasağı, güvenli komutlar) ve alt ajanlar (`scout`, `architect`) |
 | `curate-spec-v1.md` | Sahibin ürün niyeti ve kararları (§4.4, §4.5), açık sorular (§10) |
 | `README.md` | Kısa ürün tanıtımı ve komutlar |
 | `docs/STATE.md` | Tek durum dosyası: faz, sıradaki adım, sahibe sorular |
-| `docs/ROADMAP.md` | Fazlar ve sıra |
+| `docs/PLAN.md` | Güncel uygulama planı (L3 yazar, L2 uygular); boşsa aktif plan yok |
+| `docs/OPEN.md` | L3 dışı ajanların takıldığı sorular (L3 yanıtlar) |
+| `docs/tasks/` | İşçi ajan görevleri (`00-template.md` şablon) |
 | `docs/PRODUCT.md` | Vizyon, hedef kullanıcı, modüller, kapsam |
 | `docs/ARCHITECTURE.md` | Render hattı, worker, depolama, PWA, AI proxy, yayın |
 | `docs/DECISIONS.md` | Karar kayıtları |
@@ -22,7 +27,6 @@ Son doğrulama: 2026-10-08
 | `design/CURATE_DESIGN_SYSTEM.md` | Curate tasarım dili (CDS) |
 | `design/tokens.curate.json` | Belirteçlerin JSON kopyası (kaynak `app/globals.css`) |
 | `design/skills/` | Sahibin eklediği tasarım skill'leri (apple-design, animate, improve-animations, redesign-existing-projects) |
-| `.agents/rules/ui-ux-design-hierarchy.md` | UI işinde okunacak kaynakların sırası |
 | `logs/YYYY-MM-DD.md` | Oturum günlükleri (yalnız ölçülmüş olgu; 15 gün) |
 
 ## Kod
@@ -33,25 +37,20 @@ Son doğrulama: 2026-10-08
 | `app/globals.css` | Renk ve yarıçap belirteçleri (tek kaynak), yardımcı sınıflar |
 | `app/api/ai/route.ts` | Tek sunucu rotası: AI proxy (GET/PUT/POST/DELETE) |
 | `components/studio/StudioShell.tsx` | Ortak modül iskeleti: header / sahne / alt yığın |
-| `components/studio/CarouselStudio.tsx` | Carousel modülü |
-| `components/studio/StoryStudio.tsx` | Story modülü |
 | `components/studio/FrameStudio.tsx` | Çerçeve modülü (boyut çipleri, 4K) |
 | `components/studio/UpscaleStudio.tsx` | Büyüt modülü |
 | `components/studio/EditStudio.tsx` | Düzenle modülü (Preset, Kırp, Düzeltme; AI ile onar) |
 | `components/studio/AiRepairSheet.tsx`, `AiReviewScreen.tsx` | AI görev sayfası (PIN adımı dahil) ve önce/sonra kontrol sayfası |
 | `components/studio/AiPresetSheet.tsx` | AI Preset stil sayfası (D28) |
 | `components/studio/QuickExportSheet.tsx` | Export sayfası |
-| `components/studio/PresetStrip.tsx` | Yatay preset kartları (Carousel + Düzenle) |
-| `components/studio/Filmstrip.tsx` | Filmstrip ve sürükleyerek sıralama |
 | `components/studio/AddMenu.tsx`, `ReferencePicker.tsx` | "+" menüsü ve referans görsel seçici |
-| `components/studio/usePanPinch.ts` | Ortak sürükle/yakınlaştır jesti (Story, Düzenle Kırp) |
+| `components/studio/usePanPinch.ts` | Ortak sürükle/yakınlaştır jesti |
 | `components/studio/Switch.tsx` | Aç/kapa anahtarı (44 px) |
 | `components/studio/DeviceSync.tsx` | Cihaz eşitleyicisini başlatır (layout); `useDeviceStorage` ana sayfa anahtarı için |
-| `components/studio/EdgeGradientCanvas.tsx` | Story zemin önizlemesi: `paintEdgeGradient` ile boyanan canvas |
-| `components/studio/NoticeToast.tsx`, `PerfHud.tsx`, `ResettableSlider.tsx`, `InstagramOverlay.tsx`, `TikTokOverlay.tsx` | Bildirim, `?perf=1` ölçüm, kaydırıcı, platform katmanları |
+| `components/studio/NoticeToast.tsx`, `PerfHud.tsx`, `ResettableSlider.tsx` | Bildirim, `?perf=1` ölçüm, kaydırıcı |
 | `lib/index.ts` | Ortak dışa aktarım |
 | `lib/core/` | `types`, `state-machine` (store), `use-studio`, `worker-bridge`, `reference-images`, `prefs` (localStorage tercihler), `library-cache` (IndexedDB fotoğraf hafızası), `device-sync` (store ↔ cihaz eşitleyici) |
-| `lib/engine/` | `carousel-render` (önizleme=export), `corrections` (Düzeltme: 6 satır + Otomatik, parçalı), `presets` (kütüphane v2, 16 preset), `scene` (Akıllı Otomatik), `frame-render` (Çerçeve, önizleme=export), `ai-plan` (AI Preset planı: doğrulayıcı, maskeler, uygulama), `harmonize`, `edit-geometry`, `story-layout`, `upscale-lanczos`, `upscale-slider`, `edge-gradient` (akıllı gradyan: kenar renkleri, OKLab, dither; Çerçeve ve Story), `proxy` |
+| `lib/engine/` | `corrections` (Düzeltme: 6 satır + Otomatik, parçalı), `presets` (kütüphane v2, 16 preset), `scene` (Akıllı Otomatik), `frame-render` (Çerçeve, önizleme=export), `ai-plan` (AI Preset planı: doğrulayıcı, maskeler, uygulama), `intelligent-repair` (iki aşamalı AI onarım), `image-schema`, `edit-geometry`, `upscale-lanczos`, `upscale-slider`, `edge-gradient` (akıllı gradyan: kenar renkleri, OKLab, dither; Çerçeve), `proxy` |
 | `lib/export/` | `platform-specs` (hedefler ve Çerçeve boyutları `FRAME_SIZES` veri olarak), `export-plan` (kalite basamağı, dosya adı), `exif-sanitizer`, `zip-packager` |
 | `middleware.ts`, `lib/access/` | Tüm uygulama PIN kapısı (D27): `session` (imza, karar, Edge+Node), `client` (kilit ekranı isteği); ekran `app/kilit/page.tsx` |
 | `lib/ai/` | `config` (model/istem/₺ tek yer), `server` (AI Preset model zinciri, bütçe, kilit), `quota` (sayaçlar), `budget` (para tavanı, D35), `client`, `diff-check` |

@@ -2,8 +2,8 @@
 
 Tek durum dosyası. Her anlamlı adımdan sonra aynı commit'te güncellenir. Yeni oturum: `AGENTS.md` → `docs/INDEX.md` → bu dosya → `git status` → `git log`.
 
-**Son güncelleme:** 2026-10-16 (AI Pipeline Kalibrasyon Testi)
-**Görev tanımı:** sahibin 2026-10-08 tarihli "Bağımsız Ajan Görevi" belgesi ve 2026-10-16 tarihli AI Kalibrasyon & Senaryo Test Pipeline brifi. Fazlar ve sıra: `docs/ROADMAP.md`.
+**Son güncelleme:** 2026-10-20 (ajan sistemi kurulumu main'e alındı)
+**Görev tanımı:** sahibin 2026-10-08 tarihli "Bağımsız Ajan Görevi" belgesi ve 2026-10-16 tarihli AI Kalibrasyon & Senaryo Test Pipeline brifi. Fazlar: aşağıdaki tablo (eski `docs/ROADMAP.md` 2026-10-20'de silindi).
 
 ## Fazlar
 
@@ -24,6 +24,7 @@ Tek durum dosyası. Her anlamlı adımdan sonra aynı commit'te güncellenir. Ye
 
 ## Sıradaki adım
 Sahibin telefonda 3 temel modülü (Düzenle, Büyüt, Çerçeve) test etmesi; AI Onar çağrılarının Vertex üzerinde denenmesi.
+2026-10-20: ajan sistemi kuruldu (D36, rapor `docs/reports/2026-10-20-agent-setup.md`), güncel `main`'e taşındı; PR #1 kapatıldı. Aktif plan yok (`docs/PLAN.md` boş).
 
 ## Son durum
 - 24 test dosyası, 325 birim ve parite testi yeşil.

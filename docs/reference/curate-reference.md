@@ -13,13 +13,13 @@ Tek kullanıcılı (Uğur) kişisel fotoğraf stüdyosu; telefonda web uygulamas
 Ortak ürün kuralları: önizleme = export (spec §3.3, uyumsuzluk P0); fotoğraf cihazda kalır, tek istisna Düzenle'deki AI (spec §3.5, §4.5 E12); hiçbir adımda kaydırıcı zorunlu değil (spec §3.1).
 
 ## 2. Ölçülmüş durum
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-20
 
 | Kontrol | Sonuç | Etiket |
 |---|---|---|
 | `npx tsc --noEmit` | çıkış 0 | [ÖLÇÜLDÜ] 2026-10-08 |
 | `npm run lint` | "No ESLint warnings or errors" | [ÖLÇÜLDÜ] 2026-10-08 |
-| `npm test` | 19 dosya, 253 test geçti (oturum başında 14 / 150) | [ÖLÇÜLDÜ] 2026-10-08 |
+| `npm test` | 22 dosya, 292 test geçti | [ÖLÇÜLDÜ] 2026-10-20 |
 | `npm run build` | çıkış 0; `/` ≈ 33 kB, `/api/ai` dinamik | [ÖLÇÜLDÜ] 2026-10-08 |
 | `npm run check:secrets` | 84 dosya (26 istemci), 0 gerçek değer arandı (`.env` yok), 0 bulgu | [ÖLÇÜLDÜ] 2026-10-08 |
 | Prosedür 2 (`scripts/audit-ui.mjs`, production build, Chromium 1194 emülasyon) | 52 ekran (360/390/430 + masaüstü ana sayfa; Düzeltme dahil) geçti, en düşük metin kontrastı 4,70 | [ÖLÇÜLDÜ] 2026-10-08 |
@@ -30,14 +30,14 @@ Son doğrulama: 2026-10-08
 Bilinen sınırlar (kod okuma): Story/Çerçeve/Büyüt önizlemesi export ile aynı geometriyi kullanır, aynı piksel fonksiyonunu değil; Story ve Çerçeve preset uygulamaz; Büyüt önizlemesi CSS filtresidir ("Lanczos" diye etiketlenmez). [ÖLÇÜLDÜ] kod.
 
 ## 3. Mimari
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-20
 
 Özet ve tablo `docs/ARCHITECTURE.md`'de; dosya haritası `docs/INDEX.md`'de. Burada yalnız olgular:
-- Tek sayfa (`app/page.tsx`) + tek sunucu rotası (`app/api/ai/route.ts`). `middleware` yok. [ÖLÇÜLDÜ] `git ls-files`.
-- Carousel ve Düzenle önizleme/export aynı iki adımı (`renderCarouselBase`, `applyCarouselLook`) aynı seçeneklerle çağırır; `tests/carousel-parity.test.ts` 1080×1350'de 0 bayt fark bulur. [ÖLÇÜLDÜ]
+- Üç sayfa (`app/page.tsx` ana sayfa, `app/kilit/page.tsx` PIN ekranı, `app/probe/page.tsx` geçici yoklama) + tek sunucu rotası (`app/api/ai/route.ts`) + `middleware.ts` (tüm uygulama PIN kapısı, D27). [ÖLÇÜLDÜ] `git ls-files` 2026-10-20.
+- Modüller (Faz R'den beri): Düzenle, Büyüt, Çerçeve (`components/studio/`). Carousel ve Story bileşenleri ile `carousel-render`, `story-layout` ve `tests/carousel-parity.test.ts` kodda yok. [ÖLÇÜLDÜ] `git ls-files` 2026-10-20
 - Worker yalnız Büyüt export'unda. [ÖLÇÜLDÜ] grep.
 - Geçici yoklama (Faz Y, `docs/probe/README.md`): `app/probe/` (`/probe`, linklenmez, `noindex`, PIN kapısının arkasında: çerezsiz istek 307 → `/kilit?next=%2Fprobe`), `lib/probe/`, ayrı Expo paketi `probe-apk/` (yerel Kotlin modülü). `probe-apk/` kök `tsconfig.json`, `.eslintrc.json` ve `vitest.config.ts` dışında; `next build` onu görmez. Sayfa ağa veri göndermez (sahte kamerayla test sonrası istek 0); APK manifestinde `INTERNET` kaldırılmış. [ÖLÇÜLDÜ] 2026-10-08
-- En büyük dosyalar: `EditStudio.tsx` 870, `CarouselStudio.tsx` 567, `StoryStudio.tsx` 545, `lib/core/state-machine.ts` 485, `lib/ai/server.ts` 481 satır. [ÖLÇÜLDÜ] `wc -l`.
+- En büyük dosyalar: `lib/probe/run-web.ts` 1115, `lib/ai/server.ts` 759, `lib/engine/corrections.ts` 659, `lib/ai/config.ts` 529, `lib/core/state-machine.ts` 522; bileşenlerde `FrameStudio.tsx` 487, `EditStudio.tsx` 388 satır. [ÖLÇÜLDÜ] `wc -l` 2026-10-20.
 
 ## 4. Veri ve altyapı
 Son doğrulama: 2026-10-09
@@ -55,25 +55,25 @@ Son doğrulama: 2026-10-09
 | PWA | Manifest bağlı (`lang: tr`, standalone), PNG 192/512/maskeli + apple-touch-icon; Chromium kurulabilirlik hatası 0; service worker yok | [ÖLÇÜLDÜ] `tests/pwa.test.ts`, CDP 2026-10-08; telefonda kurulum [DOĞRULANMADI] |
 
 ## 5. Güvenlik, sırlar, maliyet
-Son doğrulama: 2026-10-09
+Son doğrulama: 2026-10-20
 
 - Repo herkese açık (GitHub API `visibility: public`). [ÖLÇÜLDÜ]
 - İzlenen dosyalarda sır şekilli dize (Google anahtarı, özel anahtar, GitHub/Slack/AWS token, JWT kalıpları): 0 dosya. [ÖLÇÜLDÜ] `git grep` 2026-10-08.
 - İzlenen kişisel görünümlü dosyalar: yalnız 13 referans görsel (`public/reference-images/*.jfif`, sahip kararıyla). [ÖLÇÜLDÜ]
-- Sırlar yalnız Vercel sunucu ortamında; `NEXT_PUBLIC_*` sır yok. 4 haneli PIN `check:secrets` ile değerle taranamaz; güvencesi tasarım: yalnız `lib/ai/server.ts` karşılaştırır. [ÖLÇÜLDÜ]
+- Sırlar yalnız Vercel sunucu ortamında; `NEXT_PUBLIC_*` sır yok. 4 haneli PIN `check:secrets` ile değerle taranamaz; güvencesi tasarım: yalnız sunucu tarafı `lib/ai/server.ts` ve `lib/access/session.ts` (middleware) okur ve karşılaştırır. [ÖLÇÜLDÜ]
 - Güvenlik başlıkları: `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `Referrer-Policy: same-origin`, `nosniff`. [ÖLÇÜLDÜ] `next.config.mjs`
 - Kötüye kullanım ve harcama sınırları: para bütçesi (D35) toplam ₺6000 (18 Aralık 2026'ya kadar), günlük ₺300, sonra aylık ₺200; çağrı sayısı ikincil günde 80 / ayda 1000 (atomik; Vercel env varsa o geçerli); aynı anda tek ücretli istek; yanlış PIN IP 5/gün, genel 10/gün, 30/ay; `AI_ENABLED=false` hepsini kapatır (Preview'da kapalı). Sayaç dağıtık yükte [DOĞRULANMADI].
 - Maliyet tahmini (`lib/ai/config.ts`): A ~₺8, B ~₺5, C ~₺5, D ~₺7, AI Preset ~₺0,3; üçüncü taraf fiyatı [DOĞRULANMADI]. Sayaçlar bunun ×1,25'ini ayırır. En kötü durum: günlük ₺300 / toplam ₺6000 tavanı.
 - EXIF: export tuvalden yeniden kodlanır; `sanitizeJpegBuffer` APP1/APP2 yüklerini sıfırlar, bozuk segmentte atmadan durur. [ÖLÇÜLDÜ] `tests/robustness.test.ts`
 
 ## 6. Kalite kapıları
-Son doğrulama: 2026-10-09
+Son doğrulama: 2026-10-20
 
 | Kapı | Nerede | Durum |
 |---|---|---|
 | Tip denetimi | `npx tsc --noEmit` | geçiyor |
 | Lint | `npm run lint` | geçiyor |
-| Test | `npm test` (Vitest) | 25 dosya / 347 test (2026-10-09, `--maxWorkers=2 --minWorkers=1`; yeni: `edge-gradient`, `ai-budget`). Bu Windows makinesinde varsayılan paralel koşuda `tests/corrections.test.ts` "fast enough … desktop CPU" (1500 ms) 1,7–2,8 s ile düşüyor, tek başına 0,9–1,0 s; GitHub CI'da yeşil |
+| Test | `npm test` (Vitest) | 24 dosya / 325 test (2026-10-20, varsayılan paralel koşu, bu Windows makinesinde 19 sn yeşil). `tests/corrections.test.ts` hız bütçesi (1500 ms) 2026-10-09'da paralel koşuda düşmüştü (bkz. `docs/STATE.md`) |
 | Build | `npm run build` | geçiyor |
 | Sır taraması | `npm run check:secrets` | 0 bulgu |
 | Renk belirteçleri | `tests/color-tokens.test.ts` | geçiyor |

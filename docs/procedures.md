@@ -1,7 +1,7 @@
 # Curate — Prosedürler
 
 Tekrarlanan işlerin tarifi. Her prosedür: tetikleyici, kapsam, adımlar, değiştirebileceklerin, yalnız raporlayacakların, güncellenecek belgeler, çıktı. Tetikleyici tablosu `AGENTS.md` §10'da.
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-20
 
 ---
 
@@ -9,7 +9,7 @@ Son doğrulama: 2026-10-08
 1. **Belgeler:** etkilenen bölümleri güncelle (`docs/reference/curate-reference.md`, `docs/ARCHITECTURE.md`; "Son doğrulama" satırı). Davranış değiştiyse veya hata kapandıysa `curate-spec-v1.md` (yalnız olgu kısmı) ve `README.md`. Durum için `docs/STATE.md`, harita için `docs/INDEX.md`.
 2. **Log:** ölçülmüş olguları `logs/YYYY-MM-DD.md`'ye yaz (komut, çıktı, sayı, boyut). Niyet yok.
 3. **Kapılar:** `npx tsc --noEmit`, `npm run lint`, `npm test`, `npm run build`, `npm run check:secrets` (0 bulgu). Arayüz değiştiyse Prosedür 2.
-4. **Commit ve push:** doğrudan `main`. Başka dal yok, force push yok.
+4. **Commit ve push:** Claude (L3/L2) kapılar yeşilse doğrudan `main`'e; oturum bir dal atadıysa o dala + taslak PR. Diğer ajanlar yalnız `wip/<ajan>-<konu>` + PR (`AGENTS.md` §11). Force push yok.
 5. **Plan temizliği:** son adımı biten plan/görev dosyası log'dan sonra silinir.
 6. **Rapor:** Türkçe, kısa: ölçülen sonuçlar, değişiklikler, tarayıcı durumu, sahibe sorular, en sonda "Sana düşenler (adım adım)".
 
@@ -20,7 +20,7 @@ Son doğrulama: 2026-10-08
 - **Kapsam:** Carousel, Düzenle, Story, Çerçeve, Büyüt önizleme ↔ export.
 - **Adımlar:**
   1. Önizleme ve export'un aynı çizim fonksiyonunu aynı parametre şemasıyla çağırdığını doğrula (`docs/ARCHITECTURE.md` §2).
-  2. `npm test` (parite testleri: `tests/carousel-parity.test.ts`, `tests/export-plan.test.ts`, `tests/story-layout.test.ts`, `tests/edit-geometry.test.ts`).
+  2. `npm test` (parite testleri: `tests/export-plan.test.ts`, `tests/edit-geometry.test.ts`, `tests/frame.test.ts`, `tests/edge-gradient.test.ts`).
   3. Boyutlar: Instagram 1080×1350, TikTok 1080×1920, Story 1080×1920, Çerçeve seçilen oran (varsayılan 1080×1350; 4K'da kısa kenar 2160, 16:9 → 3840×2160), Düzenle kırpımın kendi boyutu (≤ 4096), Büyüt 2×/4× (≤ 8192, ≤ 16 MP).
   4. Sığdır zemini `EXPORT_COLORS.fitBackground` (`lib/ui/colors.ts`).
   5. Uzantı ve MIME eşleşir (`.jpg` ↔ `image/jpeg`, `.png` ↔ `image/png`); 8 MB üstünde kalite basamağı yalnız platform hedeflerinde.
@@ -51,7 +51,7 @@ Son doğrulama: 2026-10-08
      glass: [...document.querySelectorAll('.glass-panel')].filter(visible).length });
   ```
   - AI sayfası: PIN girişi `#ai-pin`, sayfa `[data-ai-sheet]` (iç kaydırma olmadan sığar); kontrol sayfası `[data-review-header]`, `[data-review-stage]`, `[data-review-bar]`. Ölçmeden önce animasyonları bitir (`document.getAnimations().forEach(a => a.finish())`). Yatay kaydırıcı içindeki öğeler (preset satırı, filmstrip) `offscreen` dışında tutulur.
-  - Ekran görüntüsü: `node scripts/capture-screens.mjs <etiket>` → `screenshots/<etiket>/` (git izlemez).
+  - Ekran görüntüsü: `AUDIT_PIN=<test 4 hane> node scripts/capture-screens.mjs <etiket>` → `screenshots/<etiket>/` (git izlemez).
   - Akıllı gradyan (D33): `AUDIT_PIN=<test PIN> node scripts/check-gradient.mjs` (aynı test değerli sunucu) Çerçeve 9:16 / 4:5 / 16:9 ve Story'yi sentetik fotoğrafla dışa aktarır, boyutu ve kenar piksellerini yazar; ekran görüntüleri `screenshots/gradient/` (git izlemez). Yoklama sayfası için `scripts/probe-fake-camera.mjs`.
 - **Değiştirebilir:** CSS sınıfları, yerleşim dolgusu, duyarlı sarmalayıcılar.
 - **Yalnız raporla:** tarayıcı yoksa her görsel madde "doğrulanmadı".
@@ -99,7 +99,7 @@ Son doğrulama: 2026-10-08
 
 ## 7. `main`'e push öncesi kontrol
 - **Tetikleyici:** "main'e push öncesi kontrol", "yayın öncesi kontrol" / "pre-push check".
-- **Adımlar:** dal `main` ve çalışma ağacı temiz → `npx tsc --noEmit` → `npm run lint` → `npm test` → `npm run build` → `npm run check:secrets` → arayüz değiştiyse Prosedür 2 → diff özeti → kalan riskler ve tarayıcıda denenmeyenler.
+- **Adımlar:** dal `main` (veya oturumun atadığı dal) ve çalışma ağacı temiz → `npx tsc --noEmit` → `npm run lint` → `npm test` → `npm run build` → `npm run check:secrets` → arayüz değiştiyse Prosedür 2 → diff özeti → kalan riskler ve tarayıcıda denenmeyenler.
 - **Değiştirebilir:** hiçbir şey (yalnız denetim).
 - **Çıktı:** push et / etme önerisi.
 
