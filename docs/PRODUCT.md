@@ -1,13 +1,13 @@
 # Ürün (PRODUCT)
 
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-20 (Modüller ve "Ne": kod okuma, Faz R sonrası)
 
 ## Ne
 Curate, tarayıcıda çalışan ve telefona web uygulaması olarak kurulan bir fotoğraf stüdyosudur. Sahibi fotoğrafçı değildir; beklentisi en az çaba ve teknik bilgiyle doğal, temiz, profesyonel görünen sonuçtur.
 
 - Herhangi bir fotoğrafı al; AI ile onar, iyileştir, büyüt.
 - İstersen çerçeve ekle.
-- Instagram ve TikTok için dump/kolaj hazırla: Carousel (sıralı seri) ve Story (2–6 fotoğraf, otomatik grid).
+- Instagram ve TikTok için dump/kolaj (Carousel, Story) Faz R ile kaldırıldı (D37, 2026-10-16).
 - İçinde iyi presetler olsun; düzenleme panelleri rahat olsun.
 
 ## İlkeler
@@ -32,11 +32,9 @@ Yalnız sahip (Uğur). Başka kullanıcı, hesap, paylaşım yok.
 ## Modüller
 | Modül | Ne yapar | Çıktı |
 |---|---|---|
-| Carousel | Sıralı seri, preset, seri renk uyumu, Instagram/TikTok önizlemesi | 1080×1350 (Instagram) veya 1080×1920 (TikTok); tek dosya ya da zip |
-| Story | 2–6 fotoğraf, otomatik grid, hücre başına kadraj | 1080×1920 |
-| Çerçeve | Polaroid, mat, akıllı gradyan zemin, tarih damgası | 10 standart oran (4:5, 1:1, 9:16, 3:4, 2:3, 5:4, 4:3, 3:2, 16:9, 1.91:1), kısa kenar 1080 ya da 4K (2160); varsayılan 1080×1350 |
-| Büyüt (Upscale) | Yerel 2×/4× büyütme | Kaynak × çarpan (uzun kenar ≤ 8192, ≤ 16 MP) |
-| Düzenle | Tek fotoğraf: Preset (AI Preset dahil), Kırp, Düzeltme, AI ile onar | Kırpımın kendi çözünürlüğü (uzun kenar ≤ 4096) |
+| Düzenle | Tek fotoğraf: AI onarım direktifi (serbest metin ya da 5 hazır direktif); model yalnız ışık/renk planı döner, cihazda uygulanır; yanıt yoksa yerel plan | Fotoğrafın kendi çözünürlüğü |
+| Büyüt (Upscale) | Yerel 2×/4× Lanczos-3 büyütme, önce/sonra ayırıcı | Kaynak × çarpan (uzun kenar ≤ 8192, ≤ 16 MP) |
+| Çerçeve | Polaroid (3 çeşit), mat (renk seçimli), gradyan (akıllı + 3 hazır), tarih damgası; birden çok fotoğrafa toplu | 10 standart oran (4:5, 1:1, 9:16, 3:4, 2:3, 5:4, 4:3, 3:2, 16:9, 1.91:1), kısa kenar 1080 ya da 4K (2160); varsayılan 1080×1350; toplu ise zip |
 
 ## Kapsam dışı
 Panorama, AI ile içerik üretme (inpainting/outpainting), hesaplar, bulut senkronu, sunucuda fotoğraf saklama, manuel renk arayüzü, kamera/çekim asistanı, ışık sızıntısı ve eklenen estetik vinyet. Tam liste: `AGENTS.md` §4.

@@ -17,12 +17,12 @@ Son doğrulama: 2026-10-20
 
 ## 1. Export paritesi
 - **Tetikleyici:** "export kontrolü", "önizleme export eşleşiyor mu" / "check export parity".
-- **Kapsam:** Carousel, Düzenle, Story, Çerçeve, Büyüt önizleme ↔ export.
+- **Kapsam:** Düzenle, Çerçeve, Büyüt önizleme ↔ export (Faz R'den beri üç modül).
 - **Adımlar:**
   1. Önizleme ve export'un aynı çizim fonksiyonunu aynı parametre şemasıyla çağırdığını doğrula (`docs/ARCHITECTURE.md` §2).
-  2. `npm test` (parite testleri: `tests/export-plan.test.ts`, `tests/edit-geometry.test.ts`, `tests/frame.test.ts`, `tests/edge-gradient.test.ts`).
-  3. Boyutlar: Instagram 1080×1350, TikTok 1080×1920, Story 1080×1920, Çerçeve seçilen oran (varsayılan 1080×1350; 4K'da kısa kenar 2160, 16:9 → 3840×2160), Düzenle kırpımın kendi boyutu (≤ 4096), Büyüt 2×/4× (≤ 8192, ≤ 16 MP).
-  4. Sığdır zemini `EXPORT_COLORS.fitBackground` (`lib/ui/colors.ts`).
+  2. `npm test` (parite testleri: `tests/intelligent-repair.test.ts`, `tests/export-plan.test.ts`, `tests/frame.test.ts`, `tests/edge-gradient.test.ts`; `tests/edit-geometry.test.ts` artık arayüzde kullanılmayan Kırp motorunu sınar).
+  3. Boyutlar: Çerçeve seçilen oran (varsayılan 1080×1350; 4K'da kısa kenar 2160, 16:9 → 3840×2160), Düzenle fotoğrafın kendi boyutu, Büyüt 2×/4× (≤ 8192, ≤ 16 MP); Çerçeve'de birden çok fotoğraf → zip.
+  4. Export renkleri yalnız `EXPORT_COLORS` (`lib/ui/colors.ts`).
   5. Uzantı ve MIME eşleşir (`.jpg` ↔ `image/jpeg`, `.png` ↔ `image/png`); 8 MB üstünde kalite basamağı yalnız platform hedeflerinde.
 - **Değiştirebilir:** pariteyi sağlamak için var olan önizleme/export fonksiyonlarında hata düzeltme.
 - **Yalnız raporla:** mimari ayrışma, algoritma yeniden tasarımı.
@@ -34,7 +34,7 @@ Son doğrulama: 2026-10-20
 - **Adımlar:**
   1. Otomatik: sunucu yalnız TEST değerleriyle: `VERTEX_API_KEY=<herhangi test metni> CURATE_AI_PASSWORD=<test 4 hane> npx next start -p 3101` (build sonrası), sonra `AUDIT_PIN=<aynı test 4 hane> CHROME=<chromium yolu> node scripts/audit-ui.mjs`. Gerçek PIN asla kullanılmaz. Betik önce çerezsiz bağlamda kilit ekranını (360/390/430) ve bir yanlış PIN'i ölçer, sonra `scripts/lib/unlock.mjs` ile kapıyı açar. Bulut kapsayıcıda yol: `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`. Betik `/api/ai`'yi taklit eder (ücretli çağrı yok), PIN adımını da ölçer.
   2. Şart: `overlap` false, `hScroll` false; `offscreen`, `smallTargets` (44 px altı), `tinyText` (12 px altı) boş; görünür cam yüzey ≤ 3; metin kontrastı ≥ 4,5 (büyük yazı ≥ 3).
-  3. Filmstrip ve panel alt yığın bütçesine (≤ 40dvh) sığar; sahne ≥ 34dvh.
+  3. Panel ve alt çubuk alt yığın bütçesine (≤ 40dvh) sığar; sahne ≥ 34dvh.
   4. Güvenli alan (`env(safe-area-inset-*)`), kök yükseklik `dvh`.
   5. Metin: Türkçe, jargonsuz, monospace yok (`tests/ui-rules.test.ts`).
   - Elle ölçüm betiği (tarayıcı konsolu): `[data-stage]` = fotoğraf kutusu, `header` = üst çubuk, `[data-bottom-stack]` = panel + çubuk.
@@ -50,9 +50,10 @@ Son doğrulama: 2026-10-20
      tinyText: [...document.querySelectorAll('body *')].filter(e => !e.children.length && e.textContent.trim() && visible(e) && parseFloat(getComputedStyle(e).fontSize) < 12).map(e => e.textContent.trim().slice(0, 20)),
      glass: [...document.querySelectorAll('.glass-panel')].filter(visible).length });
   ```
-  - AI sayfası: PIN girişi `#ai-pin`, sayfa `[data-ai-sheet]` (iç kaydırma olmadan sığar); kontrol sayfası `[data-review-header]`, `[data-review-stage]`, `[data-review-bar]`. Ölçmeden önce animasyonları bitir (`document.getAnimations().forEach(a => a.finish())`). Yatay kaydırıcı içindeki öğeler (preset satırı, filmstrip) `offscreen` dışında tutulur.
+  - AI sayfası seçicileri (`#ai-pin`, `[data-ai-sheet]`, `[data-review-*]`) `AiRepairSheet`/`AiReviewScreen`'de; Faz R'den beri bu bileşenleri hiçbir modül açmıyor. Ölçmeden önce animasyonları bitir (`document.getAnimations().forEach(a => a.finish())`). Yatay kaydırıcı içindeki öğeler (Düzenle hızlı direktif satırı) `offscreen` dışında tutulur.
+  - **Uyarı (2026-10-20):** `scripts/audit-ui.mjs` (satır 170, 184), `scripts/capture-screens.mjs` (satır 86–97) ve `scripts/check-gradient.mjs` hâlâ kaldırılan `carousel`/`story` modüllerini açıyor; betikler güncellenene kadar Prosedür 2 olduğu gibi çalışmaz.
   - Ekran görüntüsü: `AUDIT_PIN=<test 4 hane> node scripts/capture-screens.mjs <etiket>` → `screenshots/<etiket>/` (git izlemez).
-  - Akıllı gradyan (D33): `AUDIT_PIN=<test PIN> node scripts/check-gradient.mjs` (aynı test değerli sunucu) Çerçeve 9:16 / 4:5 / 16:9 ve Story'yi sentetik fotoğrafla dışa aktarır, boyutu ve kenar piksellerini yazar; ekran görüntüleri `screenshots/gradient/` (git izlemez). Yoklama sayfası için `scripts/probe-fake-camera.mjs`.
+  - Akıllı gradyan (D33): `AUDIT_PIN=<test PIN> node scripts/check-gradient.mjs` (aynı test değerli sunucu) Çerçeve 9:16 / 4:5 / 16:9'u (ve artık olmayan Story'yi) sentetik fotoğrafla dışa aktarır, boyutu ve kenar piksellerini yazar; ekran görüntüleri `screenshots/gradient/` (git izlemez). Yoklama sayfası için `scripts/probe-fake-camera.mjs`.
 - **Değiştirebilir:** CSS sınıfları, yerleşim dolgusu, duyarlı sarmalayıcılar.
 - **Yalnız raporla:** tarayıcı yoksa her görsel madde "doğrulanmadı".
 - **Belgeler:** reference §6, log.

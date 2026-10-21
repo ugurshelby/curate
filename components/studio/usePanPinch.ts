@@ -4,8 +4,8 @@ import { useRef } from "react";
 
 /**
  * Ortak dokunma hareketi (apple-design §2): 1 parmak kaydır, 2 parmak yakınlaştır, 1:1 takip.
- * Story hücreleri ve Düzenle → Kırp aynı hook'u kullanır; sınır ve rubber-band hesabı çağıranda
- * (lib/engine/story-layout.ts → rubberband).
+ * Unused since Faz R: its callers were Story cells and Edit → Crop; rubber-band lived in the removed
+ * lib/engine/story-layout.ts. Kept until a cleanup task removes it.
  */
 
 export interface PanPinchDelta {

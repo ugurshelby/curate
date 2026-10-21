@@ -35,7 +35,7 @@ Tek kişilik, mobil öncelikli (390×844) bir fotoğraf stüdyosu. **Fotoğraf t
 | Başarı | `--success` | `text-success` | `#30D158` |
 | Devre dışı | `--disabled-surface`, `--disabled-ink` | `bg-disabled`, `text-disabled-ink` | `#2C2C2E`, `#636366` |
 
-Kurallar: fotoğraf üstündeki her şey renksiz (beyaz/siyah + alfa; kırp çerçevesi, tutamaklar, Story bantları, platform katmanları). Yeşil yalnız başarı, kırmızı yalnız hata/silme; platform renkleri (TikTok kırmızısı vb.) yok. Kodda hex/rgb sabiti yok.
+Kurallar: fotoğraf üstündeki her şey renksiz (beyaz/siyah + alfa; önce/sonra rozeti ve ayırıcısı, yükleniyor örtüsü). Yeşil yalnız başarı, kırmızı yalnız hata/silme; platform renkleri (TikTok kırmızısı vb.) yok. Kodda hex/rgb sabiti yok.
 
 ### Kontrast (WCAG 2.1; yazı ≥ 4,5, büyük yazı ve bileşen ≥ 3; ölçüm 2026-10-08)
 | Ön plan | Zemin / yüzey 1 / yüzey 2 / kart üstü `#2A2A2C` / çip `#2E2E30` | Kullanım |
@@ -92,12 +92,12 @@ Kurallar: fotoğraf üstündeki her şey renksiz (beyaz/siyah + alfa; kırp çer
 - Yalnız `transform` ve `opacity`; `transition: all`, `ease-in`, `scale(0)` yok. Yeni hareket kütüphanesi yok (CSS + Web Animations).
 
 ## 6. Mobil yerleşim sözleşmesi (KRİTİK, değişmez)
-> **Fotoğraf hiçbir zaman header'ın, düzenleme panelinin ya da filmstrip'in altında kalmaz.** Ölçüt: `stage.top ≥ header.bottom` ve `stage.bottom ≤ bottomStack.top`.
+> **Fotoğraf hiçbir zaman header'ın, düzenleme panelinin ya da alt çubuğun altında kalmaz.** Ölçüt: `stage.top ≥ header.bottom` ve `stage.bottom ≤ bottomStack.top`.
 
 - Üç bölgeli dikey flex sütun: header (≤ 56 px + güvenli alan) / sahne (`flex: 1 1 0; min-height: 0`, panel açıkken ≥ 34dvh) / alt yığın (panel + çubuk, ≤ 40dvh, içerik kendi içinde kayar). Hiçbir bölge görselin üstüne `absolute` bindirilmez.
 - Kök `100dvh` (yalnız `100vh` yasak). Görsel sahnede CSS ile sığar (`.stage-fit`, `cq` birimleri). Tahminî telafi hileleri (`scale(0.88)`, sabit `padding-bottom`) yasak.
-- Header tek satır; 390 px'e sığar, yatay taşma 0. Panel kapalıyken yalnız filmstrip (≤ 96 px).
-- Preset seçici: tek satır yatay kaydırmalı kartlar. İkincil araçlar kapalı "Araçlar" satırında.
+- Header tek satır; 390 px'e sığar, yatay taşma 0. Panel kapalıyken yalnız alt çubuk (≤ 96 px; Faz R öncesi filmstrip).
+- Preset seçici (Faz R'den beri arayüzde yok; dönerse): tek satır yatay kaydırmalı kartlar. İkincil araçlar kapalı "Araçlar" satırında.
 - Dokunma hedefi ≥ 44×44 px (simge küçük olabilir, alan 44). Güvenli alan `env(safe-area-inset-*, 0px)`; sayfa `viewport-fit=cover`. `:hover` yalnız `(hover: hover) and (pointer: fine)`.
 - **Geniş ekran:** içerik ortalı ve sınırlı: ana sayfa `max-w-[1040px]`, modül kromu `min(42rem, 100% − 24px)`. Ana sayfa ızgarası 1 sütun (< 640), 2 sütun (≥ 640), 3 sütun (≥ 1024).
 - **Doğrulama (her UI değişikliğinde):** Prosedür 2, 360×740 / 390×844 / 430×932, panel açık: örtüşme yok, yatay kaydırma yok, 44 px altı hedef yok, 12 px altı yazı yok, ≤ 3 cam, kontrast eşikleri. Yatay 844×390 elle. Tarayıcı yoksa "doğrulanmadı".
@@ -106,7 +106,7 @@ Kurallar: fotoğraf üstündeki her şey renksiz (beyaz/siyah + alfa; kırp çer
 - Kart yüzünde **sonuç ve eylem**, motor değil. Yasak ifadeler (kart yüzü, başlık, rozet, düğme): Lanczos, konvolüsyon, convolution, EXIF, GPS, LUT, `.cube`, hero renk eşitleme yüzdesi, "Client-Side", "Sanitized", "Engine", proxy, piksel matematiği. Teknik ayrıntı yalnız "Gelişmiş" alanında veya bilgi balonunda. Liste `tests/ui-rules.test.ts`'te.
 - Altbilgi yok; yerine tek güven rozeti: **"Yerel ve gizli işleme"** (dokununca açıklama: fotoğraflar cihazda işlenir; tek istisna "AI ile onar").
 - Tüm arayüz metni Türkçe, sade, kısa; tek dosya `lib/i18n/tr.ts`. Kart alt başlığı en çok ~60 karakter.
-- Etiket/rozet: `.material-chip`, `text-caption`, yatay 10 px dolgu; boyut yerine ne yaptığını söyler ("Instagram · TikTok", "2–6 fotoğraf").
+- Etiket/rozet: `.material-chip`, `text-caption`, yatay 10 px dolgu; boyut yerine ne yaptığını söyler ("Toplu İşlem", "4K").
 
 ## 8. Eylem odağı
 - Ana sayfada **tek** "Fotoğraf ekle" yolu: büyük bırakma yüzeyi (dokun = dosya seçici, sürükle = bırak). Üst çubukta ikinci bir "Fotoğraf Yükle" yok.

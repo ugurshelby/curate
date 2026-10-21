@@ -12,7 +12,7 @@ export const PREFS_KEY = 'curate.prefs.v1';
 export interface Prefs {
   v: 1;
   carouselView: CarouselView;
-  /** Last preset and amount used in Carousel (series look) */
+  /** Legacy: last Carousel series preset and amount (module removed in Faz R, D37) */
   globalPreset: ActivePreset | null;
   story: { spacing: number; backgroundMode: StudioState['storyLayout']['backgroundMode'] };
   frame: FrameConfig;

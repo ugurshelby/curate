@@ -1,7 +1,7 @@
 /**
  * Düzenle → Düzeltme (Faz D2, spec §4.5 E3/E10): local, deterministic improvements. They only improve;
  * they never invent detail. Fixed order: shadows/highlights → haze → noise → edge colour → edge sharpness
- * (the preset look runs after, in carousel-render.ts). Preview and export call applyCorrections with the
+ * (the preset look ran after, in carousel-render.ts, removed in Faz R; no UI calls this since). Preview and export call applyCorrections with the
  * same parameters; radii are defined in export pixels and scaled by `scale` (export px per render px).
  */
 

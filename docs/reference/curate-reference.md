@@ -6,9 +6,9 @@ Deponun gerçekte ne içerdiğinin ölçülmüş kaydı. Kararlar `docs/DECISION
 ---
 
 ## 1. Amaç ve kullanıcı
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-20
 
-Tek kullanıcılı (Uğur) kişisel fotoğraf stüdyosu; telefonda web uygulaması; birincil kullanım mobil (390×844). Beş modül: Carousel, Story, Çerçeve, Büyüt, Düzenle. Ayrıntı `docs/PRODUCT.md`. [ÖLÇÜLDÜ] `AGENTS.md`, `curate-spec-v1.md` §2, `README.md`, kod.
+Tek kullanıcılı (Uğur) kişisel fotoğraf stüdyosu; telefonda web uygulaması; birincil kullanım mobil (390×844). Üç modül: Düzenle, Büyüt, Çerçeve (Faz R, D37; Carousel ve Story kaldırıldı). Ayrıntı `docs/PRODUCT.md`. [ÖLÇÜLDÜ] `app/page.tsx`, `components/studio/` 2026-10-20.
 
 Ortak ürün kuralları: önizleme = export (spec §3.3, uyumsuzluk P0); fotoğraf cihazda kalır, tek istisna Düzenle'deki AI (spec §3.5, §4.5 E12); hiçbir adımda kaydırıcı zorunlu değil (spec §3.1).
 
@@ -17,17 +17,17 @@ Son doğrulama: 2026-10-20
 
 | Kontrol | Sonuç | Etiket |
 |---|---|---|
-| `npx tsc --noEmit` | çıkış 0 | [ÖLÇÜLDÜ] 2026-10-08 |
-| `npm run lint` | "No ESLint warnings or errors" | [ÖLÇÜLDÜ] 2026-10-08 |
-| `npm test` | 22 dosya, 292 test geçti | [ÖLÇÜLDÜ] 2026-10-20 |
-| `npm run build` | çıkış 0; `/` ≈ 33 kB, `/api/ai` dinamik | [ÖLÇÜLDÜ] 2026-10-08 |
-| `npm run check:secrets` | 84 dosya (26 istemci), 0 gerçek değer arandı (`.env` yok), 0 bulgu | [ÖLÇÜLDÜ] 2026-10-08 |
+| `npx tsc --noEmit` | çıkış 0 | [ÖLÇÜLDÜ] 2026-10-21 |
+| `npm run lint` | "No ESLint warnings or errors" | [ÖLÇÜLDÜ] 2026-10-21 |
+| `npm test` | 24 dosya, 325 test geçti | [ÖLÇÜLDÜ] 2026-10-21 |
+| `npm run build` | çıkış 0; `/api/ai` dinamik | [ÖLÇÜLDÜ] 2026-10-21 |
+| `npm run check:secrets` | 108 dosya (31 istemci), 0 bulgu | [ÖLÇÜLDÜ] 2026-10-21 |
 | Prosedür 2 (`scripts/audit-ui.mjs`, production build, Chromium 1194 emülasyon) | 52 ekran (360/390/430 + masaüstü ana sayfa; Düzeltme dahil) geçti, en düşük metin kontrastı 4,70 | [ÖLÇÜLDÜ] 2026-10-08 |
-| Export (Chromium, indirilen dosya ölçüldü) | Instagram tek 1080×1350, 3 kare zip, TikTok zip 1080×1920, Story 1080×1920, Çerçeve 1080×1350 / 1080×1920 / 1080×566 / 2160×2160 (4K) / 3840×2160 (4K 16:9), önizleme–export ortalama fark ≤ 2,9/255, Düzenle+Düzeltme 4000×3000; hepsinde EXIF yok | [ÖLÇÜLDÜ] 2026-10-08 |
+| Export (Chromium, indirilen dosya ölçüldü) | Instagram tek 1080×1350, 3 kare zip, TikTok zip 1080×1920, Story 1080×1920, Çerçeve 1080×1350 / 1080×1920 / 1080×566 / 2160×2160 (4K) / 3840×2160 (4K 16:9), önizleme–export ortalama fark ≤ 2,9/255, Düzenle+Düzeltme 4000×3000; hepsinde EXIF yok. Instagram/TikTok/Story ve Düzeltme satırları Faz R'de kaldırılan modüllere ait (tarihçe); üç modüllü hâlde export ölçülmedi | [ÖLÇÜLDÜ] 2026-10-08 |
 | Canlı (`curate-teal-omega.vercel.app`, yalnız okuma) | 10 dağıtım READY; güvenlik başlıkları 4/4; manifest ve simge 200; `lang="tr"`; `/api/ai` çerezsiz `pin_required` | [ÖLÇÜLDÜ] 2026-10-08 |
 | Telefon, yatay yön, gerçek dokunma, gerçek parlaklık | Denenmedi | [DOĞRULANMADI] cihaz yok |
 
-Bilinen sınırlar (kod okuma): Story/Çerçeve/Büyüt önizlemesi export ile aynı geometriyi kullanır, aynı piksel fonksiyonunu değil; Story ve Çerçeve preset uygulamaz; Büyüt önizlemesi CSS filtresidir ("Lanczos" diye etiketlenmez). [ÖLÇÜLDÜ] kod.
+Bilinen sınırlar (kod okuma, 2026-10-20): Çerçeve ve Düzenle önizlemesi export ile aynı fonksiyonu çağırır (`drawFrame`, `applyPlanInStrips`); Büyüt önizlemesi Lanczos değildir, yalnız karşılaştırma görüntüsüdür ("AI ile Büyüt" yerel ±%5 kontrast, ağ yok; export her iki modda Lanczos-3); hiçbir modül preset uygulamaz. [ÖLÇÜLDÜ] kod.
 
 ## 3. Mimari
 Son doğrulama: 2026-10-20

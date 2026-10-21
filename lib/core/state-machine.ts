@@ -1,10 +1,8 @@
 /**
  * Curate Core — Headless State Machine
- * Framework-agnostic, reactive store supporting all 4 studio modules:
- * 1. Carousel Dump (4:5)
- * 2. Story Dump (9:16)
- * 3. Minimal Frame (Polaroid / Adaptive Gradient)
- * 4. Lossless Upscale (Lanczos-3)
+ * Framework-agnostic, reactive store for the 3 studio modules (since Faz R, D37):
+ * Edit (AI repair + directive), Upscale (Lanczos-3), Frame (Polaroid / matte / gradient, batch).
+ * Carousel/Story fields (carouselView, storyLayout, cell transforms) are legacy: no UI reads them.
  */
 
 import { StudioItem, StudioModule, StudioState, ActivePreset, ColorMetrics, ImageDimensions, StoryCellTransform, EditParams, EditCrop, DerivedKind, CarouselView } from './types';
@@ -153,7 +151,7 @@ class StudioStateMachine {
 
   /**
    * Siler. Türetilmiş silinirse yalnız o gider. Kaynak silinirse türetilmişleri kalır ve sourceId temizlenir.
-   * Her silmede URL'ler serbest bırakılır, kaydın Düzenle/Story ayarları temizlenir.
+   * Her silmede URL'ler serbest bırakılır, the item's Edit and legacy Story settings are cleared.
    */
   public removeItem(id: string) {
     this.setState((prev) => removeFromState(prev, [id]));
@@ -304,7 +302,7 @@ class StudioStateMachine {
     });
   }
 
-  /** Belirli sıradaki fotoğrafı yenisiyle değiştirir (Story "görseli değiştir") */
+  /** Replaces the photo at an index (legacy: was Story "replace photo"; no caller since Faz R) */
   public replaceItem(index: number, newItem: StudioItem) {
     this.setState((prev) => {
       if (index < 0 || index >= prev.items.length) return {};

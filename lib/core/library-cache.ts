@@ -28,7 +28,7 @@ export interface CachedPhoto {
   derivedBy: DerivedKind | null;
 }
 
-/** Small record: order, selection and per-photo settings (crop/preset, Story framing) */
+/** Small record: order, selection and per-photo settings (crop/preset; cellTransforms is legacy Story framing) */
 export interface CacheMeta {
   order: string[];
   selectedId: string | null;

@@ -9,54 +9,38 @@ Next.js 14.2 (App Router, ana sayfa `app/page.tsx`, PIN ekranı `app/kilit/page.
 
 Modül geçişi ana sayfada bileşen durumuyla yapılır (`app/page.tsx`); modüllerin ayrı rotası yok. Durum: `lib/core/state-machine.ts` (başsız store) + `useStudio` (`useSyncExternalStore`).
 
-## 2. Render hattı: taban + görünüm
-Son doğrulama: 2026-10-09
+## 2. Render hattı
+Son doğrulama: 2026-10-20 (kod okuma; Faz R sonrası)
 
 | Modül | Önizleme | Export | Ortak fonksiyon |
 |---|---|---|---|
-| Carousel | `CarouselPreviewRenderer` (canvas, 1080×1350 veya 1080×1920; kaydırıcı sürüklenirken yarı boyut) | `drawCarouselFrame` aynı seçeneklerle, tam boyut | `lib/engine/carousel-render.ts`: adım 1 `renderCarouselBase` (zemin + kırp/sığdır + seri uyumu), adım 2 `applyCarouselLook` (preset). Parite: `tests/carousel-parity.test.ts` (0 bayt fark) |
-| Düzenle | Aynı renderer, görünüm adımında AI Preset planı (`aiPlan`, preset yerine; `lib/engine/ai-plan.ts`, maskeler 4 px ızgarada), taban adımında kırp geometrisi (`crop`) ve Düzeltme (`corrections`, worker'da: `workerBridge.applyCorrections`, sonuç `setBase` ile önbelleğe), uzun kenar 1350 | Aynı adımlar, kırpımın kendi boyutu (≤ 4096); Düzeltme worker'da, 2,5 MP üstünde paylı parçalarla | `lib/engine/edit-geometry.ts` `drawEditGeometry`, `lib/engine/corrections.ts` `applyCorrections`. Parite: `tests/carousel-parity.test.ts` (worker yolu dahil 0 fark) |
-| Story | DOM (hücre başına `<img>` + CSS dönüşüm) | Canvas 1080×1920 | Geometri ortak: `computeStoryCells`, `computeCellDraw` (`lib/engine/story-layout.ts`). Piksel paritesi yok, geometri paritesi var. "Gradyan" zemin Çerçeve ile aynı `paintEdgeGradient` (önizlemede `EdgeGradientCanvas` 540×960, export 1080×1920), renkler ilk fotoğrafın kenarlarından |
-| Çerçeve | Canvas, `drawFrame` (gösterilen boyutta) | Canvas, `drawFrame` (seçilen `FRAME_SIZES` boyutu) | Tek çizim fonksiyonu `lib/engine/frame-render.ts`; çerçeve ölçüleri kısa kenara göre ölçeklenir; renkler `lib/ui/colors.ts`. "Gradyan" zemin: `lib/engine/edge-gradient.ts` (D33), kenar renkleri fotoğrafın çerçeveyle buluşan kısmından, `paintEdgeGradient` ile boyanır |
-| Büyüt | CSS (yalnız önizleme, "Lanczos" diye etiketlenmez) | Lanczos-3 (2 geçiş), worker'da | `lib/engine/upscale-lanczos.ts` |
+| Düzenle | `<img>`: plan tam çözünürlükte tuvale uygulanır, JPEG 0,95 data URL olarak gösterilir; basılı tutunca orijinal | Orijinal boyutta tuval, aynı plan, güç 1,0 | `applyPlanInStrips` (`lib/engine/intelligent-repair.ts`; plan şeması ve doğrulama `lib/engine/ai-plan.ts`). Plan önce AI'dan (`requestAiPlan`), yoksa yerelden (`generateIntelligentRepairPlan`). Şerit/tek geçiş paritesi: `tests/intelligent-repair.test.ts` |
+| Çerçeve | Canvas, `drawFrame` (`previewRenderSize`: sahne kutusu × DPR, export boyutunu aşmaz) | Canvas, `drawFrame` (seçilen `FRAME_SIZES` boyutu); birden çok fotoğrafta her biri, zip | Tek çizim fonksiyonu `lib/engine/frame-render.ts`; çerçeve ölçüleri kısa kenara göre ölçeklenir; renkler `lib/ui/colors.ts`. "Gradyan" zemin: `lib/engine/edge-gradient.ts` (D33), kenar renkleri fotoğrafın çerçeveyle buluşan kısmından, `paintEdgeGradient` ile boyanır |
+| Büyüt | `<img>` önce/sonra ayırıcı (`clip-path`); "Standart" orijinali, "AI ile Büyüt" yerel ±%5 kontrast ayarlı kopyayı gösterir (ağ yok) | Lanczos-3 (2 geçiş), worker'da; mod fark etmez | `lib/engine/upscale-lanczos.ts` |
 
-**Preset motoru (v2, 2026-10-08):** `lib/engine/presets.ts` — beyaz dengesi kazancı + pozlama + ton eğrisi (uçları sabit, yumuşak omuz) kanal başına 256 girişli tabloda; ardından cilt korumalı canlılık/doygunluk, sınırlı iç ton kaydırma, (yalnız izinli preset'lerde) hale ve gren. Tek "Miktar" tüm değerleri 0'dan ölçekler.
+Kural: önizleme ve export aynı çizim fonksiyonunu aynı parametre şemasıyla çağırır (AGENTS.md §4). Çerçeve ve Düzenle'de aynı fonksiyon; Büyüt'te önizleme yalnız karşılaştırma görüntüsüdür (bilinen sınır).
 
-Kural: önizleme ve export aynı çizim fonksiyonunu aynı parametre şemasıyla çağırır (AGENTS.md §4). Story/Çerçeve/Büyüt'te bu kural geometri düzeyinde sağlanıyor; piksel düzeyinde değil (bilinen sınır).
+Kodda duran ama Faz R'den beri hiçbir modülün çağırmadığı motorlar: `lib/engine/presets.ts` (preset v2), `lib/engine/corrections.ts` (Düzeltme), `lib/engine/edit-geometry.ts` (Kırp), `lib/engine/scene.ts` `suggestSeries`; bileşenler `AiPresetSheet`, `AiRepairSheet`, `AiReviewScreen`, `usePanPinch`. Yalnız testleri var.
 
-Önizleme bir kez çözülmüş orijinalden çizilir; taban adımı (boyut, sığdırma, uyum, kırp anahtarıyla) önbelleklenir, kaydırıcı yalnız görünüm adımını yeniden hesaplar. Kare başına en çok bir çizim (`requestAnimationFrame`).
-
-**Önizleme çözünürlüğü (Faz 5, 2026-10-08):** `previewRenderSize` önizlemeyi export boyutundan büyük olmamak üzere sahnenin CSS kutusu × piksel yoğunluğu kadar çizer; yoğunluk en çok 2 (`PREVIEW_MAX_DPR`). Kaydırıcı sürüklenirken yarısı. Gren export ızgarasında örneklenir (`outputWidth`), yani ölçek dışında aynı sonuç. Taslak taban boşta önceden hesaplanır (`prepareBase`, `whenIdle`). Preset çekirdeği kanal başına 256 girişli tablolarla tek geçiş.
-
-**Ölçüm (Chromium 1194, 390×844, DPR 2,75, 12 MP sentetik JPEG, production build; telefonda ölçülmedi):**
-
-| Durum | Taban (önce) | Sonra |
-|---|---|---|
-| Carousel preset değişimi, masaüstü CPU (medyan çizim) | 57 ms (DPR 1) | 19 ms |
-| Carousel preset değişimi, 4× CPU yavaşlatma | 256 ms | 71 ms (panel açıldıktan sonraki ilk dokunuş 263 ms) |
-| Carousel sürükleme karesi, 4× (medyan / en kötü) | 69 / 131 ms | 17,8 / 30,8 ms |
-| Düzenle preset değişimi, 4× | 259 ms | 32 ms |
-| Düzenle sürükleme karesi, 4× (medyan / en kötü) | 64 / 116 ms | 7,6 / 18,3 ms |
-
-4× CPU yavaşlatma Redmi sınıfı telefonun yaklaşık taklididir; gerçek cihaz ölçümü yok.
+**Ölçüm:** Faz 5 (2026-10-08) önizleme ölçümleri (Carousel ve eski Düzenle preset/sürükleme) kaldırılan kod yollarına aitti; tarihçe `docs/reports/` ve git'te. Üç modüllü hâlde performans ölçülmedi (Prosedür 3 bekliyor).
 
 ## 3. Worker / OffscreenCanvas
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-20
 
-- `lib/workers/image-processor.worker.ts` + `lib/core/worker-bridge.ts`: yalnız Büyüt export'u kullanır (`workerBridge.upscaleLanczos`). Worker hata verirse bekleyen işler reddedilir, sonrakiler ana thread'de çalışır.
-- Önizleme ve diğer export'lar ana thread'de. OffscreenCanvas yalnız proxy üretiminde (varsa).
-- Proxy (≤ 1080 px, JPEG 0,88): filmstrip ve preset kartı küçük resimleri.
+- `lib/workers/image-processor.worker.ts` + `lib/core/worker-bridge.ts`: arayüzde yalnız Büyüt export'u kullanır (`workerBridge.upscaleLanczos`). Worker hata verirse bekleyen işler reddedilir, sonrakiler ana thread'de çalışır.
+- Önizleme ve diğer export'lar (Düzenle planı, Çerçeve) ana thread'de. OffscreenCanvas yalnız proxy üretiminde (varsa).
+- Proxy (≤ 1080 px, JPEG 0,88): küçük resimler.
 
 ## 4. Depolama ve kalıcılık
-Son doğrulama: 2026-10-08
+Son doğrulama: 2026-10-20 (Kütüphane ve Tercihler satırları)
 
 Hepsi cihazda (D18). Eşitleyici: `lib/core/device-sync.ts` (store'u izler, 400 ms gecikmeyle sıralı yazar), tarayıcıda `components/studio/DeviceSync.tsx` (layout'ta bir kez; sayfa gizlenince bekleyen yazımı bitirir).
 
 | Ne | Nerede | Durum |
 |---|---|---|
 | Fotoğraflar (çalışma anı) | Bellek (`URL.createObjectURL`) | Var |
-| Kütüphane önbelleği | IndexedDB `curate-library` (`photos`: kullanıcının eklediği orijinal dosya; `meta`: sıra, seçim, Düzenle ve Story kadraj ayarları) — `lib/core/library-cache.ts` | Var; varsayılan açık, ana sayfadaki anahtarla kapanır (kapanınca cihazdaki kopyalar silinir). Sınır: 40 fotoğraf, 400 MB, kalan kotanın en çok yarısı. Kütüphane temizlenince önbellek de silinir. Kota dolarsa sığanlar kalır ve ana sayfa söyler; IndexedDB yoksa (gizli sekme) "saklanamıyor" der |
-| Tercihler | localStorage `curate.prefs.v1` (Carousel hedef/doldur/katman, son seri preset'i ve miktarı, Story boşluk/zemin, Çerçeve ayarları, Büyüt çarpanı, fotoğraf hafızası açık/kapalı, favoriler) — `lib/core/prefs.ts` | Var; okurken doğrulanır, bozuk veride varsayılan |
+| Kütüphane önbelleği | IndexedDB `curate-library` (`photos`: kullanıcının eklediği orijinal dosya; `meta`: sıra, seçim, fotoğraf başına ayarlar; `edits` ve `cellTransforms` Faz R öncesi Düzenle/Story alanları, hâlâ yazılıyor) — `lib/core/library-cache.ts` | Var; varsayılan açık, ana sayfadaki anahtarla kapanır (kapanınca cihazdaki kopyalar silinir). Sınır: 40 fotoğraf, 400 MB, kalan kotanın en çok yarısı. Kütüphane temizlenince önbellek de silinir. Kota dolarsa sığanlar kalır ve ana sayfa söyler; IndexedDB yoksa (gizli sekme) "saklanamıyor" der |
+| Tercihler | localStorage `curate.prefs.v1` (Çerçeve ayarları, Büyüt çarpanı, fotoğraf hafızası açık/kapalı, favoriler; Faz R'den kalan `carouselView`, `globalPreset`, `story` alanları hâlâ yazılıyor, arayüz okumuyor) — `lib/core/prefs.ts` | Var; okurken doğrulanır, bozuk veride varsayılan |
 | Cihaz oturumu (kapı + AI) | HttpOnly çerez `curate_session` (Path=/, SameSite=Lax, Secure, 365 gün, 30 günden eskiyse yenilenir) — `lib/access/session.ts` | Var (D27). Eski `curate_ai` (Path=/api/ai) bir sürüm daha AI'da kabul edilir, eşlemede silinir |
 | Eski AI şifresi | localStorage `curate.ai.password` | Açılışta silinir |
 | Kota sayaçları | Upstash Redis REST (yoksa sunucu belleği) | Var |

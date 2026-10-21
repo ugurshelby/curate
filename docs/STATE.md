@@ -2,7 +2,7 @@
 
 Tek durum dosyası. Her anlamlı adımdan sonra aynı commit'te güncellenir. Yeni oturum: `AGENTS.md` → `docs/INDEX.md` → bu dosya → `git status` → `git log`.
 
-**Son güncelleme:** 2026-10-20 (ajan sistemi kurulumu main'e alındı)
+**Son güncelleme:** 2026-10-20 (Prosedür 5: Faz R doküman taraması)
 **Görev tanımı:** sahibin 2026-10-08 tarihli "Bağımsız Ajan Görevi" belgesi ve 2026-10-16 tarihli AI Kalibrasyon & Senaryo Test Pipeline brifi. Fazlar: aşağıdaki tablo (eski `docs/ROADMAP.md` 2026-10-20'de silindi).
 
 ## Fazlar
@@ -25,6 +25,14 @@ Tek durum dosyası. Her anlamlı adımdan sonra aynı commit'te güncellenir. Ye
 ## Sıradaki adım
 Sahibin telefonda 3 temel modülü (Düzenle, Büyüt, Çerçeve) test etmesi; AI Onar çağrılarının Vertex üzerinde denenmesi.
 2026-10-20: ajan sistemi kuruldu (D36, rapor `docs/reports/2026-10-20-agent-setup.md`), güncel `main`'e taşındı; PR #1 kapatıldı. Aktif plan yok (`docs/PLAN.md` boş).
+2026-10-20: Prosedür 5 (doküman taraması) Faz R kalıntılarını README, PRODUCT, ARCHITECTURE §2–4, reference §1–2, CDS, procedures, INDEX ve kod yorumlarından temizledi.
+
+## Açık hatalar ve takip (2026-10-20 taramasında ölçüldü)
+- Prosedür 2 betikleri bayat: `scripts/audit-ui.mjs` (satır 170, 184), `scripts/capture-screens.mjs` (86–97), `scripts/check-gradient.mjs` hâlâ `carousel`/`story` modüllerini açıyor; güncellenene kadar UI denetimi çalışmaz.
+- Büyüt export'u `platform="edit"` ile 8 MB kalite basamağına giriyor; D14 "Upscale'e uygulanmaz" diyor.
+- Büyüt'te "AI ile Büyüt" (alt yazı "Yapay Zeka & Doku Üretimi", rozet "AI Doku") yalnız önizlemede yerel ±%5 kontrast; ağa gitmez, export'u değiştirmez. Etiket yanıltıcı.
+- Ölü kod (arayüzden çağıran yok, yalnız testli): `AiPresetSheet`, `AiRepairSheet`, `AiReviewScreen`, `usePanPinch`, `lib/engine/presets.ts`, `corrections.ts`, `scene.ts`; `prefs`/`library-cache`'te Carousel/Story alanları hâlâ yazılıyor; `tr.ts`'te `carousel`, `story` bölümleri. `tests/ui-rules.test.ts` 187–191 silinmiş `InstagramOverlay`/`TikTokOverlay` yollarını istisna listesinde tutuyor.
+- `curate-spec-v1.md` Carousel/Story bölümleri D37 ile geçersiz; spec metni sahibe ait, değiştirilmedi.
 
 ## Son durum
 - 24 test dosyası, 325 birim ve parite testi yeşil.
@@ -42,9 +50,9 @@ Sahibin telefonda 3 temel modülü (Düzenle, Büyüt, Çerçeve) test etmesi; A
 
 ## Doğrulanmadı (açık kalan)
 - Yoklama: telefonda hiçbir adım; `probe-apk` Kotlin derlemesi (Android SDK yok, ilk EAS build ilk gerçek denetim).
-- Telefonda hiçbir akış (AI PIN, TikTok 1080×1920, Story güvenli alan bandı, kaydırma/jestler, Çerçeve 4K export süresi ve belleği, kurulu uygulamada PIN kapısı ve kayan çerez).
+- Telefonda hiçbir akış (AI onarım, kaydırma/jestler, Çerçeve 4K export süresi ve belleği, kurulu uygulamada PIN kapısı ve kayan çerez).
 - Vercel Edge'de middleware'in ortam değişkenlerini okuması (yerel production'da ölçüldü; ilk push sonrası canlıda curl ile bakılacak).
 - Vercel'de gerçek AI süresi, gerçek maliyet, dağıtık sayaç.
 - AI Preset: model kimlikleri 2026-10-08'de gerçek çağrıyla sınandı (3.5-flash 26 sn geçerli, 3.5-flash-lite 4 sn ama doğrulayıcı reddetti, 2.5-flash 27 sn geçerli; 4 çağrının biri ücretsiz 400). Doğrulanmayan: Vercel'de çalışması, planların görsel kalitesi, gerçek ₺ (token: ~2,4 bin istem, ~0,5 bin yanıt, ~1,1–1,8 bin düşünme), süre (~26 sn, tahmin 8 sn idi).
-- Akıllı gradyan: telefonda gerçek fotoğraflarla; Story'de çoklu fotoğrafta yalnız ilk fotoğrafın kenarları kullanılır (karar).
+- Akıllı gradyan (Çerçeve): telefonda gerçek fotoğraflarla.
 - AI para tavanı: Redis'te gerçek sayaç (yalnız bellek ve sahte Redis ile sınandı), gerçek maliyetin ×1,25 tahminle karşılaştırması.

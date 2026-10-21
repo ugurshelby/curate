@@ -1,12 +1,12 @@
 /**
- * Smart edge gradient for Çerçeve (frame) and Story backgrounds (owner decision D33, 2026-10-08).
+ * Smart edge gradient for Çerçeve (frame) backgrounds (owner decision D33, 2026-10-08; Story removed in Faz R).
  *
  * The background is built from the photo's EDGE colours, not its average: the end nearest to each photo edge takes
  * that edge's dominant colour, the middle takes the dominant colour of the photo's centre, and the colours are
  * blended in OKLab with an eased, dithered ramp (iOS-like, no banding, saturation kept).
  *
  * One code path for preview and export: `edgeGradientPixels` is a pure function of (W, H, spec); both the live
- * preview and the export call `paintEdgeGradient`. Frame and Story share it.
+ * preview and the export call `paintEdgeGradient` (via `drawFrame` in frame-render.ts).
  */
 
 export interface Lab {

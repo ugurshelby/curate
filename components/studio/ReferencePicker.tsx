@@ -10,7 +10,7 @@ interface ReferencePickerProps {
   onClose: () => void;
   /** Seçilen referanslar File olarak döner (image/jpeg) */
   onConfirm: (files: File[]) => void;
-  /** Modül sınırı: Story için kalan boş yer, Çerçeve/Upscale için 1 */
+  /** Selection limit: Edit and Upscale pass 1, Frame and the hub pass 13 */
   maxSelect: number;
 }
 

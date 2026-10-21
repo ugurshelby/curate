@@ -37,13 +37,15 @@ Curate bu ihtiyaca cevap vermek için başladı: **tek tık, kişiye özel prese
 
 ## 4. Mevcut Mimari (2026-10-01 İtibarıyla Gerçek Durum)
 
+> **Not (D37):** Carousel ve Story modülleri Faz R'de kaldırıldı (commit `9afb9ae`, 2026-10-16; sahip onayı 2026-10-20). Aşağıdaki ağaçtaki Carousel/Story dosyaları artık yok; güncel modüller Düzenle, Büyüt, Çerçeve (`docs/PRODUCT.md`).
+
 ```
 curate/
 ├── app/                      # Next.js 14 App Router, Hub (bento 4 modül seçimi)
-├── components/studio/        # CarouselStudio, StoryStudio, FrameStudio, UpscaleStudio, QuickExportSheet
+├── components/studio/        # CarouselStudio, StoryStudio, FrameStudio, UpscaleStudio, QuickExportSheet (CarouselStudio ve StoryStudio D37 ile silindi)
 ├── lib/
 │   ├── core/                 # types, state-machine (headless store), use-studio hook, worker-bridge
-│   ├── engine/                # presets (6 ton profili + .CUBE LUT), proxy, harmonize, edge-gradient, upscale-lanczos
+│   ├── engine/                # presets (6 ton profili + .CUBE LUT), proxy, harmonize (D37 ile silindi), edge-gradient, upscale-lanczos
 │   ├── export/                 # platform-specs, exif-sanitizer, zip-packager
 │   └── workers/                # image-processor.worker.ts
 └── design/                    # CDS v1.0 (OLED siyah, glassmorphism, Apple/Raycast dili)
@@ -87,6 +89,8 @@ Aşağıdaki çelişkiler açıkta olup agent'lar tarafından karara bağlanamaz
 | 11 | ~~**[Faz M2]**~~ **KAPANDI (M2, 2026-10-03):** önizleme 1080×1350 (sürüklerken 540×675), export ile aynı fonksiyon ve parametre şeması; parite testi 0 bayt fark; preset değişimi 500–728 ms → 54–68 ms (masaüstü). Eski bulgu: Canlı önizleme tam çözünürlükte işleniyor; önizleme ve export aynı fonksiyonu **farklı parametrelerle** çağırıyor (önizleme `fitMode:"fill"` sabit ve tam boyutlu tuval; export 1080×1350). Gren/halation çözünürlüğe bağlı olduğundan eşitlik garanti değil | aynı rapor |
 
 ### 4.4 — Sahip Kararları (2026-10-02) ve Faz Bağlantısı
+
+> **Not (D37):** Carousel ve Story modülleri Faz R'de kaldırıldı (commit `9afb9ae`, 2026-10-16; sahip onayı 2026-10-20). K1, K2, S-a ve Faz S'nin Carousel/Story kısımları bu kararla geçersiz; tarih olarak kalır.
 
 Faz sırası: **K** (bu kararların dokümana işlenmesi, ölü kod temizliği) → **M1** (mobil iskelet) → **M2** (render hattı, seçenek A) → **S** (Story ve Export). Bir faz, öncekinin kabul kriteri karşılanmadan başlamaz (§8 kuralı).
 
@@ -179,6 +183,8 @@ Bunlar bilinçli olarak dışarıda bırakılıyor — "madem elimizdeyiz" diye 
 ---
 
 ## 8. Öncelik Sırası (Fazlar)
+
+> **Not (D37):** Carousel ve Story modülleri Faz R'de kaldırıldı (commit `9afb9ae`, 2026-10-16; sahip onayı 2026-10-20). Faz S (Story ve Export) Carousel/Story kısmıyla tarihtir.
 
 | Faz | İçerik | Kabul Kriteri |
 |---|---|---|

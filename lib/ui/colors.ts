@@ -5,7 +5,7 @@
  * tests/color-tokens.test.ts, paletle ortak değerlerin (siyah, yüzey 1) aynı kaldığını denetler.
  */
 export const EXPORT_COLORS = {
-  /** Carousel "sığdır" modunda fotoğrafın arkası */
+  /** Legacy: behind the photo in Carousel "fit" mode (unused since Faz R) */
   fitBackground: '#0a0a0c',
   /** Düzenle kırpmasında görüntü dışı kalan alan */
   editMatte: '#000000',
@@ -18,7 +18,7 @@ export const EXPORT_COLORS = {
   /** Analog tarih damgası turuncusu: açık ve koyu çerçeve üzerinde okunur iki ton */
   stampOnLight: '#d96b27',
   stampOnDark: '#e8772e',
-  /** Story zemin seçenekleri ve akıllı gradyan yedeği */
+  /** Legacy: Story background options (unused since Faz R) */
   storyWhite: '#ffffff',
   storyCharcoal: '#1c1c1e',
   storyBlack: '#000000',

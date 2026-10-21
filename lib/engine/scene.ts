@@ -102,7 +102,7 @@ export function suggestScene(s: SceneStats): SceneSuggestion {
   return { scene: 'everyday', presetId: 'dogal', amount: 1 };
 }
 
-/** Series vote (Carousel): the most common suggestion wins; ties go to the earlier photo; amount is the mean */
+/** Series vote (legacy Carousel; no caller since Faz R): the most common suggestion wins; ties go to the earlier photo; amount is the mean */
 export function suggestSeries(list: SceneSuggestion[]): SceneSuggestion | null {
   if (list.length === 0) return null;
   const count = new Map<string, number>();

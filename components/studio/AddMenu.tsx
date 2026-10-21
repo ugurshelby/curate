@@ -8,7 +8,7 @@ interface AddMenuProps {
   onUpload: () => void;
   onReference: () => void;
   onClear?: () => void;
-  /** Ekleme kapalıysa (ör. Story 6 dolu) kısa açıklama */
+  /** Short reason when adding is disabled (no caller passes it since Faz R) */
   addDisabledReason?: string;
 }
 

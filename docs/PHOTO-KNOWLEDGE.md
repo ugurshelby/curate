@@ -47,7 +47,7 @@ Son doğrulama: 2026-10-08
 | Cilt yumuşatma | Telefonun güzelleştirme işlemesi dokuyu siler | Geri getirilemez; Curate ek yumuşatma yapmaz | [bilgi, doğrulanmadı] |
 
 ## 4. Seri uyumu
-Carousel serisi tek bir görünümle (aynı preset ve miktar) işlenir; Otomatik serideki karelerin önerilerinden en çok çıkanı seçer (`suggestSeries`). "Seriyi bu kareye uydur" seçilen karenin renk ortalamasına %20 yaklaştırır. Aynı beyaz dengesi ve kontrastın seriyi bütün gösterdiği [bilgi, doğrulanmadı].
+(Tarihçe: Carousel Faz R'de kaldırıldı, D37; `suggestSeries` kodda duruyor, çağıranı yok.) Carousel serisi tek bir görünümle (aynı preset ve miktar) işlenir; Otomatik serideki karelerin önerilerinden en çok çıkanı seçer (`suggestSeries`). "Seriyi bu kareye uydur" seçilen karenin renk ortalamasına %20 yaklaştırır. Aynı beyaz dengesi ve kontrastın seriyi bütün gösterdiği [bilgi, doğrulanmadı].
 
 ## 5. Platform sıkıştırması
 - Kayıplı sıkıştırma bozulma (blok, "mosquito noise") üretir: https://en.wikipedia.org/wiki/Compression_artifact

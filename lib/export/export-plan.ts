@@ -1,6 +1,6 @@
 /**
  * Curate Export — download plan and size-limited encoding (spec §4.4 S-b)
- * - One image always downloads as a direct file; a zip only for a multi-image Carousel series.
+ * - One image always downloads as a direct file; a zip only for several images (Frame batch).
  * - Default is the highest quality; JPEG quality steps down only when the file exceeds the platform limit.
  */
 

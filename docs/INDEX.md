@@ -37,20 +37,20 @@ Son doğrulama: 2026-10-20
 | `app/globals.css` | Renk ve yarıçap belirteçleri (tek kaynak), yardımcı sınıflar |
 | `app/api/ai/route.ts` | Tek sunucu rotası: AI proxy (GET/PUT/POST/DELETE) |
 | `components/studio/StudioShell.tsx` | Ortak modül iskeleti: header / sahne / alt yığın |
-| `components/studio/FrameStudio.tsx` | Çerçeve modülü (boyut çipleri, 4K) |
+| `components/studio/FrameStudio.tsx` | Çerçeve modülü (boyut çipleri, 4K, toplu zip) |
 | `components/studio/UpscaleStudio.tsx` | Büyüt modülü |
-| `components/studio/EditStudio.tsx` | Düzenle modülü (Preset, Kırp, Düzeltme; AI ile onar) |
-| `components/studio/AiRepairSheet.tsx`, `AiReviewScreen.tsx` | AI görev sayfası (PIN adımı dahil) ve önce/sonra kontrol sayfası |
-| `components/studio/AiPresetSheet.tsx` | AI Preset stil sayfası (D28) |
+| `components/studio/EditStudio.tsx` | Düzenle modülü (AI onarım direktifi: serbest metin + 5 hazır direktif; plan cihazda uygulanır) |
+| `components/studio/AiRepairSheet.tsx`, `AiReviewScreen.tsx` | AI görev sayfası (PIN adımı dahil) ve önce/sonra kontrol sayfası; Faz R'den beri hiçbir modül açmıyor (ölü kod) |
+| `components/studio/AiPresetSheet.tsx` | AI Preset stil sayfası (D28); Faz R'den beri kullanılmıyor (ölü kod) |
 | `components/studio/QuickExportSheet.tsx` | Export sayfası |
 | `components/studio/AddMenu.tsx`, `ReferencePicker.tsx` | "+" menüsü ve referans görsel seçici |
-| `components/studio/usePanPinch.ts` | Ortak sürükle/yakınlaştır jesti |
+| `components/studio/usePanPinch.ts` | Ortak sürükle/yakınlaştır jesti; Faz R'den beri çağıranı yok (ölü kod) |
 | `components/studio/Switch.tsx` | Aç/kapa anahtarı (44 px) |
 | `components/studio/DeviceSync.tsx` | Cihaz eşitleyicisini başlatır (layout); `useDeviceStorage` ana sayfa anahtarı için |
 | `components/studio/NoticeToast.tsx`, `PerfHud.tsx`, `ResettableSlider.tsx` | Bildirim, `?perf=1` ölçüm, kaydırıcı |
 | `lib/index.ts` | Ortak dışa aktarım |
 | `lib/core/` | `types`, `state-machine` (store), `use-studio`, `worker-bridge`, `reference-images`, `prefs` (localStorage tercihler), `library-cache` (IndexedDB fotoğraf hafızası), `device-sync` (store ↔ cihaz eşitleyici) |
-| `lib/engine/` | `corrections` (Düzeltme: 6 satır + Otomatik, parçalı), `presets` (kütüphane v2, 16 preset), `scene` (Akıllı Otomatik), `frame-render` (Çerçeve, önizleme=export), `ai-plan` (AI Preset planı: doğrulayıcı, maskeler, uygulama), `intelligent-repair` (iki aşamalı AI onarım), `image-schema`, `edit-geometry`, `upscale-lanczos`, `upscale-slider`, `edge-gradient` (akıllı gradyan: kenar renkleri, OKLab, dither; Çerçeve), `proxy` |
+| `lib/engine/` | Arayüzde kullanılmayan (Faz R'den kalan, yalnız testli): `corrections` (Düzeltme), `presets` (16 preset), `scene` (Akıllı Otomatik), `edit-geometry` (Kırp). Kullanılan: `frame-render` (Çerçeve, önizleme=export), `ai-plan` (AI Preset planı: doğrulayıcı, maskeler, uygulama), `intelligent-repair` (iki aşamalı AI onarım), `image-schema`, `upscale-lanczos`, `upscale-slider`, `edge-gradient` (akıllı gradyan: kenar renkleri, OKLab, dither; Çerçeve), `proxy` |
 | `lib/export/` | `platform-specs` (hedefler ve Çerçeve boyutları `FRAME_SIZES` veri olarak), `export-plan` (kalite basamağı, dosya adı), `exif-sanitizer`, `zip-packager` |
 | `middleware.ts`, `lib/access/` | Tüm uygulama PIN kapısı (D27): `session` (imza, karar, Edge+Node), `client` (kilit ekranı isteği); ekran `app/kilit/page.tsx` |
 | `lib/ai/` | `config` (model/istem/₺ tek yer), `server` (AI Preset model zinciri, bütçe, kilit), `quota` (sayaçlar), `budget` (para tavanı, D35), `client`, `diff-check` |
@@ -61,7 +61,7 @@ Son doğrulama: 2026-10-20
 | `lib/workers/image-processor.worker.ts` | Worker (Büyüt export'u) |
 | `public/` | `manifest.json`, `icon.svg`, PNG simgeler (`icon-192`, `icon-512`, `icon-maskable-512`, `apple-touch-icon`), `reference-images/` (13 görsel) |
 | `tests/` | Vitest testleri (parite, export planı, geometri, AI sunucu/istemci, renk belirteçleri, `ui-rules` tasarım kuralları, `access` kapı, sağlamlık…); `tests/run-pipeline.mjs` ve `tests/pipeline/` (AI ve Preset kalibrasyon pipeline'ı, `tests/report.html`) |
-| `scripts/` | `audit-ui.mjs` (Prosedür 2), `capture-screens.mjs` (390 ekran görüntüsü), `check-bundle-secrets.mjs`, `make-icons.mjs` (PWA simgeleri), `probe-fake-camera.mjs` (yoklama akışı, sahte kamera), `check-gradient.mjs` (akıllı gradyan ölçümü: Çerçeve + Story, ekran görüntüsü ve export pikseli), `lib/unlock.mjs` (denetimde kapıyı test PIN'iyle açar) |
+| `scripts/` | `audit-ui.mjs` (Prosedür 2), `capture-screens.mjs` (390 ekran görüntüsü), `check-bundle-secrets.mjs`, `make-icons.mjs` (PWA simgeleri), `probe-fake-camera.mjs` (yoklama akışı, sahte kamera), `check-gradient.mjs` (akıllı gradyan ölçümü: Çerçeve; Story adımı bayat, ekran görüntüsü ve export pikseli), `lib/unlock.mjs` (denetimde kapıyı test PIN'iyle açar) |
 
 ## Komutlar
 | Komut | Ne |

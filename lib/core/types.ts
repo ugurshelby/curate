@@ -179,7 +179,7 @@ export interface StudioState {
     cellTransforms: Record<string, StoryCellTransform>;
   };
   frameConfig: FrameConfig;
-  /** Carousel görünüm tercihleri (cihazda hatırlanır, lib/core/prefs.ts) */
+  /** Legacy Carousel view prefs (module removed in Faz R, D37; still persisted by lib/core/prefs.ts) */
   carouselView: CarouselView;
   /** Düzenle modülü ayarları, fotoğraf kimliğine göre */
   edits: Record<string, EditParams>;

@@ -29,7 +29,7 @@ interface QuickExportSheetProps {
   onClose: () => void;
   platform: ExportPlatform;
   itemsToExport: ExportSheetItem[];
-  /** Dosya adı öneki; verilmezse platformun öneki (dump, tiktok, story) */
+  /** File name prefix; falls back to the platform prefix (callers pass curate_ai_repair, curate_upscale, curate_frame) */
   filePrefix?: string;
   /** Upscale gibi değişken boyutlarda gösterilecek hedef boyut */
   sizeLabel?: string;
@@ -44,7 +44,7 @@ interface ExportResult {
 }
 
 /**
- * Dışa aktarma sayfası (spec §4.4 S-b): tek görsel doğrudan dosya, çoklu Carousel serisi zip.
+ * Export sheet (spec §4.4 S-b): one image downloads as a direct file, several images (Frame batch) as a zip.
  * Varsayılan JPEG %97; dosya platform sınırını (8 MB) aşarsa kalite kademeli düşer ve burada gösterilir.
  */
 export function QuickExportSheet({
