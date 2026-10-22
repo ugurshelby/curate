@@ -266,7 +266,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
           aria-pressed={resolution === "high"}
           onClick={() => actions.setFrameConfig({ resolution: resolution === "high" ? "standard" : "high" })}
           className={`touch-target press shrink-0 min-h-[44px] px-3 rounded-xl text-xs font-semibold border ${
-            resolution === "high" ? "border-accent bg-accent/15 text-accent" : "border-separator text-ink-3"
+            resolution === "high" ? "border-accent-fill bg-accent-fill text-on-accent" : "border-separator text-ink-3"
           }`}
         >
           {tr.frame.resolutions.high}
@@ -429,7 +429,7 @@ export function FrameStudio({ onBack }: FrameStudioProps) {
           onClick={() => actions.setFrameConfig({ showTimestamp: !showTimestamp })}
           aria-pressed={showTimestamp}
           className={`touch-target press min-h-[44px] px-2.5 py-1 rounded-lg text-xs font-semibold border flex items-center gap-1 ${
-            showTimestamp ? "border-accent bg-accent/15 text-accent" : "border-separator text-ink-3"
+            showTimestamp ? "border-accent-fill bg-accent-fill text-on-accent" : "border-separator text-ink-3"
           }`}
         >
           <Calendar className="w-3.5 h-3.5" />

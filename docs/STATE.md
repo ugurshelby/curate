@@ -2,7 +2,7 @@
 
 Tek durum dosyası. Her anlamlı adımdan sonra aynı commit'te güncellenir. Yeni oturum: `AGENTS.md` → `docs/INDEX.md` → bu dosya → `git status` → `git log`.
 
-**Son güncelleme:** 2026-10-20 (Prosedür 5: Faz R doküman taraması)
+**Son güncelleme:** 2026-10-22 (Prosedür 2 kontrast düzeltmesi: 35 ekran ok)
 **Görev tanımı:** sahibin 2026-10-08 tarihli "Bağımsız Ajan Görevi" belgesi ve 2026-10-16 tarihli AI Kalibrasyon & Senaryo Test Pipeline brifi. Fazlar: aşağıdaki tablo (eski `docs/ROADMAP.md` 2026-10-20'de silindi).
 
 ## Fazlar
@@ -26,9 +26,9 @@ Tek durum dosyası. Her anlamlı adımdan sonra aynı commit'te güncellenir. Ye
 Sahibin telefonda 3 temel modülü (Düzenle, Büyüt, Çerçeve) test etmesi; AI Onar çağrılarının Vertex üzerinde denenmesi.
 2026-10-20: ajan sistemi kuruldu (D36, rapor `docs/reports/2026-10-20-agent-setup.md`), güncel `main`'e taşındı; PR #1 kapatıldı. Aktif plan yok (`docs/PLAN.md` boş).
 2026-10-20: Prosedür 5 (doküman taraması) Faz R kalıntılarını README, PRODUCT, ARCHITECTURE §2–4, reference §1–2, CDS, procedures, INDEX ve kod yorumlarından temizledi.
+2026-10-22: Prosedür 2 kontrast hataları düzeltildi (seçili Çerçeve düğmeleri ve Düzenle önerilen çipi CDS'ye göre `bg-accent-fill` + `text-on-accent`); emülasyonda 35 ekran ok. Telefonda doğrulanmadı.
 
 ## Açık hatalar ve takip (2026-10-20 taramasında ölçüldü)
-- Prosedür 2 (2026-10-22, emülasyon) metin kontrastında 21 ekran FAIL, yerleşim temiz: Çerçeve "Tarih Damgası" düğmesi kapalıyken `text-ink-3` 3,23 (gerek 4,5; 4 Çerçeve ekranı × 3 genişlik); Düzenle hızlı direktif çipi "Renk Kaymasını Nötrle" (önerilen çip, `bg-accent/15 text-accent`) 4,27 (Düzenle, sonuç ve export ekranları × 3 genişlik).
 - Büyüt'te "AI ile Büyüt" (alt yazı "Yapay Zeka & Doku Üretimi", rozet "AI Tabanlı Büyütme", hub etiketi "AI Doku") ağa gitmez: yerelde parlaklığa göre ±%5 piksel çarpanı uygular, sonucu JPEG %92 ile yeniden kodlar; export bu kopyayı Lanczos-3 ile büyütür (fazladan bir kayıplı kuşak). Etiket yanıltıcı; karar "Sahibe sorular"da (2026-10-22).
 - Ölü kod (arayüzden çağıran yok, yalnız testli): `AiPresetSheet`, `AiRepairSheet`, `AiReviewScreen`, `usePanPinch`, `lib/engine/presets.ts`, `corrections.ts`, `scene.ts`; `prefs`/`library-cache`'te Carousel/Story alanları hâlâ yazılıyor; `tr.ts`'te `carousel`, `story` bölümleri.
 - `curate-spec-v1.md` Carousel/Story bölümleri D37 ile geçersiz; spec metni sahibe ait, değiştirilmedi.

@@ -21,8 +21,8 @@ Son doğrulama: 2026-10-22
 | `npm run lint` | "No ESLint warnings or errors" | [ÖLÇÜLDÜ] 2026-10-22 |
 | `npm test` | 24 dosya, 327 test geçti | [ÖLÇÜLDÜ] 2026-10-22 |
 | `npm run build` | çıkış 0; `/api/ai` dinamik | [ÖLÇÜLDÜ] 2026-10-22 |
-| `npm run check:secrets` | 110 dosya (33 istemci), 0 bulgu | [ÖLÇÜLDÜ] 2026-10-22 |
-| Prosedür 2 (`scripts/audit-ui.mjs`, production build, yerel Chrome emülasyon, test PIN'i) | 3 modüllü akış: 36 ekran (kilit 4, 360/390/430 × ana sayfa, Çerçeve ×4, Upscale, Düzenle, Düzenle sonucu, export sayfası, Yoklama + masaüstü ana sayfa). Yerleşim (overlap, hScroll, 44 px, 12 px, cam ≤ 3) hepsinde temiz; 21 ekran kontrastta FAIL: Çerçeve "Tarih Damgası" 3,23, Düzenle direktif çipi "Renk Kaymasını Nötrle" 4,27 (gerek 4,5) | [ÖLÇÜLDÜ] 2026-10-22 |
+| `npm run check:secrets` | 108 dosya (31 istemci), 0 bulgu | [ÖLÇÜLDÜ] 2026-10-22 |
+| Prosedür 2 (`scripts/audit-ui.mjs`, production build, yerel Chrome emülasyon, test PIN'i) | 3 modüllü akış: 35 ekran (kilit 4, 360/390/430 × ana sayfa, Çerçeve ×4, Upscale, Düzenle, Düzenle sonucu, export sayfası, Yoklama + masaüstü ana sayfa). Hepsi ok, `pass: true`: yerleşim (overlap, hScroll, 44 px, 12 px, cam ≤ 3) temiz, en düşük metin kontrastı 4,70 (seçili çip/düğme `bg-accent-fill` + `text-on-accent`). Son doğrulama: 2026-10-22 | [ÖLÇÜLDÜ] 2026-10-22 |
 | Export (Chromium, indirilen dosya ölçüldü) | Instagram tek 1080×1350, 3 kare zip, TikTok zip 1080×1920, Story 1080×1920, Çerçeve 1080×1350 / 1080×1920 / 1080×566 / 2160×2160 (4K) / 3840×2160 (4K 16:9), önizleme–export ortalama fark ≤ 2,9/255, Düzenle+Düzeltme 4000×3000; hepsinde EXIF yok. Instagram/TikTok/Story ve Düzeltme satırları Faz R'de kaldırılan modüllere ait (tarihçe); üç modüllü hâlde export ölçülmedi | [ÖLÇÜLDÜ] 2026-10-08 |
 | Canlı (`curate-teal-omega.vercel.app`, yalnız okuma) | 10 dağıtım READY; güvenlik başlıkları 4/4; manifest ve simge 200; `lang="tr"`; `/api/ai` çerezsiz `pin_required` | [ÖLÇÜLDÜ] 2026-10-08 |
 | Telefon, yatay yön, gerçek dokunma, gerçek parlaklık | Denenmedi | [DOĞRULANMADI] cihaz yok |
@@ -78,7 +78,7 @@ Son doğrulama: 2026-10-20
 | Sır taraması | `npm run check:secrets` | 0 bulgu |
 | Renk belirteçleri | `tests/color-tokens.test.ts` | geçiyor |
 | Tasarım kuralları | `tests/ui-rules.test.ts` (12 px, monospace, 44 px, jargon, malzeme, self-host yazı tipi) | geçiyor (2026-10-08) |
-| Mobil denetim | `scripts/audit-ui.mjs` (Prosedür 2) | `FAIL: 21 ekran` (2026-10-22; yalnız metin kontrastı, yerleşim temiz; emülasyon) |
+| Mobil denetim | `scripts/audit-ui.mjs` (Prosedür 2) | 35 ekran ok, `pass: true` (2026-10-22; emülasyon) |
 | Yoklama akışı | `scripts/probe-fake-camera.mjs` (Chromium sahte kamera, 390×844, PIN kapısından geçer) | PASS (2026-10-08): 45 test, şema geçerli, test sonrası ağ isteği 0. Sahte kamera gerçek kontrolleri taklit etmez; telefonda [DOĞRULANMADI] |
 | `probe-apk` | `npx tsc --noEmit`, `npx expo-doctor`, `npx expo prebuild --platform android` | tsc 0, expo-doctor 21/21, prebuild tamam (2026-10-08). Kotlin derlemesi [DOĞRULANMADI]: makinede Android SDK yok |
 

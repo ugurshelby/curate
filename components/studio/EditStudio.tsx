@@ -301,11 +301,11 @@ export function EditStudio({ onBack }: EditStudioProps) {
               }}
               className={`touch-target press shrink-0 min-h-[44px] px-3.5 rounded-full border text-xs font-medium flex items-center gap-1.5 transition-colors ${
                 schema?.suggestedTemplateKey === d.key
-                  ? "bg-accent/15 border-accent text-accent font-semibold"
+                  ? "bg-accent-fill border-accent-fill text-on-accent font-semibold"
                   : "bg-surface-2 border-separator text-ink-2 hover:text-ink-1 hover:border-accent"
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-accent" />
+              <Sparkles className={`w-3.5 h-3.5 ${schema?.suggestedTemplateKey === d.key ? "text-on-accent" : "text-accent"}`} />
               <span>{d.label}</span>
             </button>
           ))}
