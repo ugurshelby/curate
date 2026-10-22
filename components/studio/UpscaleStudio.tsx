@@ -352,7 +352,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
       <QuickExportSheet
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
-        platform="edit"
+        platform="original"
         filePrefix="curate_upscale"
         sizeLabel={`${targetW} × ${targetH} (${scaleFactor}X)`}
         itemsToExport={hasPhoto ? [{ id: "upscale_1", order: 0, renderCanvas: renderExportCanvas }] : []}

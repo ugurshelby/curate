@@ -34,7 +34,7 @@ Son doğrulama: 2026-10-20 (kod okuma). Faz R (D37, commit `9afb9ae`) ile Carous
 
 ## 🚀 Dışa Aktarma
 
-- **Kalite:** Varsayılan sRGB JPEG %97. Dosya 8 MB'ı aşarsa kalite kademeli düşer (%94, %91, …) ve export sayfasında gösterilir. PNG "Gelişmiş" altındadır. Kod şu an 8 MB sınırını Büyüt'e de uyguluyor (`platform="edit"`); bu D14 ile çelişir, açık hata olarak `docs/STATE.md`'de.
+- **Kalite:** Varsayılan sRGB JPEG %97. Dosya 8 MB'ı aşarsa kalite kademeli düşer (%94, %91, …) ve export sayfasında gösterilir. PNG "Gelişmiş" altındadır. Büyüt'te 8 MB sınırı yoktur (D14): dosya ne kadar büyük olursa olsun %97 kalır.
 - **Gizlilik:** GPS, cihaz seri numaraları ve özel EXIF verileri dışa aktarma anında otomatik soyutlanır.
 - **Format Desteği:** JPEG, PNG, WEBP; HEIC desteği cihazın yerel tarayıcı desteğine bağlıdır (harici JS decoder paketi bulunmamaktadır).
 - **İndirme:** Tek görsel her zaman doğrudan dosya olarak iner; zip yalnız Çerçeve'de birden çok fotoğrafta.

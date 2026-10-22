@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { PLATFORM_SPECS, MAX_EXPORT_BYTES, JPEG_QUALITY_STEPS } from '../lib/export/platform-specs';
 import {
   planExportDownload,
@@ -117,5 +119,26 @@ describe('8 MB limit lowers JPEG quality step by step (S-b)', () => {
       return sizedBlob(50e6);
     }, 'jpeg', undefined);
     expect(calls).toEqual([0.97]);
+  });
+});
+
+describe('Upscale export has no size cap (D14)', () => {
+  const sizedBlob = (bytes: number) => new Blob([new Uint8Array(bytes)], { type: 'image/jpeg' });
+
+  it('UpscaleStudio exports through the uncapped original spec', () => {
+    const src = readFileSync(join(process.cwd(), 'components/studio/UpscaleStudio.tsx'), 'utf8');
+    const platforms = [...src.matchAll(/platform="([^"]+)"/g)].map((m) => m[1]);
+    expect(platforms).toEqual(['original']);
+    expect(PLATFORM_SPECS.original.maxBytes).toBeUndefined();
+  });
+
+  it('a file above 8 MB keeps 0.97 with the original spec', async () => {
+    const calls: number[] = [];
+    const out = await encodeWithinLimit(async (q) => {
+      calls.push(q!);
+      return sizedBlob(MAX_EXPORT_BYTES * 3);
+    }, 'jpeg', PLATFORM_SPECS.original.maxBytes);
+    expect(calls).toEqual([0.97]);
+    expect(out).toMatchObject({ quality: 0.97, reduced: false, overLimit: false });
   });
 });

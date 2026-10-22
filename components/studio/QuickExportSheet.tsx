@@ -45,7 +45,7 @@ interface ExportResult {
 
 /**
  * Export sheet (spec §4.4 S-b): one image downloads as a direct file, several images (Frame batch) as a zip.
- * Varsayılan JPEG %97; dosya platform sınırını (8 MB) aşarsa kalite kademeli düşer ve burada gösterilir.
+ * Varsayılan JPEG %97; dosya platform sınırını (8 MB) aşarsa kalite kademeli düşer ve burada gösterilir. Büyüt `original` ile sınırsız (D14).
  */
 export function QuickExportSheet({
   isOpen,

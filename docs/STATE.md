@@ -29,16 +29,16 @@ Sahibin telefonda 3 temel modülü (Düzenle, Büyüt, Çerçeve) test etmesi; A
 
 ## Açık hatalar ve takip (2026-10-20 taramasında ölçüldü)
 - Prosedür 2 betikleri bayat: `scripts/audit-ui.mjs` (satır 170, 184), `scripts/capture-screens.mjs` (86–97), `scripts/check-gradient.mjs` hâlâ `carousel`/`story` modüllerini açıyor; güncellenene kadar UI denetimi çalışmaz.
-- Büyüt export'u `platform="edit"` ile 8 MB kalite basamağına giriyor; D14 "Upscale'e uygulanmaz" diyor.
-- Büyüt'te "AI ile Büyüt" (alt yazı "Yapay Zeka & Doku Üretimi", rozet "AI Doku") yalnız önizlemede yerel ±%5 kontrast; ağa gitmez, export'u değiştirmez. Etiket yanıltıcı.
+- Büyüt'te "AI ile Büyüt" (alt yazı "Yapay Zeka & Doku Üretimi", rozet "AI Tabanlı Büyütme", hub etiketi "AI Doku") ağa gitmez: yerelde parlaklığa göre ±%5 piksel çarpanı uygular, sonucu JPEG %92 ile yeniden kodlar; export bu kopyayı Lanczos-3 ile büyütür (fazladan bir kayıplı kuşak). Etiket yanıltıcı; karar "Sahibe sorular"da (2026-10-22).
 - Ölü kod (arayüzden çağıran yok, yalnız testli): `AiPresetSheet`, `AiRepairSheet`, `AiReviewScreen`, `usePanPinch`, `lib/engine/presets.ts`, `corrections.ts`, `scene.ts`; `prefs`/`library-cache`'te Carousel/Story alanları hâlâ yazılıyor; `tr.ts`'te `carousel`, `story` bölümleri. `tests/ui-rules.test.ts` 187–191 silinmiş `InstagramOverlay`/`TikTokOverlay` yollarını istisna listesinde tutuyor.
 - `curate-spec-v1.md` Carousel/Story bölümleri D37 ile geçersiz; spec metni sahibe ait, değiştirilmedi.
 
 ## Son durum
-- 24 test dosyası, 325 birim ve parite testi yeşil.
+- 24 test dosyası, 327 birim ve parite testi yeşil (2026-10-22).
 - `tsc --noEmit`, `npm run lint`, `npm run check:secrets` (0 bulgu), `npm test` sıfır hatayla geçti.
 
 ## Sahibe sorular (açık)
+- Büyüt → "AI ile Büyüt" seçeneği yapay zeka kullanmıyor (yukarıda, Açık hatalar). Seçenekler: (a) **adını gerçeğe çevir** (örn. "Canlı Büyüt" / "Kontrastı biraz artırır", hub etiketi "AI Doku" kalkar); (b) **kaldır**, Büyüt yalnız Lanczos-3 kalır; (c) **gerçek yap**: AI'ya görsel göndermek §4'te yalnız Düzenle'ye açık, "doku üretimi" de yeni içerik üretimi yasağına girer, yani kapsam değişikliği ve harcama kararı gerekir. Eğilim: (b) kaldır; (a) seçilirse ±%5 kontrast export'ta da kalır ama fazladan JPEG %92 kuşağı düzeltilmeli.
 - Yoklama sonuçları geldiğinde yol haritası: sonuçlar Curate'e mi, ayrı bir kamera uygulamasına mı gidecek (spec §7 madde 5 kamera/çekim asistanını kapsam dışı sayar; spec §10 s.13).
 - AI Preset için `preferredRegion` (örn. `fra1`) ölçülemedi: işlev bölgesini değiştirmek yalnız dağıtımdan sonra, günlükteki `ms` ile karşılaştırılarak anlamlı; Upstash'in bölgesi bilinmiyor. İstenirse sahip onayıyla denenir.
 - `tests/corrections.test.ts` "fast enough … desktop CPU" bütçesi (1500 ms) bu Windows makinesinde paralel koşuda düşüyor (1,7–2,8 s; tek başına 0,9–1,0 s; CI yeşil). Bütçe değişmedi; isterseniz test daha az paralel koşturulabilir.
