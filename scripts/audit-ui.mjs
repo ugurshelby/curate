@@ -166,23 +166,6 @@ await unlockGate(browser, base);
 for (const [w, h] of VIEWPORTS) {
   let page = await fresh(w, h);
   await record(page, w, 'Ana sayfa', false);
-  await loadRefs(page, ['İç mekan bar', 'Köprü', 'Şehir gökdelen']);
-  await openModule(page, 'carousel');
-  await record(page, w, 'Carousel');
-  await clickText(page, 'Düzenle');
-  await record(page, w, 'Carousel panel');
-  await clickText(page, 'Araçlar');
-  await record(page, w, 'Carousel Araçlar');
-  await clickText(page, 'TikTok');
-  await record(page, w, 'Carousel TikTok');
-  await clickText(page, 'Dışa aktar');
-  await record(page, w, 'Export sayfası', false);
-  await page.close();
-
-  page = await fresh(w, h);
-  await loadRefs(page, ['İç mekan bar', 'Köprü', 'Şehir gökdelen']);
-  await openModule(page, 'story');
-  await record(page, w, 'Story');
   await page.close();
 
   for (const [mod, label] of [['frame', 'Çerçeve'], ['upscale', 'Upscale']]) {
@@ -199,37 +182,16 @@ for (const [w, h] of VIEWPORTS) {
     await page.close();
   }
 
+  // Düzenle: quick directive → mocked plan (task P) → result → export sheet
   page = await fresh(w, h);
   await loadRefs(page, ['İç mekan bar']);
   await openModule(page, 'edit');
-  await record(page, w, 'Düzenle Preset');
-  await clickText(page, 'Kırp', '[role=tab]');
-  await record(page, w, 'Düzenle Kırp');
-  await clickText(page, 'Düzeltme', '[role=tab]');
-  await record(page, w, 'Düzenle Düzeltme');
-  await clickText(page, 'Otomatik');
-  await wait(1500);
-  await record(page, w, 'Düzeltme Otomatik');
-  await clickText(page, 'Preset', '[role=tab]');
-  await clickText(page, 'AI Preset', '[data-preset=ai_plan]');
-  await wait(500);
-  await record(page, w, 'AI Preset sayfası', false);
-  await clickText(page, 'Altın Saat', '[data-ai-preset-sheet] button');
-  await page.waitForFunction(() => !document.querySelector('[data-ai-preset-sheet]'), { timeout: 20000 });
-  await wait(800);
-  await record(page, w, 'AI Preset uygulandı');
-  await clickText(page, 'AI ile onar');
-  await wait(800);
-  await record(page, w, 'AI PIN adımı', false);
-  await page.type('#ai-pin', '0000');
-  await wait(800);
-  await record(page, w, 'AI alt sayfası', false);
-  await clickText(page, 'Gürültü temizle', '[data-ai-sheet] button');
-  await page.waitForSelector('[aria-label="AI sonucunu kontrol et"]', { timeout: 20000 });
-  await record(page, w, 'AI kontrol sayfası', false);
-  await clickText(page, 'Kullan', '[aria-label="AI sonucunu kontrol et"] button');
-  await wait(800);
+  await record(page, w, 'Düzenle');
+  await clickText(page, 'Patlak Işığı Topla');
+  await page.waitForFunction(() => [...document.querySelectorAll('[data-bottom-stack] button')].some((b) => b.textContent.trim() === 'İndir'), { timeout: 20000 });
   await record(page, w, 'Düzenle (AI sonucu)');
+  await clickText(page, 'Dışa aktar');
+  await record(page, w, 'Export sayfası', false);
   await page.close();
 
   // Temporary probe page (docs/probe/README.md): start screen only; the full flow is scripts/probe-fake-camera.mjs

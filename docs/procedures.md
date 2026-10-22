@@ -51,9 +51,8 @@ Son doğrulama: 2026-10-20
      glass: [...document.querySelectorAll('.glass-panel')].filter(visible).length });
   ```
   - AI sayfası seçicileri (`#ai-pin`, `[data-ai-sheet]`, `[data-review-*]`) `AiRepairSheet`/`AiReviewScreen`'de; Faz R'den beri bu bileşenleri hiçbir modül açmıyor. Ölçmeden önce animasyonları bitir (`document.getAnimations().forEach(a => a.finish())`). Yatay kaydırıcı içindeki öğeler (Düzenle hızlı direktif satırı) `offscreen` dışında tutulur.
-  - **Uyarı (2026-10-20):** `scripts/audit-ui.mjs` (satır 170, 184), `scripts/capture-screens.mjs` (satır 86–97) ve `scripts/check-gradient.mjs` hâlâ kaldırılan `carousel`/`story` modüllerini açıyor; betikler güncellenene kadar Prosedür 2 olduğu gibi çalışmaz.
   - Ekran görüntüsü: `AUDIT_PIN=<test 4 hane> node scripts/capture-screens.mjs <etiket>` → `screenshots/<etiket>/` (git izlemez).
-  - Akıllı gradyan (D33): `AUDIT_PIN=<test PIN> node scripts/check-gradient.mjs` (aynı test değerli sunucu) Çerçeve 9:16 / 4:5 / 16:9'u (ve artık olmayan Story'yi) sentetik fotoğrafla dışa aktarır, boyutu ve kenar piksellerini yazar; ekran görüntüleri `screenshots/gradient/` (git izlemez). Yoklama sayfası için `scripts/probe-fake-camera.mjs`.
+  - Akıllı gradyan (D33): `AUDIT_PIN=<test PIN> node scripts/check-gradient.mjs` (aynı test değerli sunucu) Çerçeve 9:16 / 4:5 / 16:9'u sentetik fotoğrafla dışa aktarır, boyutu ve kenar piksellerini yazar; ekran görüntüleri `screenshots/gradient/` (git izlemez). Yoklama sayfası için `scripts/probe-fake-camera.mjs`.
 - **Değiştirebilir:** CSS sınıfları, yerleşim dolgusu, duyarlı sarmalayıcılar.
 - **Yalnız raporla:** tarayıcı yoksa her görsel madde "doğrulanmadı".
 - **Belgeler:** reference §6, log.

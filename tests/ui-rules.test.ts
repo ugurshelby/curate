@@ -184,14 +184,8 @@ describe('UI rules: copy', () => {
   });
 
   it('UI copy with Turkish letters lives in lib/i18n/tr.ts (components hold no Turkish literals)', () => {
-    // Platform mock overlays (InstagramOverlay, TikTokOverlay) imitate the platforms' own UI over the photo;
-    // PresetStrip tags move with the preset library (Faz 5).
-    const EXEMPT = new Set([
-      'components/studio/InstagramOverlay.tsx',
-      'components/studio/TikTokOverlay.tsx',
-    ]);
     const bad: string[] = [];
-    for (const f of TSX.filter((x) => !EXEMPT.has(x))) {
+    for (const f of TSX) {
       const code = stripComments(read(f));
       for (const m of code.matchAll(/>([^<>{}]*[çğıöşüÇĞİÖŞÜ][^<>{}]*)</g)) bad.push(`${f}: ${m[1].trim().slice(0, 40)}`);
       for (const m of code.matchAll(/(?:aria-label|title|label|placeholder)=["']([^"']*[çğıöşüÇĞİÖŞÜ][^"']*)["']/g)) bad.push(`${f}: ${m[1].slice(0, 40)}`);

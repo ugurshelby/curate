@@ -61,7 +61,7 @@ Son doğrulama: 2026-10-20
 | `lib/workers/image-processor.worker.ts` | Worker (Büyüt export'u) |
 | `public/` | `manifest.json`, `icon.svg`, PNG simgeler (`icon-192`, `icon-512`, `icon-maskable-512`, `apple-touch-icon`), `reference-images/` (13 görsel) |
 | `tests/` | Vitest testleri (parite, export planı, geometri, AI sunucu/istemci, renk belirteçleri, `ui-rules` tasarım kuralları, `access` kapı, sağlamlık…); `tests/run-pipeline.mjs` ve `tests/pipeline/` (AI ve Preset kalibrasyon pipeline'ı, `tests/report.html`) |
-| `scripts/` | `audit-ui.mjs` (Prosedür 2), `capture-screens.mjs` (390 ekran görüntüsü), `check-bundle-secrets.mjs`, `make-icons.mjs` (PWA simgeleri), `probe-fake-camera.mjs` (yoklama akışı, sahte kamera), `check-gradient.mjs` (akıllı gradyan ölçümü: Çerçeve; Story adımı bayat, ekran görüntüsü ve export pikseli), `lib/unlock.mjs` (denetimde kapıyı test PIN'iyle açar) |
+| `scripts/` | `audit-ui.mjs` (Prosedür 2), `capture-screens.mjs` (390 ekran görüntüsü), `check-bundle-secrets.mjs`, `make-icons.mjs` (PWA simgeleri), `probe-fake-camera.mjs` (yoklama akışı, sahte kamera), `check-gradient.mjs` (akıllı gradyan ölçümü: Çerçeve, ekran görüntüsü ve export pikseli), `lib/unlock.mjs` (denetimde kapıyı test PIN'iyle açar) |
 
 ## Komutlar
 | Komut | Ne |

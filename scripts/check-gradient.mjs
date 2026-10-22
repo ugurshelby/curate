@@ -1,4 +1,4 @@
-// Smart edge gradient check in the browser (D33): Çerçeve 9:16, 4:5, 16:9 and Story with synthetic photos,
+// Smart edge gradient check in the browser (D33): Çerçeve 9:16, 4:5, 16:9 with a synthetic photo,
 // before/after screenshots (untracked screenshots/gradient) and measured export size and border pixels.
 // Usage: AUDIT_PIN=<test 4 digits> node scripts/check-gradient.mjs   (server http://localhost:3101 started with TEST values,
 // see scripts/lib/unlock.mjs; never the real PIN). No AI call is made.
@@ -15,7 +15,7 @@ const outDir = process.env.SHOTS || 'screenshots/gradient';
 mkdirSync(outDir, { recursive: true });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Photo A: left 35 % blue, middle 30 % white, right 35 % red (the owner's example). Photo B: top orange, bottom navy, grey middle.
+// Photo A: left 35 % blue, middle 30 % white, right 35 % red (the owner's example).
 async function synth(name, w, h, pick) {
   const raw = Buffer.alloc(w * h * 3);
   for (let y = 0; y < h; y++)
@@ -25,7 +25,6 @@ async function synth(name, w, h, pick) {
   return p;
 }
 const photoA = await synth('curate-grad-a.jpg', 1600, 1200, (u) => (u < 0.35 ? [20, 60, 220] : u < 0.65 ? [255, 255, 255] : [220, 30, 30]));
-const photoB = await synth('curate-grad-b.jpg', 1200, 1600, (_u, v) => (v < 0.3 ? [255, 140, 0] : v > 0.7 ? [10, 30, 90] : [200, 200, 200]));
 
 const browser = await puppeteer.launch({ executablePath: chrome, headless: 'new', args: ['--no-sandbox'] });
 
@@ -48,7 +47,7 @@ async function fresh(files) {
   await page.goto(base, { waitUntil: 'networkidle0' });
   const input = await page.$('input[type=file]');
   await input.uploadFile(...files);
-  await page.waitForSelector('[data-stage]', { timeout: 15000 }); // the upload opens Carousel
+  await page.waitForSelector('[data-stage]', { timeout: 15000 }); // the upload opens Düzenle
   await wait(800);
   await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => (b.getAttribute('aria-label') || '') === 'Ana sayfaya dön')?.click());
   await page.waitForSelector('[data-module]', { timeout: 10000 });
@@ -106,10 +105,10 @@ const results = {};
 {
   const page = await fresh([photoA]);
   await openModule(page, 'frame');
-  await click(page, 'Mat', '[role=radio]');
+  await click(page, 'Mat', 'button');
   await wait(500);
   await shot(page, 'frame-before-mat');
-  await click(page, 'Gradyan', '[role=radio]');
+  await click(page, 'Akıllı Gradyan', 'button');
   for (const ratio of ['9:16', '4:5', '16:9']) {
     await click(page, ratio, '[role=radio]');
     await wait(900);
@@ -120,14 +119,5 @@ const results = {};
   await page.close();
 }
 
-// ---- Story: two photos, gradient background from the first photo's top/centre/bottom
-{
-  const page = await fresh([photoB, photoB]);
-  await openModule(page, 'story');
-  await wait(1200);
-  await shot(page, 'story-gradient');
-  results.story = await exportPixels(page, { top: [0.5, 0.004], upperBand: [0.5, 0.06], middle: [0.5, 0.5], lowerBand: [0.5, 0.94], bottom: [0.5, 0.996] });
-  await page.close();
-}
 await browser.close();
 console.log(JSON.stringify(results, null, 1));

@@ -28,9 +28,9 @@ Sahibin telefonda 3 temel modülü (Düzenle, Büyüt, Çerçeve) test etmesi; A
 2026-10-20: Prosedür 5 (doküman taraması) Faz R kalıntılarını README, PRODUCT, ARCHITECTURE §2–4, reference §1–2, CDS, procedures, INDEX ve kod yorumlarından temizledi.
 
 ## Açık hatalar ve takip (2026-10-20 taramasında ölçüldü)
-- Prosedür 2 betikleri bayat: `scripts/audit-ui.mjs` (satır 170, 184), `scripts/capture-screens.mjs` (86–97), `scripts/check-gradient.mjs` hâlâ `carousel`/`story` modüllerini açıyor; güncellenene kadar UI denetimi çalışmaz.
+- Prosedür 2 (2026-10-22, emülasyon) metin kontrastında 21 ekran FAIL, yerleşim temiz: Çerçeve "Tarih Damgası" düğmesi kapalıyken `text-ink-3` 3,23 (gerek 4,5; 4 Çerçeve ekranı × 3 genişlik); Düzenle hızlı direktif çipi "Renk Kaymasını Nötrle" (önerilen çip, `bg-accent/15 text-accent`) 4,27 (Düzenle, sonuç ve export ekranları × 3 genişlik).
 - Büyüt'te "AI ile Büyüt" (alt yazı "Yapay Zeka & Doku Üretimi", rozet "AI Tabanlı Büyütme", hub etiketi "AI Doku") ağa gitmez: yerelde parlaklığa göre ±%5 piksel çarpanı uygular, sonucu JPEG %92 ile yeniden kodlar; export bu kopyayı Lanczos-3 ile büyütür (fazladan bir kayıplı kuşak). Etiket yanıltıcı; karar "Sahibe sorular"da (2026-10-22).
-- Ölü kod (arayüzden çağıran yok, yalnız testli): `AiPresetSheet`, `AiRepairSheet`, `AiReviewScreen`, `usePanPinch`, `lib/engine/presets.ts`, `corrections.ts`, `scene.ts`; `prefs`/`library-cache`'te Carousel/Story alanları hâlâ yazılıyor; `tr.ts`'te `carousel`, `story` bölümleri. `tests/ui-rules.test.ts` 187–191 silinmiş `InstagramOverlay`/`TikTokOverlay` yollarını istisna listesinde tutuyor.
+- Ölü kod (arayüzden çağıran yok, yalnız testli): `AiPresetSheet`, `AiRepairSheet`, `AiReviewScreen`, `usePanPinch`, `lib/engine/presets.ts`, `corrections.ts`, `scene.ts`; `prefs`/`library-cache`'te Carousel/Story alanları hâlâ yazılıyor; `tr.ts`'te `carousel`, `story` bölümleri.
 - `curate-spec-v1.md` Carousel/Story bölümleri D37 ile geçersiz; spec metni sahibe ait, değiştirilmedi.
 
 ## Son durum
