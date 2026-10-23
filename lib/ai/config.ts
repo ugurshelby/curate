@@ -37,7 +37,7 @@ export interface AiTaskConfig {
 export const AI_TASKS: Record<AiTask, AiTaskConfig> = {
   A: {
     id: 'A',
-    label: 'Büyüt',
+    label: 'AI ile büyüt',
     model: 'flash',
     imageSize: '4K',
     prompt: 'Increase the resolution and sharpness of this photo. Keep the existing real detail and texture. {KEEP}',
@@ -193,6 +193,16 @@ export function nearestAspectRatio(width: number, height: number): { ratio: AiAs
 export function aiInputSize(width: number, height: number): { width: number; height: number } {
   const s = Math.min(1, AI_INPUT_LONG_EDGE / Math.max(width, height));
   return { width: Math.max(1, Math.round(width * s)), height: Math.max(1, Math.round(height * s)) };
+}
+
+/**
+ * Büyüt → "AI ile Büyüt" (D38, task A): only photos whose long edge already fits the AI input,
+ * so nothing is downscaled before sending and the ~4K result is at least 2×.
+ */
+export const AI_UPSCALE_MAX_SOURCE_EDGE = AI_INPUT_LONG_EDGE;
+
+export function aiUpscaleAllowed(width: number, height: number): boolean {
+  return width > 0 && height > 0 && Math.max(width, height) <= AI_UPSCALE_MAX_SOURCE_EDGE;
 }
 
 /** Vertex generateContent gövdesi (testte çalışan biçim) */

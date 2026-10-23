@@ -1,16 +1,25 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ZoomIn, Sparkles, Cpu, Loader2 } from "lucide-react";
-import { 
-  useStudio, 
-  getStudioSelection, 
-  calculateUpscaleSplitPos, 
+import { ZoomIn, Sparkles, Cpu } from "lucide-react";
+import {
+  useStudio,
+  getStudioSelection,
+  calculateUpscaleSplitPos,
   createStudioItem,
   workerBridge,
   createExportCanvas,
   upscaleFactorAllowed,
   derivedLabel,
+  AI_TASKS,
+  AI_UPSCALE_MAX_SOURCE_EDGE,
+  aiUpscaleAllowed,
+  prepareAiInput,
+  suspectRegionFromImages,
+  registerUrl,
+  revokeUrl,
+  type AiTask,
+  type SuspectRegion,
 } from "@/lib";
 import { tr } from "@/lib/i18n/tr";
 import { QuickExportSheet } from "./QuickExportSheet";
@@ -18,6 +27,31 @@ import { StudioShell, StageNote } from "./StudioShell";
 import { DerivedBadge } from "./NoticeToast";
 import { AddMenu } from "./AddMenu";
 import { ReferencePicker } from "./ReferencePicker";
+import { AiRepairSheet } from "./AiRepairSheet";
+import { AiReviewScreen } from "./AiReviewScreen";
+
+/** Image task A (lib/ai/config.ts): the only AI task Büyüt sends (D38) */
+const AI_UPSCALE_TASK: AiTask = "A";
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    if (!src.startsWith("data:") && !src.startsWith("blob:")) img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(tr.common.imageLoadFailed));
+    img.src = src;
+  });
+}
+
+/** AI result waiting on the review screen; nothing is kept until "Kullan" */
+interface AiReview {
+  url: string;
+  width: number;
+  height: number;
+  sourceId: string;
+  originalUrl: string;
+  suspect: SuspectRegion | null;
+}
 
 interface UpscaleStudioProps {
   onBack: () => void;
@@ -27,12 +61,13 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
   const { state, actions } = useStudio();
   const { hasPhoto, selectedItem, photoUrl: photoPath } = getStudioSelection(state.items, state.selectedItemId);
   const { scaleFactor, mode } = state.upscaleConfig;
+  const aiResult = selectedItem && state.upscaleAi?.sourceId === selectedItem.id ? state.upscaleAi : null;
 
   const [splitPos, setSplitPos] = useState<number>(50); // %0 - %100
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [isReferenceOpen, setIsReferenceOpen] = useState<boolean>(false);
-  const [isAiProcessing, setIsAiProcessing] = useState<boolean>(false);
-  const [aiPreviewUrl, setAiPreviewUrl] = useState<string | null>(null);
+  const [isAiOpen, setIsAiOpen] = useState<boolean>(false);
+  const [aiReview, setAiReview] = useState<AiReview | null>(null);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -45,17 +80,12 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     }
   }, [selectedItem, scaleFactor, actions]);
 
-  useEffect(() => {
-    setAiPreviewUrl(null);
-  }, [selectedItem?.id, photoPath]);
-
   const addSingleFile = (files: File[]) => {
     const file = files[0];
     if (!file) return;
     const newItem = createStudioItem(file, state.items.length);
     actions.addItems([newItem]);
     actions.selectItem(newItem.id);
-    setAiPreviewUrl(null);
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,41 +99,45 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     if (window.confirm(tr.common.clearAllConfirm)) actions.clearItems();
   };
 
-  const handleRunAiUpscale = async () => {
-    if (!photoPath || isAiProcessing) return;
-    setIsAiProcessing(true);
-    try {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      await new Promise((res, rej) => {
-        img.onload = () => res(null);
-        img.onerror = rej;
-        img.src = photoPath;
-      });
+  // --- AI ile Büyüt (D38): the active photo's own pixels go to /api/ai only after the user taps the task row ---
+  const prepareAiPixels = async (): Promise<Blob> => {
+    if (!photoPath) throw new Error("No photo");
+    return prepareAiInput(await loadImage(photoPath));
+  };
 
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.drawImage(img, 0, 0);
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imgData.data;
-        for (let i = 0; i < data.length; i += 4) {
-          const luma = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
-          const factor = luma > 128 ? 1.05 : 0.95;
-          data[i] = Math.min(255, Math.max(0, data[i] * factor));
-          data[i + 1] = Math.min(255, Math.max(0, data[i + 1] * factor));
-          data[i + 2] = Math.min(255, Math.max(0, data[i + 2] * factor));
-        }
-        ctx.putImageData(imgData, 0, 0);
-        setAiPreviewUrl(canvas.toDataURL("image/jpeg", 0.92));
+  /** Opens the review screen; false when the result cannot be opened (the sheet says so) */
+  const handleAiResult = async (_task: AiTask, blob: Blob): Promise<boolean> => {
+    if (!selectedItem || !photoPath) return false;
+    const originalUrl = selectedItem.proxyUrl || photoPath;
+    const url = registerUrl(URL.createObjectURL(blob));
+    try {
+      const img = await loadImage(url);
+      let suspect: SuspectRegion | null = null;
+      try {
+        suspect = suspectRegionFromImages(await loadImage(originalUrl), img);
+      } catch {
+        suspect = null;
       }
+      setIsAiOpen(false);
+      setAiReview({ url, width: img.naturalWidth, height: img.naturalHeight, sourceId: selectedItem.id, originalUrl, suspect });
+      return true;
     } catch {
-      // Hata durumunda standart mod devam eder
-    } finally {
-      setIsAiProcessing(false);
+      revokeUrl(url);
+      return false;
     }
+  };
+
+  const discardAiReview = () => {
+    if (aiReview) revokeUrl(aiReview.url);
+    setAiReview(null);
+  };
+
+  const acceptAiReview = () => {
+    if (!aiReview) return;
+    const { url, width, height, sourceId } = aiReview;
+    actions.setUpscaleAi({ sourceId, url, width, height });
+    actions.setUpscaleMode("ai");
+    setAiReview(null);
   };
 
   const handleDividerPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -127,18 +161,29 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     }
   };
 
+  const w = selectedItem?.dimensions.width || 0;
+  const h = selectedItem?.dimensions.height || 0;
+  const targetW = w * scaleFactor;
+  const targetH = h * scaleFactor;
+  const badge = derivedLabel(selectedItem?.derivedBy);
+  const aiAllowed = selectedItem ? aiUpscaleAllowed(w, h) : false;
+  const aiTask = AI_TASKS[AI_UPSCALE_TASK];
+  const showAi = mode === "ai" && !!aiResult;
+
   const renderExportCanvas = async (): Promise<HTMLCanvasElement> => {
     if (!photoPath) throw new Error("No photo to export");
-    const img = new window.Image();
-    if (!photoPath.startsWith("data:") && !photoPath.startsWith("blob:")) {
-      img.crossOrigin = "anonymous";
+    // AI mode: the model output is fitted to the chosen target in one resample; no Lanczos after it (D38)
+    if (mode === "ai") {
+      if (!aiResult) throw new Error("No AI result");
+      const img = await loadImage(aiResult.url);
+      const { canvas, ctx } = createExportCanvas(targetW, targetH);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, 0, 0, targetW, targetH);
+      return canvas;
     }
-    await new Promise<void>((res, rej) => {
-      img.onload = () => res();
-      img.onerror = () => rej(new Error(tr.common.imageLoadFailed));
-      img.src = mode === "ai" && aiPreviewUrl ? aiPreviewUrl : photoPath;
-    });
 
+    const img = await loadImage(photoPath);
     const c = document.createElement("canvas");
     c.width = img.naturalWidth;
     c.height = img.naturalHeight;
@@ -152,12 +197,6 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     outCtx.putImageData(upscaledData, 0, 0);
     return outC;
   };
-
-  const w = selectedItem?.dimensions.width || 0;
-  const h = selectedItem?.dimensions.height || 0;
-  const targetW = w * scaleFactor;
-  const targetH = h * scaleFactor;
-  const badge = derivedLabel(selectedItem?.derivedBy);
 
   const stage = (
     <div
@@ -184,8 +223,8 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
         <div className="relative w-full h-full flex items-center justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={mode === "ai" && aiPreviewUrl ? aiPreviewUrl : photoPath}
-            alt={tr.upscale.upscaledNote}
+            src={showAi && aiResult ? aiResult.url : photoPath}
+            alt={showAi ? tr.upscale.aiResultAlt : tr.upscale.upscaledNote}
             className="absolute max-w-full max-h-full object-contain pointer-events-none"
             style={{
               clipPath: `polygon(${splitPos}% 0, 100% 0, 100% 100%, ${splitPos}% 100%)`,
@@ -252,7 +291,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
             type="button"
             onClick={() => {
               actions.setUpscaleMode("ai");
-              if (!aiPreviewUrl) handleRunAiUpscale();
+              if (!aiResult && aiAllowed) setIsAiOpen(true);
             }}
             className={`touch-target press min-h-[44px] h-12 px-3 rounded-xl border flex items-center gap-2.5 text-left ${
               mode === "ai" ? "bg-accent-fill text-on-accent border-accent-fill" : "bg-surface-2 text-ink-2 border-separator"
@@ -266,6 +305,29 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
           </button>
         </div>
       </div>
+
+      {mode === "ai" && hasPhoto && (
+        <div data-ai-upscale-row className="flex items-center justify-between gap-3">
+          <p className="text-xs text-ink-2 num-metric min-w-0">
+            {aiResult
+              ? tr.upscale.aiReady(aiResult.width, aiResult.height)
+              : aiAllowed
+                ? tr.upscale.aiCostNote(aiTask.estSeconds, aiTask.costTry)
+                : tr.upscale.aiTooLarge(AI_UPSCALE_MAX_SOURCE_EDGE)}
+          </p>
+          {aiAllowed && (
+            <button
+              type="button"
+              onClick={() => setIsAiOpen(true)}
+              className={`touch-target press shrink-0 min-h-[44px] px-4 rounded-xl text-xs font-bold ${
+                aiResult ? "bg-surface-2 text-ink-1 border border-separator" : "bg-accent-fill text-on-accent"
+              }`}
+            >
+              {aiResult ? tr.upscale.aiRerun : tr.upscale.aiRun}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-3 pt-1">
         <div className="text-xs text-ink-2 flex items-center gap-2">
@@ -308,12 +370,6 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
           <Sparkles className="w-4 h-4 text-accent" />
           <span>{mode === "ai" ? tr.upscale.aiTag : tr.upscale.standardTag}</span>
         </div>
-        {isAiProcessing && (
-          <div className="flex items-center gap-1.5 text-accent text-xs">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            <span>{tr.upscale.processing}</span>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -323,7 +379,7 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
       title={tr.upscale.moduleTitle}
       onBack={onBack}
       onExport={() => setIsExportOpen(true)}
-      exportDisabled={!hasPhoto || isAiProcessing}
+      exportDisabled={!hasPhoto || (mode === "ai" && !aiResult)}
       stage={stage}
       stageToolbar={
         <StageNote>
@@ -348,6 +404,30 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
         onConfirm={addSingleFile}
         maxSelect={1}
       />
+
+      <AiRepairSheet
+        open={isAiOpen}
+        onClose={() => setIsAiOpen(false)}
+        title={tr.upscale.aiTitle}
+        tasks={[AI_UPSCALE_TASK]}
+        hint={tr.upscale.aiSheetHint}
+        size={selectedItem ? { w, h } : null}
+        prepareInput={prepareAiPixels}
+        onResult={handleAiResult}
+      />
+
+      {aiReview && (
+        <AiReviewScreen
+          resultUrl={aiReview.url}
+          originalUrl={aiReview.originalUrl}
+          width={aiReview.width}
+          height={aiReview.height}
+          taskLabel={tr.upscale.aiReviewLabel(aiReview.width, aiReview.height)}
+          suspect={aiReview.suspect}
+          onUse={acceptAiReview}
+          onDiscard={discardAiReview}
+        />
+      )}
 
       <QuickExportSheet
         isOpen={isExportOpen}

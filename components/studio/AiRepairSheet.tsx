@@ -6,7 +6,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { X, Sparkles, Lock } from "lucide-react";
 import {
   AI_TASKS,
-  AI_TASK_IDS,
   AI_ASPECT_WARN,
   AI_PIN_LENGTH,
   AiTask,
@@ -22,6 +21,11 @@ import {
 interface AiRepairSheetProps {
   open: boolean;
   onClose: () => void;
+  title: string;
+  /** Image tasks offered as rows (cost and time shown before sending) */
+  tasks: AiTask[];
+  /** One line under the title (what the result is) */
+  hint: string;
   /** Aktif fotoğrafın boyutu (oran uyarısı için) */
   size: { w: number; h: number } | null;
   /** Gönderilecek JPEG'i hazırlar (aktif fotoğrafın kendi pikselleri, ayarsız) */
@@ -36,8 +40,8 @@ const BLOCKING: AiErrorCode[] = ["disabled", "not_configured", "forbidden", "ser
 /** Bu hatalarda PIN adımı açılır/kalır */
 const PIN_STEP: AiErrorCode[] = ["pin_required", "wrong_pin", "pin_locked_ip", "pin_locked_day", "pin_locked_month", "network"];
 
-/** "AI ile onar" alt sayfası (spec §4.5 E12): dört görev, süre ve ~₺; tek istek, iptal */
-export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: AiRepairSheetProps) {
+/** AI image-task sheet (spec §4.5 E12, D38): rows with time and ~₺; one request, cancel */
+export function AiRepairSheet({ open, onClose, title, tasks, hint, size, prepareInput, onResult }: AiRepairSheetProps) {
   const [step, setStep] = useState<Step>("checking");
   const [pin, setPin] = useState("");
   const [error, setError] = useState<{ code: AiErrorCode; message: string } | null>(null);
@@ -169,14 +173,14 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={tr.ai.title}
+        aria-label={title}
         data-ai-sheet
         className="w-full max-w-lg max-h-[85dvh] overflow-y-auto rounded-t-sheet sm:rounded-sheet bg-surface p-5 pb-[calc(var(--safe-area-bottom)+20px)] border border-separator shadow-2xl animate-panel-in flex flex-col gap-3"
       >
         <div className="flex items-center justify-between">
           <span className="text-[17px] font-semibold text-ink-1 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-ink-2" />
-            {tr.ai.title}
+            {title}
           </span>
           {step !== "running" && (
             <button
@@ -230,14 +234,14 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
 
         {step === "pick" && (
           <>
-            <p className="text-xs text-ink-2">{tr.ai.orderHint}</p>
+            <p className="text-xs text-ink-2">{hint}</p>
             {aspect && aspect.deviation > AI_ASPECT_WARN && (
               <p className="text-xs text-ink-1">
                 {tr.ai.aspectWarn}
               </p>
             )}
             <div className="flex flex-col rounded-xl bg-surface-2 border border-separator divide-y divide-separator">
-              {AI_TASK_IDS.map((id) => {
+              {tasks.map((id) => {
                 const t = AI_TASKS[id];
                 return (
                   <button
@@ -275,7 +279,7 @@ export function AiRepairSheet({ open, onClose, size, prepareInput, onResult }: A
 
         {step === "running" && running && (
           <div role="status" className="flex flex-col gap-2">
-            <span className="text-sm text-ink-1">{AI_TASKS[running.task].label} çalışıyor…</span>
+            <span className="text-sm text-ink-1">{tr.ai.running(AI_TASKS[running.task].label)}</span>
             <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
               <div className="h-full bg-accent transition-[width] duration-300" style={{ width: `${pct}%` }} />
             </div>

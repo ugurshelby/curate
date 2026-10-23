@@ -15,7 +15,7 @@ Curate, tarayıcıda çalışan ve telefona web uygulaması olarak kurulan bir f
 2. İnce ayar yalnız isteyene ve TEK kaydırıcıyla. Curve, kanal, HSL gibi uzman arayüzü yok.
 3. Önizleme = export. Ekranda görülen, indirilen dosyayla aynıdır.
 4. Hız: önizleme ve sürükleme akıcı; kasma, donma yok.
-5. Fotoğraf cihazda kalır. Tek istisna: Düzenle'deki AI özellikleri, yalnız kullanıcı dokunuşuyla, tek fotoğraf, kendi proxy'miz üzerinden.
+5. Fotoğraf cihazda kalır. İstisna: Düzenle'deki AI özellikleri ve Büyüt'teki "AI ile Büyüt" (D38), yalnız kullanıcı dokunuşuyla, tek fotoğraf, kendi proxy'miz üzerinden; maliyet ve "Google'a gönderilir" notu göndermeden önce gösterilir.
 6. Fotoğrafçılık bilgisini (araçlar, presetler, mobil kamera kusurları) ajan bilir, ürüne işler ve günceller (`docs/PHOTO-KNOWLEDGE.md`).
 
 ## Hedef kullanıcı
@@ -33,7 +33,7 @@ Yalnız sahip (Uğur). Başka kullanıcı, hesap, paylaşım yok.
 | Modül | Ne yapar | Çıktı |
 |---|---|---|
 | Düzenle | Tek fotoğraf: AI onarım direktifi (serbest metin ya da 5 hazır direktif); model yalnız ışık/renk planı döner, cihazda uygulanır; yanıt yoksa yerel plan | Fotoğrafın kendi çözünürlüğü |
-| Büyüt (Upscale) | Yerel 2×/4× Lanczos-3 büyütme, önce/sonra ayırıcı | Kaynak × çarpan (uzun kenar ≤ 8192, ≤ 16 MP) |
+| Büyüt (Upscale) | Yerel 2×/4× Lanczos-3 ya da "AI ile Büyüt" (Google modeli, ≤ 2048 px kaynak, önce/sonra kontrolü, ~₺8), önce/sonra ayırıcı | Kaynak × çarpan (uzun kenar ≤ 8192, ≤ 16 MP) |
 | Çerçeve | Polaroid (3 çeşit), mat (renk seçimli), gradyan (akıllı + 3 hazır), tarih damgası; birden çok fotoğrafa toplu | 10 standart oran (4:5, 1:1, 9:16, 3:4, 2:3, 5:4, 4:3, 3:2, 16:9, 1.91:1), kısa kenar 1080 ya da 4K (2160); varsayılan 1080×1350; toplu ise zip |
 
 ## Kapsam dışı

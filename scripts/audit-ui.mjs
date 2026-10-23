@@ -179,6 +179,22 @@ for (const [w, h] of VIEWPORTS) {
         await record(page, w, `Çerçeve ${r}`);
       }
     }
+    if (mod === 'upscale') {
+      // AI ile Büyüt (D38): chip → sheet (cost + Google note) → mocked task A → review → "Kullan"
+      await clickText(page, 'AI ile Büyüt');
+      await page.waitForSelector('[data-ai-sheet]', { timeout: 10000 });
+      if (await page.$('#ai-pin')) {
+        await page.type('#ai-pin', process.env.AUDIT_PIN || '0000');
+        await wait(600);
+      }
+      await record(page, w, 'Büyüt AI sayfası', false);
+      await clickText(page, 'AI ile büyüt', '[data-ai-sheet] button');
+      await page.waitForSelector('[data-review-stage]', { timeout: 20000 });
+      await record(page, w, 'Büyüt AI kontrol', false);
+      await clickText(page, 'Kullan');
+      await page.waitForFunction(() => document.querySelector('[data-ai-upscale-row]')?.textContent?.includes('hazır'), { timeout: 10000 });
+      await record(page, w, 'Büyüt (AI sonucu)');
+    }
     await page.close();
   }
 

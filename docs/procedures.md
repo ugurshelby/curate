@@ -50,7 +50,7 @@ Son doğrulama: 2026-10-20
      tinyText: [...document.querySelectorAll('body *')].filter(e => !e.children.length && e.textContent.trim() && visible(e) && parseFloat(getComputedStyle(e).fontSize) < 12).map(e => e.textContent.trim().slice(0, 20)),
      glass: [...document.querySelectorAll('.glass-panel')].filter(visible).length });
   ```
-  - AI sayfası seçicileri (`#ai-pin`, `[data-ai-sheet]`, `[data-review-*]`) `AiRepairSheet`/`AiReviewScreen`'de; Faz R'den beri bu bileşenleri hiçbir modül açmıyor. Ölçmeden önce animasyonları bitir (`document.getAnimations().forEach(a => a.finish())`). Yatay kaydırıcı içindeki öğeler (Düzenle hızlı direktif satırı) `offscreen` dışında tutulur.
+  - AI sayfası seçicileri (`#ai-pin`, `[data-ai-sheet]`, `[data-review-*]`, `[data-ai-upscale-row]`) `AiRepairSheet`/`AiReviewScreen`/`UpscaleStudio`'da; betik Büyüt → "AI ile Büyüt" akışını (sayfa, kontrol, "Kullan" sonrası) sahte görev A yanıtıyla ölçer. Ölçmeden önce animasyonları bitir (`document.getAnimations().forEach(a => a.finish())`). Yatay kaydırıcı içindeki öğeler (Düzenle hızlı direktif satırı) `offscreen` dışında tutulur.
   - Ekran görüntüsü: `AUDIT_PIN=<test 4 hane> node scripts/capture-screens.mjs <etiket>` → `screenshots/<etiket>/` (git izlemez).
   - Akıllı gradyan (D33): `AUDIT_PIN=<test PIN> node scripts/check-gradient.mjs` (aynı test değerli sunucu) Çerçeve 9:16 / 4:5 / 16:9'u sentetik fotoğrafla dışa aktarır, boyutu ve kenar piksellerini yazar; ekran görüntüleri `screenshots/gradient/` (git izlemez). Yoklama sayfası için `scripts/probe-fake-camera.mjs`.
 - **Değiştirebilir:** CSS sınıfları, yerleşim dolgusu, duyarlı sarmalayıcılar.

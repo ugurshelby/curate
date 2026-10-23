@@ -10,17 +10,17 @@ Next.js 14.2 (App Router, ana sayfa `app/page.tsx`, PIN ekranı `app/kilit/page.
 Modül geçişi ana sayfada bileşen durumuyla yapılır (`app/page.tsx`); modüllerin ayrı rotası yok. Durum: `lib/core/state-machine.ts` (başsız store) + `useStudio` (`useSyncExternalStore`).
 
 ## 2. Render hattı
-Son doğrulama: 2026-10-20 (kod okuma; Faz R sonrası)
+Son doğrulama: 2026-10-22 (Büyüt satırı: D38, tarayıcıda sahte proxy ile)
 
 | Modül | Önizleme | Export | Ortak fonksiyon |
 |---|---|---|---|
 | Düzenle | `<img>`: plan tam çözünürlükte tuvale uygulanır, JPEG 0,95 data URL olarak gösterilir; basılı tutunca orijinal | Orijinal boyutta tuval, aynı plan, güç 1,0 | `applyPlanInStrips` (`lib/engine/intelligent-repair.ts`; plan şeması ve doğrulama `lib/engine/ai-plan.ts`). Plan önce AI'dan (`requestAiPlan`), yoksa yerelden (`generateIntelligentRepairPlan`). Şerit/tek geçiş paritesi: `tests/intelligent-repair.test.ts` |
 | Çerçeve | Canvas, `drawFrame` (`previewRenderSize`: sahne kutusu × DPR, export boyutunu aşmaz) | Canvas, `drawFrame` (seçilen `FRAME_SIZES` boyutu); birden çok fotoğrafta her biri, zip | Tek çizim fonksiyonu `lib/engine/frame-render.ts`; çerçeve ölçüleri kısa kenara göre ölçeklenir; renkler `lib/ui/colors.ts`. "Gradyan" zemin: `lib/engine/edge-gradient.ts` (D33), kenar renkleri fotoğrafın çerçeveyle buluşan kısmından, `paintEdgeGradient` ile boyanır |
-| Büyüt | `<img>` önce/sonra ayırıcı (`clip-path`); "Standart" orijinali, "AI ile Büyüt" yerel ±%5 kontrast ayarlı kopyayı gösterir (ağ yok) | Lanczos-3 (2 geçiş), worker'da; mod fark etmez | `lib/engine/upscale-lanczos.ts` |
+| Büyüt | `<img>` önce/sonra ayırıcı (`clip-path`); "Standart" iki yanda orijinali, "AI ile Büyüt" sağda "Kullan" denmiş AI sonucunu gösterir (`StudioState.upscaleAi`, oturum belleği) | Standart: Lanczos-3 (2 geçiş), worker'da. AI: model çıktısı hedefe (kaynak × 2/4) tek `drawImage` (yüksek kalite yumuşatma) ile uydurulur, Lanczos yok | `lib/engine/upscale-lanczos.ts`; AI: `/api/ai` görev A (D38) |
 
 Kural: önizleme ve export aynı çizim fonksiyonunu aynı parametre şemasıyla çağırır (AGENTS.md §4). Çerçeve ve Düzenle'de aynı fonksiyon; Büyüt'te önizleme yalnız karşılaştırma görüntüsüdür (bilinen sınır).
 
-Kodda duran ama Faz R'den beri hiçbir modülün çağırmadığı motorlar: `lib/engine/presets.ts` (preset v2), `lib/engine/corrections.ts` (Düzeltme), `lib/engine/edit-geometry.ts` (Kırp), `lib/engine/scene.ts` `suggestSeries`; bileşenler `AiPresetSheet`, `AiRepairSheet`, `AiReviewScreen`, `usePanPinch`. Yalnız testleri var.
+Kodda duran ama Faz R'den beri hiçbir modülün çağırmadığı motorlar: `lib/engine/presets.ts` (preset v2), `lib/engine/corrections.ts` (Düzeltme), `lib/engine/edit-geometry.ts` (Kırp), `lib/engine/scene.ts` `suggestSeries`; bileşenler `AiPresetSheet`, `usePanPinch`. Yalnız testleri var. `AiRepairSheet` ve `AiReviewScreen` D38'den beri Büyüt'te kullanılır.
 
 **Ölçüm:** Faz 5 (2026-10-08) önizleme ölçümleri (Carousel ve eski Düzenle preset/sürükleme) kaldırılan kod yollarına aitti; tarihçe `docs/reports/` ve git'te. Üç modüllü hâlde performans ölçülmedi (Prosedür 3 bekliyor).
 
@@ -56,11 +56,12 @@ Son doğrulama: 2026-10-08
 - `<html lang="tr">`, `viewport-fit=cover`, güvenli alan değişkenleri (`--safe-area-top/bottom`), `theme-color` `#000000`.
 
 ## 6. AI proxy ve kota
-Son doğrulama: 2026-10-09
+Son doğrulama: 2026-10-22 (görüntü görevi A Büyüt'e bağlandı, D38)
 
 - Tek sunucu rotası: `app/api/ai/route.ts` (Node runtime, `maxDuration` 120 sn). Mantık `lib/ai/server.ts`; yapılandırma (model, istem, boyut, ₺) yalnız `lib/ai/config.ts`; sayaç `lib/ai/quota.ts`; istemci `lib/ai/client.ts`.
 - `GET` durum/kalan hak, `PUT` PIN ile eşleme (uygulama oturum çerezi; `AI_ENABLED=false` iken de çalışır, yanıt `{enabled:false}`), `POST` görev, `DELETE` cihazı unut (oturum biter, kilit ekranı). Başka siteden istek (`Sec-Fetch-Site`) 403.
-- Giden: aktif fotoğrafın kendi pikselleri, uzun kenar ≤ 2048, JPEG 0,92; sunucu 4 MB üstünü reddeder. Dönen sonuç JPEG, ≤ 4,3 MB.
+- Görüntü görevleri A–D (`AI_TASKS`): arayüzde yalnız A kullanılır, Büyüt → "AI ile Büyüt" (`gemini-3.1-flash-image`, 4K, ~30 sn, ~₺8; D38). B, C, D Faz R'den beri arayüzsüz. Tek model, 429/503'te süre yetiyorsa bir bekleyişli tekrar.
+- Giden: aktif fotoğrafın kendi pikselleri, uzun kenar ≤ 2048, JPEG 0,92 (Büyüt yalnız ≤ 2048 px kaynakta açılır, küçültme olmaz); sunucu 4 MB üstünü reddeder. Dönen sonuç JPEG, ≤ 4,3 MB.
 - AI Preset (görev `P`, D28, D34): `x-curate-style` başlığı + ≤ 768 px JPEG; model yalnız JSON döner (`responseMimeType` + `responseSchema`; şemada `enum` yalnız STRING alanda), `validatePlan` ile sunucuda ve istemcide sınırlanır. Adaylar sırayla (`AI_PLAN_MODELS`: `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-2.5-flash`): 400, 404, 429, 5xx ve geçersiz yanıtta sıradakine geçilir, 401/403'te zincir durur. Zincir bitince hata türü: geçersiz plan > yoğun > sunucu > reddedildi > bulunamadı (`bad_plan`, `model_busy`, `model_error`, `model_rejected`, `model_missing`; anahtar için `model_auth`). Günlük: görev, model, HTTP durumu, tür, süre, Google `error.status` ve ilk 200 karakter mesaj. Ölçülen süre (2026-10-08, tek çağrı): 3.5-flash 26 sn, 3.5-flash-lite 4 sn, 2.5-flash 27 sn. Yanıt `{plan, model}`.
 - Çağrı sayısı sınırı (ikincil güvenlik): varsayılan günde 80, ayda 1000; `AI_DAILY_LIMIT` / `AI_MONTHLY_LIMIT` Vercel'de tanımlıysa onlar geçerli. Model çağrısından önce atomik ayrılır. Yanlış PIN sınırları: IP 5/gün, genel 10/gün, 30/ay.
 - Para bütçesi (D35, `lib/ai/budget.ts`): üç Upstash sayacı kuruş cinsinden (`curate:ai:try:day:<gün>` 2 gün TTL, `curate:ai:try:total` süresiz, `curate:ai:try:month:<ay>` 32 gün TTL; gün ve ay Europe/Istanbul). Pencere sonuna (`AI_BUDGET_WINDOW_END`, varsayılan 2026-12-17) kadar günlük + toplam tavan, sonra günlük + aylık tavan denetlenir; üçü de yazılır. Her Google çağrısından önce `costTry × 1,25` ayrılır (INCRBY), tavan aşılırsa geri alınır ve 429 döner; Google 4xx verirse iade edilir (DECRBY), 5xx/zaman aşımı/iptal ücretli kalır. Zincirde her aday ayrı çağrıdır. Varsayılanlar: toplam ₺6000, günlük ₺300, aylık (pencere sonrası) ₺200; env bozuksa varsayılan. Aynı anda tek ücretli istek: `curate:ai:busy` (10 sn TTL, bitince serbest). `GET` yanıtı ve başarılı `POST` başlığı (`x-curate-remaining-try`) kalan ₺'yi taşır. Redis yoksa sayaçlar sunucu belleğinde (kalıcı değil).

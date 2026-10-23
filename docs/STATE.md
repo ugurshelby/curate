@@ -2,7 +2,7 @@
 
 Tek durum dosyası. Her anlamlı adımdan sonra aynı commit'te güncellenir. Yeni oturum: `AGENTS.md` → `docs/INDEX.md` → bu dosya → `git status` → `git log`.
 
-**Son güncelleme:** 2026-10-22 (Prosedür 2 kontrast düzeltmesi: 35 ekran ok)
+**Son güncelleme:** 2026-10-23 (D38: Büyüt → "AI ile Büyüt" gerçek AI; Prosedür 2 44 ekran ok)
 **Görev tanımı:** sahibin 2026-10-08 tarihli "Bağımsız Ajan Görevi" belgesi ve 2026-10-16 tarihli AI Kalibrasyon & Senaryo Test Pipeline brifi. Fazlar: aşağıdaki tablo (eski `docs/ROADMAP.md` 2026-10-20'de silindi).
 
 ## Fazlar
@@ -27,23 +27,22 @@ Sahibin telefonda 3 temel modülü (Düzenle, Büyüt, Çerçeve) test etmesi; A
 2026-10-20: ajan sistemi kuruldu (D36, rapor `docs/reports/2026-10-20-agent-setup.md`), güncel `main`'e taşındı; PR #1 kapatıldı. Aktif plan yok (`docs/PLAN.md` boş).
 2026-10-20: Prosedür 5 (doküman taraması) Faz R kalıntılarını README, PRODUCT, ARCHITECTURE §2–4, reference §1–2, CDS, procedures, INDEX ve kod yorumlarından temizledi.
 2026-10-22: Prosedür 2 kontrast hataları düzeltildi (seçili Çerçeve düğmeleri ve Düzenle önerilen çipi CDS'ye göre `bg-accent-fill` + `text-on-accent`); emülasyonda 35 ekran ok. Telefonda doğrulanmadı.
+2026-10-23: D38: Büyüt → "AI ile Büyüt" gerçek AI (görev A, `/api/ai`, önce/sonra + "Kullan"; sahte ±%5 kontrast silindi). Sahte proxy ile tarayıcıda uçtan uca ölçüldü; gerçek model çağrısı yapılmadı (yerelde gerçek anahtar kullanılmadı). Aktif plan yok.
 
 ## Açık hatalar ve takip (2026-10-20 taramasında ölçüldü)
-- Büyüt'te "AI ile Büyüt" (alt yazı "Yapay Zeka & Doku Üretimi", rozet "AI Tabanlı Büyütme", hub etiketi "AI Doku") ağa gitmez: yerelde parlaklığa göre ±%5 piksel çarpanı uygular, sonucu JPEG %92 ile yeniden kodlar; export bu kopyayı Lanczos-3 ile büyütür (fazladan bir kayıplı kuşak). Etiket yanıltıcı; karar "Sahibe sorular"da (2026-10-22).
-- Ölü kod (arayüzden çağıran yok, yalnız testli): `AiPresetSheet`, `AiRepairSheet`, `AiReviewScreen`, `usePanPinch`, `lib/engine/presets.ts`, `corrections.ts`, `scene.ts`; `prefs`/`library-cache`'te Carousel/Story alanları hâlâ yazılıyor; `tr.ts`'te `carousel`, `story` bölümleri.
+- Ölü kod (arayüzden çağıran yok, yalnız testli): `AiPresetSheet`, `usePanPinch`, AI görüntü görevleri B/C/D (`lib/ai/config.ts`), `lib/engine/presets.ts`, `corrections.ts`, `scene.ts`; `prefs`/`library-cache`'te Carousel/Story alanları hâlâ yazılıyor; `tr.ts`'te `carousel`, `story` bölümleri.
 - `curate-spec-v1.md` Carousel/Story bölümleri D37 ile geçersiz; spec metni sahibe ait, değiştirilmedi.
 
 ## Son durum
-- 24 test dosyası, 327 birim ve parite testi yeşil (2026-10-22).
+- 25 test dosyası, 337 birim ve parite testi yeşil (2026-10-23).
 - `tsc --noEmit`, `npm run lint`, `npm run check:secrets` (0 bulgu), `npm test` sıfır hatayla geçti.
 
 ## Sahibe sorular (açık)
-- Büyüt → "AI ile Büyüt" seçeneği yapay zeka kullanmıyor (yukarıda, Açık hatalar). Seçenekler: (a) **adını gerçeğe çevir** (örn. "Canlı Büyüt" / "Kontrastı biraz artırır", hub etiketi "AI Doku" kalkar); (b) **kaldır**, Büyüt yalnız Lanczos-3 kalır; (c) **gerçek yap**: AI'ya görsel göndermek §4'te yalnız Düzenle'ye açık, "doku üretimi" de yeni içerik üretimi yasağına girer, yani kapsam değişikliği ve harcama kararı gerekir. Eğilim: (b) kaldır; (a) seçilirse ±%5 kontrast export'ta da kalır ama fazladan JPEG %92 kuşağı düzeltilmeli.
 - Yoklama sonuçları geldiğinde yol haritası: sonuçlar Curate'e mi, ayrı bir kamera uygulamasına mı gidecek (spec §7 madde 5 kamera/çekim asistanını kapsam dışı sayar; spec §10 s.13).
 - AI Preset için `preferredRegion` (örn. `fra1`) ölçülemedi: işlev bölgesini değiştirmek yalnız dağıtımdan sonra, günlükteki `ms` ile karşılaştırılarak anlamlı; Upstash'in bölgesi bilinmiyor. İstenirse sahip onayıyla denenir.
 - `tests/corrections.test.ts` "fast enough … desktop CPU" bütçesi (1500 ms) bu Windows makinesinde paralel koşuda düşüyor (1,7–2,8 s; tek başına 0,9–1,0 s; CI yeşil). Bütçe değişmedi; isterseniz test daha az paralel koşturulabilir.
 
-2026-10-08'deki 6 sorunun yanıtı `docs/DECISIONS.md` D27–D32'de. Faz R'nin (Carousel/Story kaldırma) sahip onayı D37'de (2026-10-20).
+2026-10-08'deki 6 sorunun yanıtı `docs/DECISIONS.md` D27–D32'de. Faz R'nin (Carousel/Story kaldırma) sahip onayı D37'de (2026-10-20). "AI ile Büyüt" sorusunun yanıtı (gerçek yap) D38'de (2026-10-22).
 
 ## Bloke olanlar
 - Service worker: güncelleme stratejisi planı ve sahip onayı olmadan eklenmez.
@@ -55,4 +54,5 @@ Sahibin telefonda 3 temel modülü (Düzenle, Büyüt, Çerçeve) test etmesi; A
 - Vercel'de gerçek AI süresi, gerçek maliyet, dağıtık sayaç.
 - AI Preset: model kimlikleri 2026-10-08'de gerçek çağrıyla sınandı (3.5-flash 26 sn geçerli, 3.5-flash-lite 4 sn ama doğrulayıcı reddetti, 2.5-flash 27 sn geçerli; 4 çağrının biri ücretsiz 400). Doğrulanmayan: Vercel'de çalışması, planların görsel kalitesi, gerçek ₺ (token: ~2,4 bin istem, ~0,5 bin yanıt, ~1,1–1,8 bin düşünme), süre (~26 sn, tahmin 8 sn idi).
 - Akıllı gradyan (Çerçeve): telefonda gerçek fotoğraflarla.
+- AI ile Büyüt (D38): gerçek model çağrısı (görev A, `gemini-3.1-flash-image`) hiç yapılmadı; çıktı boyutu, süre (~30 sn tahmin), gerçek ₺ (~₺8 tahmin), görsel kalite ve modelin ayrıntı uydurup uydurmadığı bilinmiyor. Telefonda hiçbir adım.
 - AI para tavanı: Redis'te gerçek sayaç (yalnız bellek ve sahte Redis ile sınandı), gerçek maliyetin ×1,25 tahminle karşılaştırması.

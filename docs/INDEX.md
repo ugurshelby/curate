@@ -40,7 +40,7 @@ Son doğrulama: 2026-10-20
 | `components/studio/FrameStudio.tsx` | Çerçeve modülü (boyut çipleri, 4K, toplu zip) |
 | `components/studio/UpscaleStudio.tsx` | Büyüt modülü |
 | `components/studio/EditStudio.tsx` | Düzenle modülü (AI onarım direktifi: serbest metin + 5 hazır direktif; plan cihazda uygulanır) |
-| `components/studio/AiRepairSheet.tsx`, `AiReviewScreen.tsx` | AI görev sayfası (PIN adımı dahil) ve önce/sonra kontrol sayfası; Faz R'den beri hiçbir modül açmıyor (ölü kod) |
+| `components/studio/AiRepairSheet.tsx`, `AiReviewScreen.tsx` | AI görüntü görevi sayfası (süre, ~₺, kalan bütçe, PIN adımı) ve önce/sonra kontrol sayfası; Büyüt → "AI ile Büyüt" kullanır (D38) |
 | `components/studio/AiPresetSheet.tsx` | AI Preset stil sayfası (D28); Faz R'den beri kullanılmıyor (ölü kod) |
 | `components/studio/QuickExportSheet.tsx` | Export sayfası |
 | `components/studio/AddMenu.tsx`, `ReferencePicker.tsx` | "+" menüsü ve referans görsel seçici |

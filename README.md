@@ -1,6 +1,6 @@
 # Curate Studio — Minimalist Editorial Photo Darkroom (v0.1.0)
 
-Curate Studio; Uğur'un kişisel, tek kullanıcılı ve **mobil öncelikli** aracıdır: bir fotoğrafı onarmak (Düzenle), büyütmek (Büyüt) ve çerçevelemek (Çerçeve) için hafif, istemci taraflı (Canvas & Web Worker) bir fotoğraf stüdyosudur. Fotoğraflar cihazda kalır; tek istisna Düzenle'deki AI onarımı (kullanıcı dokunuşuyla, tek fotoğraf, kendi proxy'miz üzerinden; model yalnız ışık/renk planı döndürür).
+Curate Studio; Uğur'un kişisel, tek kullanıcılı ve **mobil öncelikli** aracıdır: bir fotoğrafı onarmak (Düzenle), büyütmek (Büyüt) ve çerçevelemek (Çerçeve) için hafif, istemci taraflı (Canvas & Web Worker) bir fotoğraf stüdyosudur. Fotoğraflar cihazda kalır; istisna yalnız kullanıcı dokunuşuyla, tek fotoğraf, kendi proxy'miz üzerinden: Düzenle'deki AI onarımı (model yalnız ışık/renk planı döndürür) ve Büyüt'teki "AI ile Büyüt" (model büyütülmüş görsel döndürür, D38).
 
 Ajan ve geliştirici için başlangıç: `AGENTS.md` (Claude için `CLAUDE.md`) → `docs/INDEX.md` → `docs/STATE.md`.
 
@@ -18,10 +18,11 @@ Son doğrulama: 2026-10-20 (kod okuma). Faz R (D37, commit `9afb9ae`) ile Carous
 - **Uygulama:** Plan cihazda, şeritler hâlinde tam çözünürlükte uygulanır (`applyPlanInStrips`); sahneye basılı tutunca orijinal görünür; "Sıfırla" planı atar.
 - **Export:** Tek dosya `curate_ai_repair_01.jpg`, fotoğrafın kendi çözünürlüğünde; önizleme ve export aynı plan ve aynı fonksiyon.
 
-### 2. Büyüt (yerel Lanczos-3)
+### 2. Büyüt (yerel Lanczos-3 ya da AI)
 - 2× / 4×. Güvenli sınır: çıktının uzun kenarı en çok 8192 px ve alanı en çok 16 MP (varsayım); aşan çarpan kapanır ve "Bu boyut için çok büyük" yazar.
-- Export her zaman worker'da 2 geçişli Lanczos-3 (`lib/engine/upscale-lanczos.ts`); dosya `curate_upscale_01.jpg`.
-- Önce/sonra ayırıcı. "Standart Büyütme" önizlemesi orijinal görseli gösterir; "AI ile Büyüt" seçeneği yalnız önizlemede yerel bir kontrast ayarı (±%5) gösterir, ağa gitmez ve export'u değiştirmez.
+- Standart: export worker'da 2 geçişli Lanczos-3 (`lib/engine/upscale-lanczos.ts`); önizleme orijinali gösterir. Dosya `curate_upscale_01.jpg`.
+- AI ile Büyüt (D38): yalnız uzun kenarı ≤ 2048 px fotoğrafta. Seçenek sayfa açar: süre (~30 sn), ~₺8, kalan AI bütçesi ve "fotoğraf Google'a gönderilir" notu; fotoğraf yalnız satıra dokununca `/api/ai` görev A'ya gider (`gemini-3.1-flash-image`, 4K). Sonuç tam ekran önce/sonra sayfasında; "Kullan" Büyüt'te tutar (oturum belleği), "At" hiçbir şey tutmaz. Export: AI sonucu seçilen hedefe (kaynak × 2/4) cihazda tek yeniden örneklemeyle uydurulur, ardından Lanczos yok.
+- Önce/sonra ayırıcı: solda orijinal, sağda (AI modunda) AI sonucu.
 
 ### 3. Çerçeve (tekil ya da toplu)
 - Stiller: Polaroid, Polaroid Geniş, Polaroid Kare, Mat (beyaz, krem, siyah, antrasit, özel), Gradyan (Akıllı Gradyan, Günbatımı, Derin Gece, Pastel). Akıllı gradyan fotoğrafın çerçeveyle buluşan kenarlarının renginden kurulur (D33).

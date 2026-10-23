@@ -5,7 +5,7 @@
  * Carousel/Story fields (carouselView, storyLayout, cell transforms) are legacy: no UI reads them.
  */
 
-import { StudioItem, StudioModule, StudioState, ActivePreset, ColorMetrics, ImageDimensions, StoryCellTransform, EditParams, EditCrop, DerivedKind, CarouselView } from './types';
+import { StudioItem, StudioModule, StudioState, ActivePreset, ColorMetrics, ImageDimensions, StoryCellTransform, EditParams, EditCrop, DerivedKind, CarouselView, UpscaleAiResult } from './types';
 import { DEFAULT_EDIT_PARAMS } from '../engine/edit-geometry';
 import { DEFAULT_PRESET_ID } from '../engine/presets';
 import { revokeUrl, cleanupAllUrls, generateProxyImage, registerUrl } from '../engine/proxy';
@@ -91,6 +91,7 @@ const INITIAL_STATE: StudioState = {
     mode: 'standard',
     scaleFactor: 2,
   },
+  upscaleAi: null,
   isProcessing: false,
   processingProgress: 0,
   processingStatus: 'Hazır',
@@ -349,10 +350,12 @@ class StudioStateMachine {
       revokeUrl(item.originalUrl);
       revokeUrl(item.proxyUrl);
     });
+    if (this.state.upscaleAi) revokeUrl(this.state.upscaleAi.url);
     this.setState((prev) => ({
       items: [],
       selectedItemId: null,
       edits: {},
+      upscaleAi: null,
       storyLayout: { ...prev.storyLayout, cellTransforms: {} },
     }));
   }
@@ -371,6 +374,13 @@ class StudioStateMachine {
     this.setState((prev) => ({
       upscaleConfig: { ...prev.upscaleConfig, mode },
     }));
+  }
+
+  /** Keeps the accepted AI upscale result (D38); the previous result's URL is released */
+  public setUpscaleAi(result: UpscaleAiResult | null) {
+    const prev = this.state.upscaleAi;
+    if (prev && prev.url !== result?.url) revokeUrl(prev.url);
+    this.setState({ upscaleAi: result });
   }
 
   public setUpscaleConfig(cfg: Partial<StudioState['upscaleConfig']>) {
@@ -419,7 +429,12 @@ function removeFromState(prev: StudioState, ids: string[]): Partial<StudioState>
   });
   const selectedItemId =
     prev.selectedItemId && gone.has(prev.selectedItemId) ? (items.length > 0 ? items[0].id : null) : prev.selectedItemId;
-  return { items, selectedItemId, edits, storyLayout: { ...prev.storyLayout, cellTransforms } };
+  let upscaleAi = prev.upscaleAi;
+  if (upscaleAi && gone.has(upscaleAi.sourceId)) {
+    revokeUrl(upscaleAi.url);
+    upscaleAi = null;
+  }
+  return { items, selectedItemId, edits, storyLayout: { ...prev.storyLayout, cellTransforms }, upscaleAi };
 }
 
 /**

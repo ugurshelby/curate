@@ -10,7 +10,7 @@ Son doğrulama: 2026-10-20
 
 Tek kullanıcılı (Uğur) kişisel fotoğraf stüdyosu; telefonda web uygulaması; birincil kullanım mobil (390×844). Üç modül: Düzenle, Büyüt, Çerçeve (Faz R, D37; Carousel ve Story kaldırıldı). Ayrıntı `docs/PRODUCT.md`. [ÖLÇÜLDÜ] `app/page.tsx`, `components/studio/` 2026-10-20.
 
-Ortak ürün kuralları: önizleme = export (spec §3.3, uyumsuzluk P0); fotoğraf cihazda kalır, tek istisna Düzenle'deki AI (spec §3.5, §4.5 E12); hiçbir adımda kaydırıcı zorunlu değil (spec §3.1).
+Ortak ürün kuralları: önizleme = export (spec §3.3, uyumsuzluk P0); fotoğraf cihazda kalır, istisna Düzenle'deki AI (spec §3.5, §4.5 E12) ve Büyüt'teki "AI ile Büyüt" (D38); hiçbir adımda kaydırıcı zorunlu değil (spec §3.1).
 
 ## 2. Ölçülmüş durum
 Son doğrulama: 2026-10-22
@@ -22,12 +22,12 @@ Son doğrulama: 2026-10-22
 | `npm test` | 24 dosya, 327 test geçti | [ÖLÇÜLDÜ] 2026-10-22 |
 | `npm run build` | çıkış 0; `/api/ai` dinamik | [ÖLÇÜLDÜ] 2026-10-22 |
 | `npm run check:secrets` | 108 dosya (31 istemci), 0 bulgu | [ÖLÇÜLDÜ] 2026-10-22 |
-| Prosedür 2 (`scripts/audit-ui.mjs`, production build, yerel Chrome emülasyon, test PIN'i) | 3 modüllü akış: 35 ekran (kilit 4, 360/390/430 × ana sayfa, Çerçeve ×4, Upscale, Düzenle, Düzenle sonucu, export sayfası, Yoklama + masaüstü ana sayfa). Hepsi ok, `pass: true`: yerleşim (overlap, hScroll, 44 px, 12 px, cam ≤ 3) temiz, en düşük metin kontrastı 4,70 (seçili çip/düğme `bg-accent-fill` + `text-on-accent`). Son doğrulama: 2026-10-22 | [ÖLÇÜLDÜ] 2026-10-22 |
+| Prosedür 2 (`scripts/audit-ui.mjs`, production build, yerel Chrome emülasyon, test PIN'i) | 3 modüllü akış: 44 ekran (kilit 4, 360/390/430 × ana sayfa, Çerçeve ×4, Upscale, Büyüt AI sayfası, Büyüt AI kontrol, Büyüt AI sonucu, Düzenle, Düzenle sonucu, export sayfası, Yoklama + masaüstü ana sayfa). Hepsi ok, `pass: true`: yerleşim (overlap, hScroll, 44 px, 12 px, cam ≤ 3) temiz, en düşük metin kontrastı 4,70. Son doğrulama: 2026-10-23 | [ÖLÇÜLDÜ] 2026-10-23 |
 | Export (Chromium, indirilen dosya ölçüldü) | Instagram tek 1080×1350, 3 kare zip, TikTok zip 1080×1920, Story 1080×1920, Çerçeve 1080×1350 / 1080×1920 / 1080×566 / 2160×2160 (4K) / 3840×2160 (4K 16:9), önizleme–export ortalama fark ≤ 2,9/255, Düzenle+Düzeltme 4000×3000; hepsinde EXIF yok. Instagram/TikTok/Story ve Düzeltme satırları Faz R'de kaldırılan modüllere ait (tarihçe); üç modüllü hâlde export ölçülmedi | [ÖLÇÜLDÜ] 2026-10-08 |
 | Canlı (`curate-teal-omega.vercel.app`, yalnız okuma) | 10 dağıtım READY; güvenlik başlıkları 4/4; manifest ve simge 200; `lang="tr"`; `/api/ai` çerezsiz `pin_required` | [ÖLÇÜLDÜ] 2026-10-08 |
 | Telefon, yatay yön, gerçek dokunma, gerçek parlaklık | Denenmedi | [DOĞRULANMADI] cihaz yok |
 
-Bilinen sınırlar (kod okuma, 2026-10-20): Çerçeve ve Düzenle önizlemesi export ile aynı fonksiyonu çağırır (`drawFrame`, `applyPlanInStrips`); Büyüt önizlemesi Lanczos değildir, yalnız karşılaştırma görüntüsüdür ("AI ile Büyüt" yerel ±%5 kontrast, ağ yok; export her iki modda Lanczos-3); hiçbir modül preset uygulamaz. [ÖLÇÜLDÜ] kod.
+Bilinen sınırlar (kod okuma, 2026-10-20): Çerçeve ve Düzenle önizlemesi export ile aynı fonksiyonu çağırır (`drawFrame`, `applyPlanInStrips`); Büyüt önizlemesi Lanczos değildir, yalnız karşılaştırma görüntüsüdür (Standart: orijinal; AI: "Kullan" denmiş model sonucu; export Standart'ta Lanczos-3, AI'da model sonucu hedefe tek yeniden örneklemeyle, D38, Son doğrulama: 2026-10-22); hiçbir modül preset uygulamaz. [ÖLÇÜLDÜ] kod.
 
 ## 3. Mimari
 Son doğrulama: 2026-10-20

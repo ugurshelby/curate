@@ -161,6 +161,14 @@ export interface StudioItem {
 
 export type DerivedKind = 'upscale' | 'ai';
 
+/** AI upscale result of one source photo: blob URL of the model output and its size */
+export interface UpscaleAiResult {
+  sourceId: string;
+  url: string;
+  width: number;
+  height: number;
+}
+
 export interface StudioState {
   activeModule: StudioModule;
   items: StudioItem[];
@@ -187,6 +195,8 @@ export interface StudioState {
     mode?: 'standard' | 'ai';
     scaleFactor: 2 | 4;
   };
+  /** Büyüt → "AI ile Büyüt" result kept on "Kullan" (D38); session memory only, one at a time */
+  upscaleAi: UpscaleAiResult | null;
   isProcessing: boolean;
   processingProgress: number; // 0 - 100
   processingStatus: string;
