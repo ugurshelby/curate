@@ -373,6 +373,24 @@ export function extractImage(json: unknown): { mimeType: string; data: string } 
   return null;
 }
 
+/** Token counts from Vertex `usageMetadata` (numbers only) so the log shows the real billable size of a call */
+export function usageCounts(json: unknown): Record<string, number> {
+  const u = (json as { usageMetadata?: Record<string, unknown> })?.usageMetadata;
+  if (!u || typeof u !== 'object') return {};
+  const out: Record<string, number> = {};
+  const pick: [string, string][] = [
+    ['promptTokenCount', 'tokIn'],
+    ['candidatesTokenCount', 'tokOut'],
+    ['thoughtsTokenCount', 'tokThink'],
+    ['totalTokenCount', 'tokTotal'],
+  ];
+  for (const [src, dst] of pick) {
+    const v = u[src];
+    if (typeof v === 'number' && Number.isFinite(v)) out[dst] = v;
+  }
+  return out;
+}
+
 /**
  * Ham çıktıyı JPEG'e çevirir: q92'den başlar, 4,3 MB'a sığana kadar kalite düşer,
  * yetmezse uzun kenar küçülür (Vercel yanıt sınırı 4,5 MB).
@@ -726,13 +744,16 @@ async function handleAiImage(req: Request, deps: AiDeps, started: number, task: 
   }
 
   let image: { mimeType: string; data: string } | null = null;
+  let usage: Record<string, number> = {};
   try {
-    image = extractImage(await vertexRes.json());
+    const json = (await vertexRes.json()) as unknown;
+    usage = usageCounts(json);
+    image = extractImage(json);
   } catch {
     image = null;
   }
   if (!image) {
-    finish('no_image', { attempts });
+    finish('no_image', { attempts, ...usage });
     return errorResponse('no_image', quota.headers);
   }
 
@@ -745,7 +766,7 @@ async function handleAiImage(req: Request, deps: AiDeps, started: number, task: 
     return errorResponse('no_image', quota.headers);
   }
 
-  finish('ok', { attempts, rawBytes: raw.length, outBytes: out.jpeg.length, outW: out.width, outH: out.height, q: out.quality });
+  finish('ok', { attempts, rawBytes: raw.length, outBytes: out.jpeg.length, outW: out.width, outH: out.height, q: out.quality, ...usage });
   return new Response(new Uint8Array(out.jpeg), {
     status: 200,
     headers: {

@@ -165,9 +165,18 @@ export const tr = {
     title: 'Sonucu kontrol et',
     warning: 'AI bazen fotoğrafta olmayan bir şey ekleyebilir. Kaydetmeden önce kontrol et.',
     lookHere: 'Buraya dikkatli bak',
-    holdHint: 'Basılı tut: orijinal',
+    resultLabel: 'AI sonucu',
+    holdHint: 'Basılı tut: orijinal · Çift dokun: yakından bak',
     discard: 'At',
     use: 'Kullan',
+  },
+
+  compare: {
+    hint: 'Basılı tut: orijinal. Çift dokun: yakından bak.',
+    detailBadge: '%100',
+    detailOn: 'Yakından bak',
+    detailOff: 'Tamamını gör',
+    computing: 'Ayrıntı hesaplanıyor…',
   },
 
   carousel: {
@@ -347,9 +356,9 @@ export const tr = {
     scaleFactor: 'Ölçek',
     processing: 'İşleniyor...',
     previewNote: (factor: number) => `Önizleme (${factor}×)`,
-    originalNote: 'Orijinal Görsel',
-    upscaledNote: 'Büyütülmüş Önizleme',
-    divider: 'Öncesi / sonrası ayırıcı',
+    standardResult: (factor: number) => `Standart ${factor}×`,
+    aiResultLabel: 'AI ile büyütüldü',
+    notUpscaled: 'Henüz büyütülmedi',
     factorLabel: 'Büyütme',
     factorAria: 'Büyütme oranı',
     output: (w: number, h: number) => `Çıktı ${w} × ${h}`,
@@ -365,7 +374,6 @@ export const tr = {
     aiCostNote: (sec: number, costTry: number) => `~${sec} sn · ~₺${costTry} · fotoğraf Google'a gönderilir`,
     aiTooLarge: (edge: number) => `AI ile Büyüt en çok ${edge} px kenarlı fotoğrafta çalışır.`,
     aiReviewLabel: (w: number, h: number) => `AI ile büyüt · ${w} × ${h}`,
-    aiResultAlt: 'AI ile büyütülmüş',
   },
 
   /** Advanced / info texts: may name the technique (CDS §7) */

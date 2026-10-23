@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import { ZoomIn, Sparkles, Cpu } from "lucide-react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { ZoomIn, ZoomOut, Sparkles, Cpu } from "lucide-react";
 import {
   useStudio,
   getStudioSelection,
-  calculateUpscaleSplitPos,
+  detailSourceRect,
   createStudioItem,
   workerBridge,
   createExportCanvas,
@@ -19,8 +19,10 @@ import {
   registerUrl,
   revokeUrl,
   type AiTask,
+  type PixelRect,
   type SuspectRegion,
 } from "@/lib";
+import { CompareStage, type CompareTile } from "./CompareStage";
 import { tr } from "@/lib/i18n/tr";
 import { QuickExportSheet } from "./QuickExportSheet";
 import { StudioShell, StageNote } from "./StudioShell";
@@ -63,13 +65,16 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
   const { scaleFactor, mode } = state.upscaleConfig;
   const aiResult = selectedItem && state.upscaleAi?.sourceId === selectedItem.id ? state.upscaleAi : null;
 
-  const [splitPos, setSplitPos] = useState<number>(50); // %0 - %100
+  const [detail, setDetail] = useState<boolean>(false);
+  const [tile, setTile] = useState<CompareTile | null>(null);
+  const [tileBusy, setTileBusy] = useState<boolean>(false);
+  const tileRequest = useRef(0);
+  const sourceCache = useRef<{ url: string; ctx: CanvasRenderingContext2D } | null>(null);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [isReferenceOpen, setIsReferenceOpen] = useState<boolean>(false);
   const [isAiOpen, setIsAiOpen] = useState<boolean>(false);
   const [aiReview, setAiReview] = useState<AiReview | null>(null);
 
-  const containerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -138,28 +143,49 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     actions.setUpscaleAi({ sourceId, url, width, height });
     actions.setUpscaleMode("ai");
     setAiReview(null);
+    // the change is invisible at fit size: open the 100% view so the result is seen at once
+    setDetail(true);
   };
 
-  const handleDividerPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    setSplitPos(calculateUpscaleSplitPos(e.clientX, rect.left, rect.width));
-  };
+  // a new photo, factor or engine invalidates the Standart detail pixels
+  useEffect(() => {
+    tileRequest.current++;
+    setTile(null);
+    setTileBusy(false);
+  }, [photoPath, scaleFactor, mode]);
 
-  const handleDividerPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    setSplitPos(calculateUpscaleSplitPos(e.clientX, rect.left, rect.width));
-  };
-
-  const handleDividerPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
-  };
+  /** Standart detail: the same Lanczos worker as export, run on the visible crop (padded, so visible pixels match) */
+  const handleVisibleChange = useCallback(
+    async (visible: PixelRect) => {
+      if (mode !== "standard" || !photoPath) return;
+      const req = ++tileRequest.current;
+      setTileBusy(true);
+      try {
+        let cache = sourceCache.current;
+        if (!cache || cache.url !== photoPath) {
+          const img = await loadImage(photoPath);
+          const c = document.createElement("canvas");
+          c.width = img.naturalWidth;
+          c.height = img.naturalHeight;
+          const ctx = c.getContext("2d", { willReadFrequently: true });
+          if (!ctx) return;
+          ctx.drawImage(img, 0, 0);
+          cache = { url: photoPath, ctx };
+          sourceCache.current = cache;
+        }
+        const { width: sw, height: sh } = cache.ctx.canvas;
+        const src = detailSourceRect(visible, scaleFactor, sw, sh);
+        const data = await workerBridge.upscaleLanczos(cache.ctx.getImageData(src.x, src.y, src.w, src.h), scaleFactor);
+        if (req !== tileRequest.current) return;
+        setTile({ data, rect: { x: src.x * scaleFactor, y: src.y * scaleFactor, w: data.width, h: data.height } });
+      } catch {
+        // the stretched original stays visible; export is unaffected
+      } finally {
+        if (req === tileRequest.current) setTileBusy(false);
+      }
+    },
+    [mode, photoPath, scaleFactor],
+  );
 
   const w = selectedItem?.dimensions.width || 0;
   const h = selectedItem?.dimensions.height || 0;
@@ -198,60 +224,26 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
     return outC;
   };
 
-  const stage = (
-    <div
-      ref={containerRef}
-      data-stage
-      tabIndex={0}
-      role="slider"
-      aria-label={tr.upscale.divider}
-      aria-valuenow={splitPos}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      onKeyDown={(e) => {
-        if (e.key === "ArrowLeft") {
-          e.preventDefault();
-          setSplitPos((p) => Math.max(0, p - 5));
-        } else if (e.key === "ArrowRight") {
-          e.preventDefault();
-          setSplitPos((p) => Math.min(100, p + 5));
-        }
-      }}
-      className="relative w-full h-full flex items-center justify-center overflow-hidden outline-none cursor-ew-resize select-none"
-    >
-      {hasPhoto && photoPath ? (
-        <div className="relative w-full h-full flex items-center justify-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={showAi && aiResult ? aiResult.url : photoPath}
-            alt={showAi ? tr.upscale.aiResultAlt : tr.upscale.upscaledNote}
-            className="absolute max-w-full max-h-full object-contain pointer-events-none"
-            style={{
-              clipPath: `polygon(${splitPos}% 0, 100% 0, 100% 100%, ${splitPos}% 100%)`,
-            }}
-          />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={photoPath}
-            alt={tr.upscale.originalNote}
-            className="absolute max-w-full max-h-full object-contain pointer-events-none"
-            style={{
-              clipPath: `polygon(0 0, ${splitPos}% 0, ${splitPos}% 100%, 0 100%)`,
-            }}
-          />
+  const afterLabel = showAi
+    ? tr.upscale.aiResultLabel
+    : mode === "ai"
+      ? tr.upscale.notUpscaled
+      : tr.upscale.standardResult(scaleFactor);
 
-          <div
-            className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg pointer-events-auto"
-            style={{ left: `${splitPos}%` }}
-            onPointerDown={handleDividerPointerDown}
-            onPointerMove={handleDividerPointerMove}
-            onPointerUp={handleDividerPointerUp}
-          >
-            <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-black/80 border-2 border-white flex items-center justify-center text-xs text-white font-bold shadow-md">
-              ◀ ▶
-            </div>
-          </div>
-        </div>
+  const stage = (
+    <div data-stage className="relative w-full h-full flex items-center justify-center overflow-hidden">
+      {hasPhoto && photoPath ? (
+        <CompareStage
+          beforeUrl={photoPath}
+          afterUrl={showAi && aiResult ? aiResult.url : photoPath}
+          resultW={targetW}
+          resultH={targetH}
+          afterLabel={afterLabel}
+          detail={detail}
+          onDetailChange={setDetail}
+          tile={mode === "standard" ? tile : null}
+          onVisibleChange={mode === "standard" ? handleVisibleChange : undefined}
+        />
       ) : (
         <div className="w-full h-full rounded-xl border border-separator bg-base flex flex-col items-center justify-center p-4 text-center text-ink-3 gap-1">
           <ZoomIn className="w-8 h-8 text-disabled-ink" />
@@ -382,10 +374,24 @@ export function UpscaleStudio({ onBack }: UpscaleStudioProps) {
       exportDisabled={!hasPhoto || (mode === "ai" && !aiResult)}
       stage={stage}
       stageToolbar={
-        <StageNote>
-          {badge && <DerivedBadge label={badge} />}
-          {`${w}×${h} ➔ ${targetW}×${targetH} (${scaleFactor}X)`}
-        </StageNote>
+        <>
+          <StageNote>
+            {badge && <DerivedBadge label={badge} />}
+            {tileBusy && detail ? tr.compare.computing : `${w}×${h} ➔ ${targetW}×${targetH} (${scaleFactor}X)`}
+          </StageNote>
+          {hasPhoto && (
+            <button
+              type="button"
+              data-detail-toggle
+              onClick={() => setDetail((d) => !d)}
+              aria-pressed={detail}
+              className="touch-target press shrink-0 min-h-[44px] px-3 rounded-xl text-xs font-semibold bg-surface-2 text-ink-1 border border-separator flex items-center gap-1.5"
+            >
+              {detail ? <ZoomOut className="w-4 h-4" /> : <ZoomIn className="w-4 h-4" />}
+              {detail ? tr.compare.detailOff : tr.compare.detailOn}
+            </button>
+          )}
+        </>
       }
       panel={panel}
       bar={bar}

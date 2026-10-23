@@ -28,16 +28,19 @@ Sahibin telefonda 3 temel modülü (Düzenle, Büyüt, Çerçeve) test etmesi; A
 2026-10-20: Prosedür 5 (doküman taraması) Faz R kalıntılarını README, PRODUCT, ARCHITECTURE §2–4, reference §1–2, CDS, procedures, INDEX ve kod yorumlarından temizledi.
 2026-10-22: Prosedür 2 kontrast hataları düzeltildi (seçili Çerçeve düğmeleri ve Düzenle önerilen çipi CDS'ye göre `bg-accent-fill` + `text-on-accent`); emülasyonda 35 ekran ok. Telefonda doğrulanmadı.
 2026-10-23: D38: Büyüt → "AI ile Büyüt" gerçek AI (görev A, `/api/ai`, önce/sonra + "Kullan"; sahte ±%5 kontrast silindi). Sahte proxy ile tarayıcıda uçtan uca ölçüldü; gerçek model çağrısı yapılmadı (yerelde gerçek anahtar kullanılmadı). Aktif plan yok.
+2026-10-23: D39: Büyüt karşılaştırması basılı tut + %100 "Yakından bak" (AI kontrol sayfası da). Gerçek AI büyütme testi (yerel sunucu, test PIN, 5 ücretli çağrı, ≈ ₺40 sayaçtan): 30–41 sn, 2520 çıktı token'ı (≈ $0,15/çağrı liste fiyatı). Sonuçlar belirgin net ama okunmayan yazıya sahte harf ve bazı yüzeylere desen ekliyor; istemle düzelmedi. Çıktılar `screenshots/ai-upscale-test/` (git izlemez). Aktif plan yok.
 
 ## Açık hatalar ve takip (2026-10-20 taramasında ölçüldü)
 - Ölü kod (arayüzden çağıran yok, yalnız testli): `AiPresetSheet`, `usePanPinch`, AI görüntü görevleri B/C/D (`lib/ai/config.ts`), `lib/engine/presets.ts`, `corrections.ts`, `scene.ts`; `prefs`/`library-cache`'te Carousel/Story alanları hâlâ yazılıyor; `tr.ts`'te `carousel`, `story` bölümleri.
 - `curate-spec-v1.md` Carousel/Story bölümleri D37 ile geçersiz; spec metni sahibe ait, değiştirilmedi.
 
 ## Son durum
-- 25 test dosyası, 337 birim ve parite testi yeşil (2026-10-23).
+- 25 test dosyası, 341 birim ve parite testi yeşil (2026-10-23).
 - `tsc --noEmit`, `npm run lint`, `npm run check:secrets` (0 bulgu), `npm test` sıfır hatayla geçti.
 
 ## Sahibe sorular (açık)
+- AI ile Büyüt okunmayan yazıya uydurma harf ve bazı yüzeylere desen ekliyor (tren tabelası, tabela zemini; sıkı istemle de sürdü). Bu kabul mü, yoksa AI ile Büyüt yalnız yazısız fotoğraflar için mi önerilsin / kapatılsın mı?
+- AI ile Büyüt export'u hedefe (kaynak × 2/4) küçültüyor: 372×500 → AI 3584×4800 üretiyor, 4× export 1488×2000. AI'nin tam çözünürlüğü de seçenek olsun mu?
 - Yoklama sonuçları geldiğinde yol haritası: sonuçlar Curate'e mi, ayrı bir kamera uygulamasına mı gidecek (spec §7 madde 5 kamera/çekim asistanını kapsam dışı sayar; spec §10 s.13).
 - AI Preset için `preferredRegion` (örn. `fra1`) ölçülemedi: işlev bölgesini değiştirmek yalnız dağıtımdan sonra, günlükteki `ms` ile karşılaştırılarak anlamlı; Upstash'in bölgesi bilinmiyor. İstenirse sahip onayıyla denenir.
 - `tests/corrections.test.ts` "fast enough … desktop CPU" bütçesi (1500 ms) bu Windows makinesinde paralel koşuda düşüyor (1,7–2,8 s; tek başına 0,9–1,0 s; CI yeşil). Bütçe değişmedi; isterseniz test daha az paralel koşturulabilir.
@@ -54,5 +57,5 @@ Sahibin telefonda 3 temel modülü (Düzenle, Büyüt, Çerçeve) test etmesi; A
 - Vercel'de gerçek AI süresi, gerçek maliyet, dağıtık sayaç.
 - AI Preset: model kimlikleri 2026-10-08'de gerçek çağrıyla sınandı (3.5-flash 26 sn geçerli, 3.5-flash-lite 4 sn ama doğrulayıcı reddetti, 2.5-flash 27 sn geçerli; 4 çağrının biri ücretsiz 400). Doğrulanmayan: Vercel'de çalışması, planların görsel kalitesi, gerçek ₺ (token: ~2,4 bin istem, ~0,5 bin yanıt, ~1,1–1,8 bin düşünme), süre (~26 sn, tahmin 8 sn idi).
 - Akıllı gradyan (Çerçeve): telefonda gerçek fotoğraflarla.
-- AI ile Büyüt (D38): gerçek model çağrısı (görev A, `gemini-3.1-flash-image`) hiç yapılmadı; çıktı boyutu, süre (~30 sn tahmin), gerçek ₺ (~₺8 tahmin), görsel kalite ve modelin ayrıntı uydurup uydurmadığı bilinmiyor. Telefonda hiçbir adım.
+- AI ile Büyüt (D38): 2026-10-23'te yerelde 5 gerçek çağrı (13 referanstan 4'ü; 300–750 px girişler) ölçüldü. Doğrulanmayan: Vercel'de süre ve 4,3 MB yanıt sınırı altında davranış, büyük (≥ 1000 px) telefon fotoğrafları, Google Billing'deki gerçek ₺, telefonda akış ve %100 görünümde gerçek dokunuşla basılı tutma.
 - AI para tavanı: Redis'te gerçek sayaç (yalnız bellek ve sahte Redis ile sınandı), gerçek maliyetin ×1,25 tahminle karşılaştırması.

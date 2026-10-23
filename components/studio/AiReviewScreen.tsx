@@ -1,8 +1,10 @@
 "use client";
 
 import { tr } from "@/lib/i18n/tr";
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
+import { ZoomIn, ZoomOut } from "lucide-react";
 import { SuspectRegion } from "@/lib";
+import { CompareStage } from "./CompareStage";
 
 interface AiReviewScreenProps {
   resultUrl: string;
@@ -17,26 +19,13 @@ interface AiReviewScreenProps {
   onDiscard: () => void;
 }
 
-const HOLD_MS = 150;
-
 /**
  * Tam ekran önce/sonra kontrolü (spec §4.5 E12). Kullanıcı "Kullan" demeden sonuç kütüphaneye girmez.
- * Basılı tut: orijinal.
+ * Basılı tut: orijinal. Çift dokun veya "Yakından bak": %100 görünüm (CompareStage).
  */
 export function AiReviewScreen({ resultUrl, originalUrl, width, height, taskLabel, suspect, onUse, onDiscard }: AiReviewScreenProps) {
-  const [showOriginal, setShowOriginal] = useState(false);
-  const timerRef = useRef<number | null>(null);
+  const [detail, setDetail] = useState(false);
   const ratio = width / height;
-
-  const startHold = () => {
-    if (timerRef.current) window.clearTimeout(timerRef.current);
-    timerRef.current = window.setTimeout(() => setShowOriginal(true), HOLD_MS);
-  };
-  const endHold = () => {
-    if (timerRef.current) window.clearTimeout(timerRef.current);
-    timerRef.current = null;
-    setShowOriginal(false);
-  };
 
   return (
     <div
@@ -59,38 +48,35 @@ export function AiReviewScreen({ resultUrl, originalUrl, width, height, taskLabe
       <div className="stage-fit flex-1 min-h-0 flex items-center justify-center px-3">
         <div
           data-review-stage
-          className="relative rounded-xl overflow-hidden border border-separator bg-base select-none"
+          className="relative rounded-xl overflow-hidden border border-separator bg-base"
           style={{ aspectRatio: `${ratio}`, width: `min(100cqw, calc(100cqh * ${ratio}))` }}
-          onPointerDown={startHold}
-          onPointerUp={endHold}
-          onPointerCancel={endHold}
-          onPointerLeave={endHold}
-          onContextMenu={(e) => e.preventDefault()}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={resultUrl} alt="AI sonucu" draggable={false} className="w-full h-full object-contain pointer-events-none" />
-          {suspect && !showOriginal && (
-            <div
-              className="absolute border-2 border-dashed border-white rounded-md pointer-events-none"
-              style={{
-                left: `${suspect.x * 100}%`,
-                top: `${suspect.y * 100}%`,
-                width: `${suspect.w * 100}%`,
-                height: `${suspect.h * 100}%`,
-              }}
-            >
-              <span className="absolute left-0 top-full mt-1 whitespace-nowrap px-1.5 py-0.5 rounded bg-black/80 text-xs text-white">
-                {tr.review.lookHere}
-              </span>
-            </div>
-          )}
-          {showOriginal && (
-            <div className="absolute inset-0 bg-base flex items-center justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={originalUrl} alt="" draggable={false} className="w-full h-full object-contain pointer-events-none" />
-              <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 text-xs text-ink-1">{tr.common.original}</span>
-            </div>
-          )}
+          <CompareStage
+            beforeUrl={originalUrl}
+            afterUrl={resultUrl}
+            resultW={width}
+            resultH={height}
+            afterLabel={tr.review.resultLabel}
+            detail={detail}
+            onDetailChange={setDetail}
+            overlay={
+              suspect && (
+                <div
+                  className="absolute border-2 border-dashed border-white rounded-md pointer-events-none"
+                  style={{
+                    left: `${suspect.x * 100}%`,
+                    top: `${suspect.y * 100}%`,
+                    width: `${suspect.w * 100}%`,
+                    height: `${suspect.h * 100}%`,
+                  }}
+                >
+                  <span className="absolute left-0 top-full mt-1 whitespace-nowrap px-1.5 py-0.5 rounded bg-black/80 text-xs text-white">
+                    {tr.review.lookHere}
+                  </span>
+                </div>
+              )
+            }
+          />
         </div>
       </div>
 
@@ -98,7 +84,19 @@ export function AiReviewScreen({ resultUrl, originalUrl, width, height, taskLabe
         data-review-bar
         className="shrink-0 px-4 pt-2 pb-[calc(var(--safe-area-bottom)+12px)] flex flex-col gap-2"
       >
-        <p className="text-xs text-ink-3 text-center">{tr.review.holdHint}</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-ink-3 min-w-0">{tr.review.holdHint}</p>
+          <button
+            type="button"
+            data-detail-toggle
+            onClick={() => setDetail((d) => !d)}
+            aria-pressed={detail}
+            className="touch-target press shrink-0 min-h-[44px] px-3 rounded-xl text-xs font-semibold bg-surface-2 text-ink-1 border border-separator flex items-center gap-1.5"
+          >
+            {detail ? <ZoomOut className="w-4 h-4" /> : <ZoomIn className="w-4 h-4" />}
+            {detail ? tr.compare.detailOff : tr.compare.detailOn}
+          </button>
+        </div>
         <div className="flex gap-2">
           <button
             type="button"

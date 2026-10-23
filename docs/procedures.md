@@ -20,7 +20,7 @@ Son doğrulama: 2026-10-20
 - **Kapsam:** Düzenle, Çerçeve, Büyüt önizleme ↔ export (Faz R'den beri üç modül).
 - **Adımlar:**
   1. Önizleme ve export'un aynı çizim fonksiyonunu aynı parametre şemasıyla çağırdığını doğrula (`docs/ARCHITECTURE.md` §2).
-  2. `npm test` (parite testleri: `tests/intelligent-repair.test.ts`, `tests/export-plan.test.ts`, `tests/frame.test.ts`, `tests/edge-gradient.test.ts`; `tests/edit-geometry.test.ts` artık arayüzde kullanılmayan Kırp motorunu sınar).
+  2. `npm test` (parite testleri: `tests/intelligent-repair.test.ts`, `tests/export-plan.test.ts`, `tests/frame.test.ts`, `tests/edge-gradient.test.ts`, `tests/upscale-detail.test.ts` (Büyüt %100 görünüm = export Lanczos); `tests/edit-geometry.test.ts` artık arayüzde kullanılmayan Kırp motorunu sınar).
   3. Boyutlar: Çerçeve seçilen oran (varsayılan 1080×1350; 4K'da kısa kenar 2160, 16:9 → 3840×2160), Düzenle fotoğrafın kendi boyutu, Büyüt 2×/4× (≤ 8192, ≤ 16 MP); Çerçeve'de birden çok fotoğraf → zip.
   4. Export renkleri yalnız `EXPORT_COLORS` (`lib/ui/colors.ts`).
   5. Uzantı ve MIME eşleşir (`.jpg` ↔ `image/jpeg`, `.png` ↔ `image/png`); 8 MB üstünde kalite basamağı yalnız platform hedeflerinde.

@@ -27,6 +27,7 @@ import {
   handleAiForget,
   encodeResponseJpeg,
   extractImage,
+  usageCounts,
   issueDeviceToken,
   verifyDeviceToken,
   AiDeps,
@@ -492,6 +493,14 @@ describe('AI proxy: model call', () => {
       data: 'x',
     });
     expect(extractImage({})).toBeNull();
+  });
+
+  it('logs only numeric token counts from usageMetadata', () => {
+    expect(
+      usageCounts({ usageMetadata: { promptTokenCount: 1165, candidatesTokenCount: 2520, totalTokenCount: 3685, note: 'x' } }),
+    ).toEqual({ tokIn: 1165, tokOut: 2520, tokTotal: 3685 });
+    expect(usageCounts({ usageMetadata: { promptTokenCount: '5' } })).toEqual({});
+    expect(usageCounts({})).toEqual({});
   });
 
   it('a large 4K output is stepped down below the 4.3 MB response limit', async () => {

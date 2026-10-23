@@ -20,9 +20,9 @@ Son doğrulama: 2026-10-20 (kod okuma). Faz R (D37, commit `9afb9ae`) ile Carous
 
 ### 2. Büyüt (yerel Lanczos-3 ya da AI)
 - 2× / 4×. Güvenli sınır: çıktının uzun kenarı en çok 8192 px ve alanı en çok 16 MP (varsayım); aşan çarpan kapanır ve "Bu boyut için çok büyük" yazar.
-- Standart: export worker'da 2 geçişli Lanczos-3 (`lib/engine/upscale-lanczos.ts`); önizleme orijinali gösterir. Dosya `curate_upscale_01.jpg`.
-- AI ile Büyüt (D38): yalnız uzun kenarı ≤ 2048 px fotoğrafta. Seçenek sayfa açar: süre (~30 sn), ~₺8, kalan AI bütçesi ve "fotoğraf Google'a gönderilir" notu; fotoğraf yalnız satıra dokununca `/api/ai` görev A'ya gider (`gemini-3.1-flash-image`, 4K). Sonuç tam ekran önce/sonra sayfasında; "Kullan" Büyüt'te tutar (oturum belleği), "At" hiçbir şey tutmaz. Export: AI sonucu seçilen hedefe (kaynak × 2/4) cihazda tek yeniden örneklemeyle uydurulur, ardından Lanczos yok.
-- Önce/sonra ayırıcı: solda orijinal, sağda (AI modunda) AI sonucu.
+- Standart: export worker'da 2 geçişli Lanczos-3 (`lib/engine/upscale-lanczos.ts`); "Yakından bak" görünümünde görünen bölge aynı worker ile hesaplanıp gösterilir. Dosya `curate_upscale_01.jpg`.
+- AI ile Büyüt (D38): yalnız uzun kenarı ≤ 2048 px fotoğrafta. Seçenek sayfa açar: süre (~35 sn), ~₺8, kalan AI bütçesi ve "fotoğraf Google'a gönderilir" notu; fotoğraf yalnız satıra dokununca `/api/ai` görev A'ya gider (`gemini-3.1-flash-image`, 4K). Sonuç tam ekran önce/sonra sayfasında; "Kullan" Büyüt'te tutar (oturum belleği), "At" hiçbir şey tutmaz. Export: AI sonucu seçilen hedefe (kaynak × 2/4) cihazda tek yeniden örneklemeyle uydurulur, ardından Lanczos yok.
+- Karşılaştırma (D39): sahnede sonuç görünür, basılı tutunca orijinal. "Yakından bak" (ya da çift dokunuş) %100 görünümü açar: hedef boyutta bir piksel = bir ekran noktası, sürükleyerek gezilir; fark ancak burada görünür. AI sonucu "Kullan" denince %100 görünüm kendiliğinden açılır. AI kontrol sayfası da aynı karşılaştırmayı kullanır.
 
 ### 3. Çerçeve (tekil ya da toplu)
 - Stiller: Polaroid, Polaroid Geniş, Polaroid Kare, Mat (beyaz, krem, siyah, antrasit, özel), Gradyan (Akıllı Gradyan, Günbatımı, Derin Gece, Pastel). Akıllı gradyan fotoğrafın çerçeveyle buluşan kenarlarının renginden kurulur (D33).

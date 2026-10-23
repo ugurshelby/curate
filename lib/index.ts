@@ -13,7 +13,7 @@ export * from './engine/proxy';
 export * from './engine/presets';
 export * from './engine/edge-gradient';
 export * from './engine/upscale-lanczos';
-export * from './engine/upscale-slider';
+export * from './engine/upscale-detail';
 export * from './engine/edit-geometry';
 export * from './engine/corrections';
 export * from './engine/frame-render';

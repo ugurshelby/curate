@@ -41,7 +41,9 @@ export const AI_TASKS: Record<AiTask, AiTaskConfig> = {
     model: 'flash',
     imageSize: '4K',
     prompt: 'Increase the resolution and sharpness of this photo. Keep the existing real detail and texture. {KEEP}',
-    estSeconds: 30,
+    // measured 2026-10-23, 5 real calls on 300–750 px inputs: 30–41 s; 1165–1218 input + 2520 output tokens
+    // (4K image), ≈ $0.15 at Google's list price ($60/1M image output); not yet checked against Billing
+    estSeconds: 35,
     costTry: 8,
   },
   B: {

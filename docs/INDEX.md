@@ -39,6 +39,7 @@ Son doğrulama: 2026-10-20
 | `components/studio/StudioShell.tsx` | Ortak modül iskeleti: header / sahne / alt yığın |
 | `components/studio/FrameStudio.tsx` | Çerçeve modülü (boyut çipleri, 4K, toplu zip) |
 | `components/studio/UpscaleStudio.tsx` | Büyüt modülü |
+| `components/studio/CompareStage.tsx` | Önce/sonra (D39): basılı tut = orijinal, çift dokun / "Yakından bak" = %100 görünüm; Büyüt ve AI kontrol sayfası |
 | `components/studio/EditStudio.tsx` | Düzenle modülü (AI onarım direktifi: serbest metin + 5 hazır direktif; plan cihazda uygulanır) |
 | `components/studio/AiRepairSheet.tsx`, `AiReviewScreen.tsx` | AI görüntü görevi sayfası (süre, ~₺, kalan bütçe, PIN adımı) ve önce/sonra kontrol sayfası; Büyüt → "AI ile Büyüt" kullanır (D38) |
 | `components/studio/AiPresetSheet.tsx` | AI Preset stil sayfası (D28); Faz R'den beri kullanılmıyor (ölü kod) |
@@ -50,7 +51,7 @@ Son doğrulama: 2026-10-20
 | `components/studio/NoticeToast.tsx`, `PerfHud.tsx`, `ResettableSlider.tsx` | Bildirim, `?perf=1` ölçüm, kaydırıcı |
 | `lib/index.ts` | Ortak dışa aktarım |
 | `lib/core/` | `types`, `state-machine` (store), `use-studio`, `worker-bridge`, `reference-images`, `prefs` (localStorage tercihler), `library-cache` (IndexedDB fotoğraf hafızası), `device-sync` (store ↔ cihaz eşitleyici) |
-| `lib/engine/` | Arayüzde kullanılmayan (Faz R'den kalan, yalnız testli): `corrections` (Düzeltme), `presets` (16 preset), `scene` (Akıllı Otomatik), `edit-geometry` (Kırp). Kullanılan: `frame-render` (Çerçeve, önizleme=export), `ai-plan` (AI Preset planı: doğrulayıcı, maskeler, uygulama), `intelligent-repair` (iki aşamalı AI onarım), `image-schema`, `upscale-lanczos`, `upscale-slider`, `edge-gradient` (akıllı gradyan: kenar renkleri, OKLab, dither; Çerçeve), `proxy` |
+| `lib/engine/` | Arayüzde kullanılmayan (Faz R'den kalan, yalnız testli): `corrections` (Düzeltme), `presets` (16 preset), `scene` (Akıllı Otomatik), `edit-geometry` (Kırp). Kullanılan: `frame-render` (Çerçeve, önizleme=export), `ai-plan` (AI Preset planı: doğrulayıcı, maskeler, uygulama), `intelligent-repair` (iki aşamalı AI onarım), `image-schema`, `upscale-lanczos`, `upscale-detail` (Büyüt %100 görünüm geometrisi), `edge-gradient` (akıllı gradyan: kenar renkleri, OKLab, dither; Çerçeve), `proxy` |
 | `lib/export/` | `platform-specs` (hedefler ve Çerçeve boyutları `FRAME_SIZES` veri olarak), `export-plan` (kalite basamağı, dosya adı), `exif-sanitizer`, `zip-packager` |
 | `middleware.ts`, `lib/access/` | Tüm uygulama PIN kapısı (D27): `session` (imza, karar, Edge+Node), `client` (kilit ekranı isteği); ekran `app/kilit/page.tsx` |
 | `lib/ai/` | `config` (model/istem/₺ tek yer), `server` (AI Preset model zinciri, bütçe, kilit), `quota` (sayaçlar), `budget` (para tavanı, D35), `client`, `diff-check` |
